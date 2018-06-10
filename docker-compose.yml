@@ -12,9 +12,10 @@ services:
       context: ./front
     environment:
       - NODE_ENV=development
+      - WEBPACK_DEV_SERVER_PORT
     command: npm run dev
     ports:
-      - "${WEBPACK_DEV_PORT}:9000"
+      - "${WEBPACK_DEV_SERVER_PORT}:${WEBPACK_DEV_SERVER_PORT}"
     volumes:
       - ./front:/srv
 

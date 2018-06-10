@@ -1,8 +1,12 @@
 const path = require('path');
 const { VueLoaderPlugin } = require("vue-loader");
+const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 
 const NODE_ENV = process.env.NODE_ENV;
+const WEBPACK_DEV_SERVER_PORT = process.env.WEBPACK_DEV_SERVER_PORT;
+console.log(WEBPACK_DEV_SERVER_PORT);
+
 const config = {
   mode: NODE_ENV,
   entry: './src/main.js',
@@ -10,12 +14,13 @@ const config = {
     filename: '[name].js',
   },
   plugins: [
-    new VueLoaderPlugin()
+    new VueLoaderPlugin(),
+    new HtmlWebpackPlugin({
+      template: "./src/index.html"
+    })
   ],
-  devServer: {
-    contentBase: path.join(__dirname, "dist"),
-    compress: true,
-    port: 9000
+  devServer:{
+    port : WEBPACK_DEV_SERVER_PORT || 8080,
   },
   module: {
     rules: [
