@@ -1,0 +1,12 @@
+# workflow engine
+apache-airflow
+
+# machine learning or collection tools
+cytoolz
+numpy
+pandas
+torch
+torchvision
+
+matplotlib
+
