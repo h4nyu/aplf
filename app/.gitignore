@@ -42,4 +42,5 @@ docs/site
 **.*.pkl.gz
 data
 !data/.gitkeep
+airflow/logs
 
