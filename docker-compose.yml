@@ -6,3 +6,12 @@ services:
     volumes:
       - ./app:/srv
       - ./data:/data
+
+  front:
+    build:
+      context: ./front
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./front:/srv
+
