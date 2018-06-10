@@ -6,3 +6,6 @@ services:
     volumes:
       - ./app:/srv
       - ./data:/data
+
+  db:
+    image: postgres:10
