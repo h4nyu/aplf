@@ -6,9 +6,17 @@ const NODE_ENV = process.env.NODE_ENV;
 const config = {
   mode: NODE_ENV,
   entry: './src/main.js',
+  output: {
+    filename: '[name].js',
+  },
   plugins: [
     new VueLoaderPlugin()
   ],
+  devServer: {
+    contentBase: path.join(__dirname, "dist"),
+    compress: true,
+    port: 9000
+  },
   module: {
     rules: [
       {
