@@ -26,4 +26,6 @@ COPY ./dev-requirements.txt /srv/dev-requirements.txt
 RUN pip install -r requirements.txt --no-cache-dir  && \
     pip install -r dev-requirements.txt  --no-cache-dir
 COPY ./ /srv
+ENV AIRFLOW_HOME /srv/airflow
+RUN airflow initdb
 RUN python setup.py develop
