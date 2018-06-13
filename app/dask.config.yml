@@ -19,4 +19,4 @@ default-scheme: tcp
 require-encryption: False   # whether to require encryption on non-local comms
 
 # Bokeh web dashboard
-bokeh-export-tool: True
+bokeh-export-tool: False

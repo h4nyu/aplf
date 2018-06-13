@@ -1,14 +1,16 @@
-# workflow engine
-dask[complete]
-
 # machine learning or collection tools
 cytoolz
 numpy
-pandas
 torch
 torchvision
 
 # graph
-graphviz
-matplotlib
+bokeh
+
+# workflow engine
+dask[array]       
+dask[bag]
+distributed
+
+
 

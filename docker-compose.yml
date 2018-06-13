@@ -11,6 +11,10 @@ services:
     volumes:
       - ./app:/srv
       - ./data:/data
+    ports:
+      - "8787:8787"
+      - "8786:8786"
+      - "80:80"
 
   dask_worker:
     build:
@@ -18,9 +22,6 @@ services:
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
     command: dask-worker dask_scheduler:8786
-    deploy:
-      mode: replicated
-      replicas: 6
     depends_on:
       - dask_scheduler
 
@@ -32,8 +33,6 @@ services:
     volumes:
       - ./app:/srv
       - ./data:/data
-    depends_on:
-      - dask_worker
 
   front:
     build:
