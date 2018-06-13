@@ -1,5 +1,5 @@
 # workflow engine
-apache-airflow
+dask[complete]
 
 # machine learning or collection tools
 cytoolz
@@ -8,5 +8,7 @@ pandas
 torch
 torchvision
 
+# graph
+graphviz
 matplotlib
 

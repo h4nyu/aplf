@@ -5,6 +5,7 @@ MAINTAINER Xinyaun Yao <yao.xinyuan@gmail.com>
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     bzip2 \
+    graphviz \
     g++ && \
     rm -rf /var/lib/apt/lists/*
 
@@ -26,6 +27,4 @@ COPY ./dev-requirements.txt /srv/dev-requirements.txt
 RUN pip install -r requirements.txt --no-cache-dir  && \
     pip install -r dev-requirements.txt  --no-cache-dir
 COPY ./ /srv
-ENV AIRFLOW_HOME /srv/airflow
-RUN airflow initdb
 RUN python setup.py develop
