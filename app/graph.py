@@ -1,37 +1,43 @@
 from distributed import Client
 from time import sleep
+from cytoolz.curried import pipe, map, take
+import dask.bag as db
+import numpy as np
 import random
+import dask.array as da
+from pprint import pprint
 
 
 def load(filename):
-    sleep(random.random() / 10)
-    pass
+    sleep(random.random() * 10)
+    return np.fromfile(filename)
+
+def mock(data):
+    sleep(random.random() * 10)
+    return data
 
 
-def clean(data):
-    sleep(random.random() / 10)
-    pass
+
+def store(data):
+    sleep(random.random() * 10)
+    return data.sum().compute()
 
 
-def analyze(sequence_of_data):
-    sleep(random.random() / 10)
-    pass
+loads = pipe(range(1, 11),
+             map(lambda x: (f"load-{x}", (load, f'/data/batch{x}.dat'))),
+             dict)
 
+mocks = pipe(loads,
+             map(lambda x: (f"mock-{x}", (mock, x))),
+             dict)
 
-def store(result):
-    sleep(random.random() / 10)
-    pass
-
-
-dsk = {'load-1': (load, 'myfile.a.data'),
-       'load-2': (load, 'myfile.b.data'),
-       'load-3': (load, 'myfile.c.data'),
-       'clean-1': (clean, 'load-1'),
-       'clean-2': (clean, 'load-2'),
-       'clean-3': (clean, 'load-3'),
-       'analyze': (analyze, ['clean-%d' % i for i in [1, 2, 3]]),
+dsk = {**loads,
+       **mocks,
+       'analyze': (da.concatenate, list(mocks.keys())),
        'store': (store, 'analyze')}
+pprint(dsk)
 
 
 client = Client('dask_scheduler:8786')
-client.get(dsk, 'store')  # executes in parallel
+result = client.get(dsk, ['store'])  # executes in parallel
+print(result)

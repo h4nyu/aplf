@@ -22,6 +22,8 @@ services:
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
     command: dask-worker dask_scheduler:8786
+    volumes:
+      - ./data:/data
     depends_on:
       - dask_scheduler
 
