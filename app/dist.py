@@ -19,7 +19,7 @@ def add(x, y):
     return x + y
 
 
-client = Client('dask_scheduler:8786')  # set up local cluster on your laptop
+client = Client('dask_scheduler:8786')
 incs = client.map(inc, range(10000))
 decs = client.map(dec, range(10000))
 adds = client.map(add, incs, decs)

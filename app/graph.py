@@ -1,20 +1,25 @@
-from dask.multiprocessing import get
-from dask import visualize
+from distributed import Client
+from time import sleep
+import random
 
 
 def load(filename):
+    sleep(random.random() / 10)
     pass
 
 
 def clean(data):
+    sleep(random.random() / 10)
     pass
 
 
 def analyze(sequence_of_data):
+    sleep(random.random() / 10)
     pass
 
 
 def store(result):
+    sleep(random.random() / 10)
     pass
 
 
@@ -28,5 +33,5 @@ dsk = {'load-1': (load, 'myfile.a.data'),
        'store': (store, 'analyze')}
 
 
-visualize(dsk, '/data/graph.svg')
-get(dsk, 'store')  # executes in parallel
+client = Client('dask_scheduler:8786')
+client.get(dsk, 'store')  # executes in parallel
