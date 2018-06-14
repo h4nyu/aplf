@@ -13,16 +13,15 @@ services:
       - ./data:/data
     ports:
       - "8787:8787"
-      - "8786:8786"
-      - "80:80"
 
   dask_worker:
     build:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-worker dask_scheduler:8786
+    command: dask-worker dask_scheduler:8786 --local-directory=/dask-worker-space
     volumes:
+      - ./app:/srv
       - ./data:/data
     depends_on:
       - dask_scheduler

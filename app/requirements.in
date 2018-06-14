@@ -1,5 +1,6 @@
 # machine learning or collection tools
 cytoolz
+joblib
 numpy
 torch
 torchvision

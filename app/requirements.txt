@@ -12,6 +12,7 @@ dask[array,bag]==0.17.5
 distributed==1.21.8
 heapdict==1.0.0           # via zict
 jinja2==2.10              # via bokeh
+joblib==0.11
 locket==0.2.0             # via partd
 markupsafe==1.0           # via jinja2
 msgpack==0.5.6            # via distributed
