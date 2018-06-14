@@ -50,6 +50,7 @@ services:
 
     volumes:
       - ./front/dist:/public/aplf
+      - ./data:/public/data
       - ./web/nginx.conf:/etc/nginx/nginx.conf
     ports:
       - "${WEB_PORT}:80"
