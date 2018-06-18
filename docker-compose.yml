@@ -26,15 +26,6 @@ services:
     depends_on:
       - dask_scheduler
 
-  app:
-    build:
-      context: ./app
-    environment:
-      - DASK_CONFIG=/srv/dask.config.yml
-    volumes:
-      - ./app:/srv
-      - ./data:/data
-
   front:
     build:
       context: ./front
@@ -56,3 +47,17 @@ services:
       - "${WEB_PORT}:80"
     depends_on:
       - front
+
+  app:
+    build:
+      context: ./app
+    environment:
+      - DASK_CONFIG=/srv/dask.config.yml
+    volumes:
+      - ./app:/srv
+      - ./data:/data
+    depends_on:
+      - dask_worker
+      - web
+
+

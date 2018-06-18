@@ -1,30 +1,57 @@
 from distributed import Client
 from joblib import Memory
+from dask import visualize
 from aplf.plot import plot
-from aplf.utils import merge_kwargs
+from aplf.utils import map_kwargs
+from torch.utils.data import DataLoader
+from aplf.dataset import DummyDataset
 import numpy as np
 
 
-memory = Memory(cachedir='/', verbose=0)
+@map_kwargs()
+def gen_data(channel, length):
+    return np.random.rand(channel, length)
 
 
-def gen_dummy():
-    return {"loss": np.random.rand(10), 'batch_idx': np.random.rand(10)}
+def train(dataset):
+    for i in DataLoader(dataset):
+        return i
 
 
 dsk = {
-    'dummy_data': (gen_dummy,),
-    "plot": (merge_kwargs({'loss': 'y', 'batch_idx': 'x'})(plot), "dummy_data", {
-        'from_idx': 0,
-        "to_idx": 10000,
-        'path': '/data/plot.png'
-    }),
+    'dummy_data': (
+        gen_data,
+        {
+            'channel': 10,
+            'length': 1000,
+        }
+    ),
+    'dataset': (
+        map_kwargs()(DummyDataset),
+        'dummy_data',
+        {
+            'window_size': 10,
+        }
+    ),
+    "train": (
+        map_kwargs()(train),
+        "dataset"
+    ),
+    "plot-dataset": (
+        map_kwargs({'loss': 'y', 'batch_idx': 'x'})(plot),
+        "dataset",
+        {
+            'path': '/data/plot.png'
+        }
+    ),
 }
+visualize(dsk, filename='/data/graph.svg')
 
 
 with Client('dask_scheduler:8786') as c:
     try:
-        result = c.get(dsk, 'plot')
+        result = c.get(dsk, 'dataset')
+        print(result)
 
     finally:
         c.restart()

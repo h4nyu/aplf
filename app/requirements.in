@@ -8,6 +8,7 @@ torchvision
 # graph
 bokeh
 matplotlib
+graphviz
 
 # workflow engine
 dask[array]       
