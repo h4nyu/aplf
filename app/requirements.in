@@ -11,9 +11,7 @@ matplotlib
 graphviz
 
 # workflow engine
-dask[array]       
-dask[bag]
-distributed
+dask[complete]       
 
 
 
