@@ -2,7 +2,7 @@ version: "3"
 
 services:
 
-  dask_scheduler:
+  dask-scheduler:
     build:
       context: ./app
     environment:
@@ -14,17 +14,17 @@ services:
     ports:
       - "8787:8787"
 
-  dask_worker:
+  dask-worker:
     build:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-worker dask_scheduler:8786 --local-directory=/dask-worker-space
+    command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space
     volumes:
       - ./app:/srv
       - ./data:/data
     depends_on:
-      - dask_scheduler
+      - dask-scheduler
 
   front:
     build:
@@ -47,6 +47,7 @@ services:
       - "${WEB_PORT}:80"
     depends_on:
       - front
+      - dask-scheduler
 
   app:
     build:
@@ -57,7 +58,7 @@ services:
       - ./app:/srv
       - ./data:/data
     depends_on:
-      - dask_worker
+      - dask-worker
       - web
 
 

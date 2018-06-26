@@ -48,7 +48,7 @@ dsk = {
 visualize(dsk, filename='/data/graph.svg')
 
 
-with Client('dask_scheduler:8786') as c:
+with Client('dask-scheduler:8786') as c:
     try:
         result = c.get(dsk, 'dataset')
         print(result)
