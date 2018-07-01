@@ -13,5 +13,6 @@ graphviz
 # workflow engine
 dask[complete]       
 
+requests
 
 
