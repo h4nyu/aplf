@@ -4,17 +4,17 @@ import random
 
 
 def inc(x):
-    sleep(random.random() / 10)
+    sleep(random.random() )
     return x + 1
 
 
 def dec(x):
-    sleep(random.random() / 10)
+    sleep(random.random() )
     return x - 1
 
 
 def add(x, y):
-    sleep(random.random() / 10)
+    sleep(random.random() )
     return x + y
 
 
