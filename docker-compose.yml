@@ -11,8 +11,6 @@ services:
     volumes:
       - ./app:/srv
       - ./data:/data
-    ports:
-      - "8787:8787"
 
   dask-worker:
     build:

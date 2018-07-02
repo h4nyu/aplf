@@ -1,7 +1,5 @@
 from torch.utils.data import Dataset
-import torch
 from cytoolz.curried import pipe, map, take
-import numpy as np
 
 
 class DummyDataset(Dataset):
