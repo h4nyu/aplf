@@ -4,6 +4,7 @@ joblib
 numpy
 torch
 torchvision
+sklearn
 
 # graph
 bokeh

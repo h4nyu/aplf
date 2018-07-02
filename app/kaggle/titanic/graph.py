@@ -8,6 +8,8 @@ import pandas as pd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from pprint import pprint
+from sklearn.preprocessing import LabelEncoder
 
 
 @delayed
@@ -22,13 +24,6 @@ def predict(model, dataset):
     return labels
 
 
-@delayed
-def preprocess(df):
-    df['Age'] = df['Age'] / 100
-    df['Pclass'] = df['Pclass'] / 3
-    df['Fare'] = df['Fare'] / 1000
-    return df
-
 
 class TitanicDataset(Dataset):
     """Face Landmarks dataset."""
@@ -41,8 +36,12 @@ class TitanicDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
+        le = LabelEncoder()
         self.df = df
+        self.n_pclass = 3
         self.is_train = is_train
+        self.df['Sex'] = le.fit(df['Sex'])
+        print(self.df['Sex'])
 
     def __len__(self):
         return len(self.df)
@@ -50,6 +49,9 @@ class TitanicDataset(Dataset):
     def __getitem__(self, idx):
         data = self.df.iloc[idx][['Age', 'SibSp',
                                   'Fare', 'Pclass']].values.astype(float)
+        p_class_vec = torch.eye(self.n_pclass)[self.df.iloc[idx]['Pclass'] - 1]
+        sex_vec = torch.eye(self.n_sex)[self.df.iloc[idx]['Sex'] - 1]
+        print(sex_vec)
         if self.is_train:
             label = self.df.iloc[idx][['Survived']]
             return torch.FloatTensor(data), torch.FloatTensor([float(label)])
@@ -107,13 +109,18 @@ def train(dataset):
 if __name__ == '__main__':
     test_df = delayed(pd.read_csv)('/data/titanic/test.csv')
     train_df = delayed(pd.read_csv)('/data/titanic/train.csv')
-    train_dataset = delayed(TitanicDataset)(preprocess(train_df))
-    test_dataset = delayed(TitanicDataset)(preprocess(test_df), is_train=False)
+    train_dataset = delayed(TitanicDataset)(train_df)
+    test_dataset = delayed(TitanicDataset)(test_df, is_train=False)
     train_result = train(train_dataset)
     loss_plot = plot(delayed(lambda x: x[1])(train_result), '/data/loss.png')
-    predict_result = predict(
-        delayed(lambda x: x[0])(train_result), test_dataset)
+    predict_result = predict(delayed(lambda x: x[0])(train_result), test_dataset)
 
     with Client('dask-scheduler:8786') as c:
-        predict_result.visualize('/data/titanic/graph.svg')
-        result = c.compute(predict_result, sync=True)
+        try:
+            target = train_dataset
+            target.visualize('/data/titanic/graph.svg')
+            result = c.compute(target, sync=True)
+            print(result)
+            print(result[0])
+        finally:
+            c.restart()
