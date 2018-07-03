@@ -45,4 +45,4 @@ data
 airflow/logs
 airflow/airflow.db
 airflow/airflow-webserver.pid
-
+.pytest_cache
