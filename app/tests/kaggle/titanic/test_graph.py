@@ -1,5 +1,10 @@
 from distributed import Client
-from aplf.kaggle.titanic.graph import train_dataset, train_result, loss_plot
+from aplf.kaggle.titanic.graph import(
+    train_dataset,
+    train_result,
+    loss_plot,
+    train_df
+)
 
 
 def test_graph():
@@ -8,7 +13,6 @@ def test_graph():
             target = loss_plot
             target.visualize('/data/titanic/graph.svg')
             result = c.compute(target, sync=True)
-            #  print(result.input_len)
-            print(result[1])
+            print(len(result))
         finally:
             c.restart()

@@ -27,31 +27,59 @@ def plot(x,
 base_dir = '/data/titanic'
 
 
+
 test_df = delayed(pd.read_csv)('/data/titanic/test.csv')
 train_df = delayed(pd.read_csv)('/data/titanic/train.csv')
 
-x_columns = ['Pclass', 'Sex']
-x_classes = [(1, 2, 3), ('male', 'female')]
-x_series = pipe(x_columns,
-                map(lambda c: delayed(lambda x: x[c])(train_df)),
-                lambda x: zip(x, x_classes),
-                map(lambda x: label_encode(*x)),
-                list)
+train_columns = [
+    'Pclass',
+    'Sex',
+    'SibSp',
+    'Embarked',
+    'Parch',
+    'Survived'
+]
 
-y_columns = ['Survived']
-y_classes = [(0, 1)]
-y_series = pipe(y_columns,
-                map(lambda c: delayed(lambda x: x[c])(train_df)),
-                lambda x: zip(x, y_classes),
-                map(lambda x: label_encode(*x)),
-                list)
+train_x_columns = [
+    'Pclass',
+    'Sex',
+    'SibSp',
+    'Embarked',
+    'Parch'
+]
+train_x_classes = [
+    (1, 2, 3),
+    ('male', 'female'),
+    pipe(range(10),
+         tuple),
+    ('S', 'C', 'Q'),
+    pipe(range(7),
+         tuple),
+]
+
+train_df = delayed(lambda x: x[train_columns])(train_df)
+train_df = delayed(lambda x: x.dropna())(train_df)
+train_x_series = pipe(train_x_columns,
+                      map(lambda c: delayed(lambda x: x[c])(train_df)),
+                      lambda x: zip(x, train_x_classes),
+                      map(lambda x: label_encode(*x)),
+                      list)
+
+
+train_y_columns = ['Survived']
+train_y_classes = [(0, 1)]
+train_y_series = pipe(train_y_columns,
+                      map(lambda c: delayed(lambda x: x[c])(train_df)),
+                      lambda x: zip(x, train_y_classes),
+                      map(lambda x: label_encode(*x)),
+                      list)
 
 
 train_dataset = delayed(TitanicDataset)(
-    x_series,
-    x_classes,
-    y_series,
-    y_classes
+    train_x_series,
+    train_x_classes,
+    train_y_series,
+    train_y_classes
 )
 train_result = train(train_dataset)
 loss_plot = plot(delayed(lambda x: x[1])(train_result), f'{base_dir}/loss.png')

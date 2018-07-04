@@ -39,8 +39,4 @@ class TitanicDataset(Dataset):
                  map(lambda x: torch.eye(x[1])[x[0][idx]]),
                  list,
                  torch.cat)
-        y = pipe(zip(self.y_series, self.y_class_lens),
-                 map(lambda x: torch.eye(x[1])[x[0][idx]]),
-                 list,
-                 torch.cat).long()
-        return x, y
+        return x, self.y_series[0][idx]
