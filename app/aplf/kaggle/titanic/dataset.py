@@ -7,10 +7,8 @@ class TitanicDataset(Dataset):
     """Face Landmarks dataset."""
 
     def __init__(self,
-                 x_series,
-                 x_classes,
-                 y_series,
-                 y_classes):
+                 x,
+                 y):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -18,25 +16,16 @@ class TitanicDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        self.x_series = x_series
-        self.x_classes = x_classes
-        self.x_class_lens = pipe(x_classes,
-                                 map(len),
-                                 list)
-        self.y_series = y_series
-        self.y_classes = y_classes
-        self.y_class_lens = pipe(y_classes,
-                                 map(len),
-                                 list)
-        self.x_len = sum(self.x_class_lens)
-        self.y_len = sum(self.y_class_lens)
+        self.x = x
+        self.y = y
 
     def __len__(self):
-        return len(self.x_series[0])
+        return len(self.y)
 
     def __getitem__(self, idx):
-        x = pipe(zip(self.x_series, self.x_class_lens),
-                 map(lambda x: torch.eye(x[1])[x[0][idx]]),
+        x = pipe(self.x,
+                 map(lambda x: x[idx]),
+                 map(torch.FloatTensor),
                  list,
                  torch.cat)
-        return x, self.y_series[0][idx]
+        return x, torch.FloatTensor(self.y[idx])

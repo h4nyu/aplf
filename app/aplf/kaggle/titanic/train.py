@@ -8,14 +8,16 @@ from .model import TitanicNet
 
 @delayed
 def train(dataset):
-    loader = DataLoader(dataset, batch_size=1)
+    loader = DataLoader(dataset, batch_size=4, shuffle=True)
+    print(len(dataset))
     device = torch.device("cpu")
-    model = TitanicNet(input_len=dataset.x_len,
-                       output_len=dataset.y_len).to(device)
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
-    criterion = nn.CrossEntropyLoss()
+    head_x, head_y = dataset[0]
+    model = TitanicNet(input_len=len(head_x),
+                       output_len=2).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    criterion = nn.MSELoss()
     losses = []
-    for e in range(10):
+    for e in range(100):
         for batch_idx, (data, label) in enumerate(loader):
             data, label = data.to(device), label.to(device)
             optimizer.zero_grad()
@@ -23,5 +25,6 @@ def train(dataset):
             loss = criterion(output, label)
             loss.backward()
             optimizer.step()
-            losses.append(loss.item())
+            if batch_idx % 100 == 0:
+                losses.append(loss.item())
     return (model, losses)
