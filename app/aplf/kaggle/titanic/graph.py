@@ -3,6 +3,7 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, compose
 from dask import delayed
 import pandas as pd
+import numpy as np
 from pprint import pprint
 from .dataset import TitanicDataset
 from .preprocess import label_encode, max_min_scaler, one_hot
@@ -44,23 +45,24 @@ train_columns = [
 train_x_columns = [
     'Pclass',
     'Sex',
-    'SibSp',
-    'Embarked',
-    'Parch',
+    #  'SibSp',
+    #  'Embarked',
+    #  'Parch',
 ]
 train_x_classes = [
     (1, 2, 3),
     ('male', 'female'),
-    pipe(range(10),
-         tuple),
-    ('S', 'C', 'Q'),
-    pipe(range(7),
-         tuple),
+    #  pipe(range(10),
+    #       tuple),
+    #  ('S', 'C', 'Q'),
+    #  pipe(range(7),
+    #       tuple),
 ]
 
 get_len = compose(list, map(len))
 train_df = delayed(lambda x: x[train_columns])(train_df)
 train_df = delayed(lambda x: x.dropna())(train_df)
+
 train_x = pipe(train_x_columns,
                map(lambda c: delayed(lambda x: x[c])(train_df)),
                lambda x: zip(x, train_x_classes),
@@ -75,8 +77,7 @@ train_x += pipe(['Age', 'Fare'],
                 list)
 
 
-train_y = delayed(lambda x: x['Survived'])(train_df)
-train_y = one_hot(train_y, 2)
+train_y = delayed(lambda x: x['Survived'].values)(train_df)
 
 train_dataset = delayed(TitanicDataset)(
     train_x,

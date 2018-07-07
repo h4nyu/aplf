@@ -28,4 +28,4 @@ class TitanicDataset(Dataset):
                  map(torch.FloatTensor),
                  list,
                  torch.cat)
-        return x, torch.FloatTensor(self.y[idx])
+        return x, self.y[idx]

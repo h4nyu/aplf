@@ -14,7 +14,7 @@ def test_graph():
         try:
             target = loss_plot
             target.visualize('/data/titanic/graph.svg')
-            result = c.compute(target, sync=True)
-            print(result[0])
+            result = target.compute()
+            print(result)
         finally:
             c.restart()
