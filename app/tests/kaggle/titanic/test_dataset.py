@@ -12,4 +12,4 @@ from aplf.kaggle.titanic.graph import(
 def test_dataset():
     #  with Client('dask-scheduler:8786') as c:
     result = train_dataset.compute()
-    print(result[5])
+    print(result[0], result[1])
