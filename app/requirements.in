@@ -9,8 +9,10 @@ scipy
 
 # graph
 bokeh
-matplotlib
 graphviz
+
+# notebook
+jupyter
 
 # workflow engine
 dask[complete]       

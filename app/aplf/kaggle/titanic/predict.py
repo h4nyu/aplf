@@ -5,7 +5,8 @@ import torch
 from dask import delayed
 
 
-def predict(model, dataset):
+def predict(model_path, dataset):
+    model = torch.load(model_path)
     model.eval()
     loader = DataLoader(dataset, batch_size=1)
     device = torch.device("cuda")
