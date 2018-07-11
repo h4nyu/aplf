@@ -67,6 +67,7 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
+      - ~/.kaggle:/root/.kaggle
     depends_on:
       - dask-worker
       - web
