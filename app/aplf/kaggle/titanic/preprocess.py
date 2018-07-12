@@ -7,10 +7,9 @@ import re
 
 
 @curry
-def label_encode(classes, series):
+def label_encode(series):
     le = preprocessing.LabelEncoder()
-    le.fit(classes)
-    return le.transform(series)
+    return le.fit_transform(series)
 
 
 def max_min_scaler(series):
