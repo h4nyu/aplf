@@ -25,47 +25,50 @@ base_dir = '/store/titanic'
 
 
 preprocess_params = {
-    'Fsize': {
-        'funcs': [
-            delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
-        ]
-    },
     'FareBin': {
         'funcs': [
             delayed(lambda df: df['Fare']),
+            delayed(lambda s: s.fillna(s.median())),
             delayed(lambda s: pd.qcut(s, 4)),
-            delayed(label_encode),
+            #  delayed(label_encode),
         ]
     },
     'AgeBin': {
         'funcs': [
             delayed(lambda df: df['Age']),
             delayed(lambda s: s.fillna(s.mean())),
-            delayed(lambda s: pd.qcut(s, 5)),
-            delayed(label_encode),
+            delayed(lambda s: pd.cut(s, 5)),
+            #  delayed(label_encode),
+        ]
+    },
+
+    'isAlone': {
+        'funcs': [
+            delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
+            delayed(lambda s: s == 1),
         ]
     },
     'TitleCode': {
         'funcs': [
             delayed(lambda df: df['Name'].str.split(", ", expand=True)[1].str.split(".", expand=True)[0]),
-            delayed(label_encode),
+            #  delayed(label_encode),
         ]
     },
-    'Pclass': {
-        'funcs': [
-            delayed(lambda df: df['Pclass']),
-        ]
-    },
-    'SibSp': {
-        'funcs': [
-            delayed(lambda df: df['SibSp']),
-        ]
-    },
-    'Parch': {
-        'funcs': [
-            delayed(lambda df: df['Parch']),
-        ]
-    },
+    #  'Pclass': {
+    #      'funcs': [
+    #          delayed(lambda df: df['Pclass']),
+    #      ]
+    #  },
+    #  'SibSp': {
+    #      'funcs': [
+    #          delayed(lambda df: df['SibSp']),
+    #      ]
+    #  },
+    #  'Parch': {
+    #      'funcs': [
+    #          delayed(lambda df: df['Parch']),
+    #      ]
+    #  },
     'SexCode': {
         'funcs': [
             delayed(lambda df: df['Sex']),
@@ -76,7 +79,7 @@ preprocess_params = {
         'funcs': [
             delayed(lambda df: df['Embarked']),
             delayed(lambda s:s.fillna(s.mode()[0])),
-            delayed(label_encode),
+            #  delayed(label_encode),
         ]
     },
 }
@@ -84,7 +87,7 @@ preprocess_params = {
 
 train_df = delayed(pd.read_csv)('/store/kaggle/titanic/train.csv')
 
-train_df = pipe(
+preprocessed_train_df = pipe(
     preprocess_params,
     valmap(lambda x: compose(*reversed(x['funcs']))(train_df)),
     delayed(pd.DataFrame),
