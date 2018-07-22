@@ -96,10 +96,10 @@ train_df = pipe(
 #      delayed(lambda x: x['Survived'])
 #  )(train_df)
 #
-train_dataset = delayed(TitanicDataset)(
-    x=train_x,
-    y=train_y
-)
+#  train_dataset = delayed(TitanicDataset)(
+#      x=train_x,
+#      y=train_y
+#  )
 
 #  train_result = delayed(train)(
 #      model_path='/store/kaggle/titanic/model.pt',
