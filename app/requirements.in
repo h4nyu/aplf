@@ -6,6 +6,7 @@ torch
 torchvision
 sklearn
 scipy
+scikit-image
 
 # graph
 bokeh
