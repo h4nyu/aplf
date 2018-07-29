@@ -8,7 +8,7 @@ from .model import TitanicNet
 
 
 def train(model_path, loss_path, dataset):
-    loader = DataLoader(dataset, batch_size=3, shuffle=True)
+    loader = DataLoader(dataset, batch_size=8, shuffle=True)
     device = torch.device('cpu')
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -22,7 +22,7 @@ def train(model_path, loss_path, dataset):
     losses = []
     df = pd.DataFrame(columns=['loss'])
     critertion =  nn.NLLLoss()
-    for e in range(20):
+    for e in range(50):
         for batch_idx, (data, label) in enumerate(loader):
             data, label = data.to(device), label.to(device)
             optimizer.zero_grad()

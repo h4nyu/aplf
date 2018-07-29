@@ -30,7 +30,7 @@ preprocess_params = {
         'funcs': [
             delayed(lambda df: df['Fare']),
             delayed(lambda s: s.fillna(s.median())),
-            delayed(lambda s: pd.qcut(s, 4)),
+            delayed(lambda s: pd.qcut(s, 10)),
             delayed(label_encode),
             delayed(one_hot),
         ]
@@ -38,21 +38,39 @@ preprocess_params = {
     'AgeBin': {
         'funcs': [
             delayed(lambda df: df['Age']),
-            delayed(lambda s: s.fillna(s.mean())),
-            delayed(lambda s: pd.cut(s, 5)),
+            delayed(lambda s: s.fillna(s.median())),
+            delayed(lambda s: pd.cut(s, 3)),
             delayed(label_encode),
             delayed(one_hot),
         ]
     },
 
-    'isAlone': {
+    'Fsize': {
         'funcs': [
             delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
-            delayed(lambda s: s == 1),
+            delayed(lambda s: pd.cut(s, 3)),
             delayed(label_encode),
             delayed(one_hot),
         ]
     },
+
+    'NameLen': {
+        'funcs': [
+            delayed(lambda df: df['Name']),
+            delayed(lambda s: s.apply(len)),
+            delayed(lambda s: pd.qcut(s, 3)),
+            delayed(label_encode),
+            delayed(one_hot),
+        ]
+    },
+    #  'isAlone': {
+    #      'funcs': [
+    #          delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
+    #          delayed(lambda s: s == 1),
+    #          delayed(label_encode),
+    #          delayed(one_hot),
+    #      ]
+    #  },
     'TitleCode': {
         'funcs': [
             delayed(lambda df: df['Name'].str.split(", ", expand=True)[1].str.split(".", expand=True)[0]),
@@ -85,11 +103,6 @@ preprocess_params = {
             delayed(one_hot),
         ]
     },
-    'Survived': {
-        'funcs': [
-            delayed(lambda df: df['Survived']),
-        ]
-    },
 }
 
 
@@ -103,7 +116,8 @@ preprocessed_train_df = pipe(
 
 
 train_dataset = delayed(TitanicDataset)(
-    df=preprocessed_train_df,
+    x_df=preprocessed_train_df,
+    y_df=delayed(lambda x: x['Survived'])(train_df),
 )
 
 train_result = delayed(train)(
@@ -112,26 +126,35 @@ train_result = delayed(train)(
     dataset=train_dataset
 )
 
-predict_result = delayed(predict)(
+predict_train_result = delayed(predict)(
     delayed(lambda x: x[0])(train_result),
     train_dataset
 )
 
-#  test_df = delayed(pd.read_csv)('/store/kaggle/titanic/test.csv')
-#  test_x = pipe(
-#      preprocess_params.items(),
-#      map(lambda x: compose(*reversed(x[1]['funcs']))(test_df)),
-#      list,
-#  )
+
+test_df = delayed(pd.read_csv)('/store/kaggle/titanic/test.csv')
+preprocessed_predict_df = pipe(
+    preprocess_params,
+    valmap(lambda x: compose(*reversed(x['funcs']))(test_df)),
+    delayed(pd.DataFrame),
+)
 #
-#  test_dataset = delayed(TitanicDataset)(test_x)
-#
-#  submission_df = delayed(pd.DataFrame)(
-#      {
-#          'PassengerId': delayed(lambda x: x['PassengerId'])(test_df),
-#          "Survived": predict_result,
-#      }
-#  )
-#  submission_df = delayed(lambda x: x.set_index('PassengerId'))(submission_df)
-#  save_submission = delayed(lambda x: x.to_csv(
-#      '/store/kaggle/titanic/submission.csv'))(submission_df)
+test_dataset = delayed(TitanicDataset)(
+    x_df=preprocessed_predict_df,
+    y_df=None
+)
+
+predict_result = delayed(predict)(
+    delayed(lambda x: x[0])(train_result),
+    test_dataset
+)
+
+submission_df = delayed(pd.DataFrame)(
+    {
+        'PassengerId': delayed(lambda x: x['PassengerId'])(test_df),
+        "Survived": predict_result,
+    }
+)
+submission_df = delayed(lambda x: x.set_index('PassengerId'))(submission_df)
+save_submission = delayed(lambda x: x.to_csv(
+    '/store/kaggle/titanic/submission.csv'))(submission_df)

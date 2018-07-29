@@ -13,7 +13,7 @@ def predict(model_path, dataset):
     if torch.cuda.is_available():
         device = torch.device("cuda")
     outputs = []
-    for batch_idx, (data, label) in enumerate(loader):
+    for batch_idx, (data, ) in enumerate(loader):
         data = data.to(device)
         output = int(torch.argmax(model.forward(data)))
         outputs.append(output)
