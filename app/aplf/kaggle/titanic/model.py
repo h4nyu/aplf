@@ -5,9 +5,9 @@ import torch.nn.functional as F
 class TitanicNet(nn.Module):
     def __init__(self, input_len):
         super().__init__()
-        self.fc0 = nn.Linear(input_len, int(input_len * 2 / 3))
-        self.fc1 = nn.Linear(int(input_len * 2 / 3), int(input_len / 3))
-        self.fc2 = nn.Linear(int(input_len / 3), 2)
+        self.fc0 = nn.Linear(input_len, 10)
+        self.fc1 = nn.Linear(10, 5)
+        self.fc2 = nn.Linear(5, 2)
         self.drop0 = nn.Dropout(p=0.3)
 
     def forward(self, x):

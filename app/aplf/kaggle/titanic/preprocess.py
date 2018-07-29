@@ -39,6 +39,12 @@ def one_hot(series):
     eye = np.eye(max_value)
     return pipe(series, map(lambda x: eye[x]), list)
 
+@curry
+def clear_outlier(series):
+    series[~(np.abs(series-series.mean()) > (3*series.std()))] = None
+    return series
+
+
 
 def string_int(series):
     def _int(x):

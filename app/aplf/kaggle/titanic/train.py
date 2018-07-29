@@ -22,7 +22,7 @@ def train(model_path, loss_path, dataset):
     losses = []
     df = pd.DataFrame(columns=['loss'])
     critertion =  nn.NLLLoss()
-    for e in range(50):
+    for e in range(30):
         for batch_idx, (data, label) in enumerate(loader):
             data, label = data.to(device), label.to(device)
             optimizer.zero_grad()

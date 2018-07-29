@@ -16,7 +16,8 @@ from .preprocess import (
     string_int,
     smooth_outer,
     ticket_to_class,
-    clean_up_rare
+    clean_up_rare,
+    clear_outlier
 )
 from .train import train
 from .predict import predict, evaluate
@@ -29,22 +30,22 @@ preprocess_params = {
     'FareBin': {
         'funcs': [
             delayed(lambda df: df['Fare']),
-            delayed(lambda s: s.fillna(s.median())),
-            delayed(lambda s: pd.qcut(s, 10)),
+            delayed(lambda s: s.fillna(s.mean())),
+            delayed(lambda s: pd.cut(s, 5)),
             delayed(label_encode),
             delayed(one_hot),
         ]
     },
-    'AgeBin': {
-        'funcs': [
-            delayed(lambda df: df['Age']),
-            delayed(lambda s: s.fillna(s.median())),
-            delayed(lambda s: pd.cut(s, 3)),
-            delayed(label_encode),
-            delayed(one_hot),
-        ]
-    },
-
+    #  'AgeBin': {
+    #      'funcs': [
+    #          delayed(lambda df: df['Age']),
+    #          delayed(clear_outlier),
+    #          delayed(lambda s: s.fillna(s.mean())),
+    #          delayed(lambda s: pd.cut(s, 4)),
+    #          delayed(label_encode),
+    #          delayed(one_hot),
+    #      ]
+    #  },
     'Fsize': {
         'funcs': [
             delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
@@ -53,16 +54,40 @@ preprocess_params = {
             delayed(one_hot),
         ]
     },
-
-    'NameLen': {
+    'SibSp': {
         'funcs': [
-            delayed(lambda df: df['Name']),
-            delayed(lambda s: s.apply(len)),
-            delayed(lambda s: pd.qcut(s, 3)),
+            delayed(lambda df: df['SibSp']),
+            delayed(lambda s: pd.cut(s, 3)),
             delayed(label_encode),
             delayed(one_hot),
         ]
     },
+    'Parch': {
+        'funcs': [
+            delayed(lambda df: df['Parch']),
+            delayed(lambda s: pd.cut(s, 3)),
+            delayed(label_encode),
+            delayed(one_hot),
+        ]
+    },
+    #  'CabinType': {
+    #      'funcs': [
+    #          delayed(lambda df: df['Cabin']),
+    #          delayed(lambda s: s.fillna(s.mode()[0])),
+    #          delayed(lambda s: s.apply(lambda x:x[0])),
+    #          delayed(label_encode),
+    #          delayed(one_hot),
+    #      ]
+    #  },
+    #  'NameLen': {
+    #      'funcs': [
+    #          delayed(lambda df: df['Name']),
+    #          delayed(lambda s: s.apply(len)),
+    #          delayed(lambda s: pd.qcut(s, 3)),
+    #          delayed(label_encode),
+    #          delayed(one_hot),
+    #      ]
+    #  },
     #  'isAlone': {
     #      'funcs': [
     #          delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
@@ -120,15 +145,20 @@ train_dataset = delayed(TitanicDataset)(
     y_df=delayed(lambda x: x['Survived'])(train_df),
 )
 
+val_dataset = delayed(TitanicDataset)(
+    x_df=preprocessed_train_df,
+    y_df=None,
+)
+
 train_result = delayed(train)(
     model_path='/store/kaggle/titanic/model.pt',
     loss_path='/store/kaggle/titanic/train_loss.json',
     dataset=train_dataset
 )
 
-predict_train_result = delayed(predict)(
+val_result = delayed(predict)(
     delayed(lambda x: x[0])(train_result),
-    train_dataset
+    val_dataset
 )
 
 
