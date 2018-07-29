@@ -8,8 +8,8 @@ class TitanicDataset(Dataset):
     """Face Landmarks dataset."""
 
     def __init__(self,
-                 x,
-                 y=None):
+                 df,
+                 y_column='Survived'):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -17,20 +17,14 @@ class TitanicDataset(Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        self.x = x
-        self.y = y
+        self.df = df
+        self.y_column = y_column
+        self.x_columns = df.columns != y_column
+        self.x_df = self.df.loc[:, self.x_columns]
+        self.y_df = self.df[y_column]
 
     def __len__(self):
-        return len(self.x[0])
+        return len(self.df)
 
     def __getitem__(self, idx):
-        x = pipe(self.x,
-                 map(lambda x: x[idx]),
-                 map(torch.FloatTensor),
-                 list,
-                 torch.cat)
-        if self.y is None:
-            return (x,)
-        else:
-            return (x, torch.FloatTensor(self.y[idx]))
-
+        return np.concatenate(self.x_df.iloc[idx], axis=0), self.y_df[idx]

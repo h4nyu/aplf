@@ -5,8 +5,8 @@ import aplf.kaggle.titanic.graph as g
 def test_graph():
     with Client('dask-scheduler:8786') as c:
         try:
-            target = g.preprocessed_train_df
+            target = g.train_dataset
             result = target.compute()
-            print(result['SexCode'])
+            print(result[0])
         finally:
             c.restart()

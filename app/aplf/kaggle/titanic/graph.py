@@ -85,6 +85,12 @@ preprocess_params = {
             delayed(one_hot),
         ]
     },
+    'Survived': {
+        'funcs': [
+            delayed(lambda df: df['Survived']),
+            delayed(one_hot),
+        ]
+    },
 }
 
 
@@ -96,16 +102,17 @@ preprocessed_train_df = pipe(
     delayed(pd.DataFrame),
 )
 
+
+train_dataset = delayed(TitanicDataset)(
+    df=preprocessed_train_df,
+)
+
 #  train_y = compose(
 #      delayed(one_hot(2)),
 #      delayed(label_encode((0, 1))),
 #      delayed(lambda x: x['Survived'])
 #  )(train_df)
 #
-#  train_dataset = delayed(TitanicDataset)(
-#      x=train_x,
-#      y=train_y
-#  )
 #
 #  train_result = delayed(train)(
 #      model_path='/store/kaggle/titanic/model.pt',
