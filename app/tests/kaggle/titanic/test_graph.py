@@ -5,8 +5,8 @@ import aplf.kaggle.titanic.graph as g
 def test_graph():
     with Client('dask-scheduler:8786') as c:
         try:
-            target = g.train_dataset
+            target = g.predict_result
             result = target.compute()
-            print(result[0])
+            print(result)
         finally:
             c.restart()

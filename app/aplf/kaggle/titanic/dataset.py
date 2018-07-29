@@ -27,4 +27,7 @@ class TitanicDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        return np.concatenate(self.x_df.iloc[idx], axis=0), self.y_df[idx]
+        return (
+            torch.FloatTensor(np.concatenate(self.x_df.iloc[idx], axis=0)),
+            self.y_df[idx]
+        )

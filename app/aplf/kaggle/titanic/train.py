@@ -1,3 +1,4 @@
+import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch
 import torch.optim as optim
@@ -7,20 +8,26 @@ from .model import TitanicNet
 
 
 def train(model_path, loss_path, dataset):
-    loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    device = torch.device("cuda")
-    head_x, head_y = dataset[0]
-    model = TitanicNet(input_len=len(head_x)).to(device)
+    loader = DataLoader(dataset, batch_size=3, shuffle=True)
+    device = torch.device('cpu')
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+
+    sample_x, sample_y = dataset[0]
+    model = TitanicNet(
+        input_len=sample_x.shape[0],
+    ).to(device)
     model.train()
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters())
     losses = []
     df = pd.DataFrame(columns=['loss'])
-    for e in range(50):
+    critertion =  nn.NLLLoss()
+    for e in range(20):
         for batch_idx, (data, label) in enumerate(loader):
             data, label = data.to(device), label.to(device)
             optimizer.zero_grad()
             output = model(data)
-            loss = F.mse_loss(output, label)
+            loss = critertion(output, label)
             loss.backward()
             optimizer.step()
             losses.append(loss.item())

@@ -88,7 +88,6 @@ preprocess_params = {
     'Survived': {
         'funcs': [
             delayed(lambda df: df['Survived']),
-            delayed(one_hot),
         ]
     },
 }
@@ -107,32 +106,26 @@ train_dataset = delayed(TitanicDataset)(
     df=preprocessed_train_df,
 )
 
-#  train_y = compose(
-#      delayed(one_hot(2)),
-#      delayed(label_encode((0, 1))),
-#      delayed(lambda x: x['Survived'])
-#  )(train_df)
-#
-#
-#  train_result = delayed(train)(
-#      model_path='/store/kaggle/titanic/model.pt',
-#      loss_path='/store/kaggle/titanic/train_loss.json',
-#      dataset=train_dataset
-#  )
-
-test_df = delayed(pd.read_csv)('/store/kaggle/titanic/test.csv')
-test_x = pipe(
-    preprocess_params.items(),
-    map(lambda x: compose(*reversed(x[1]['funcs']))(test_df)),
-    list,
+train_result = delayed(train)(
+    model_path='/store/kaggle/titanic/model.pt',
+    loss_path='/store/kaggle/titanic/train_loss.json',
+    dataset=train_dataset
 )
+
+predict_result = delayed(predict)(
+    delayed(lambda x: x[0])(train_result),
+    train_dataset
+)
+
+#  test_df = delayed(pd.read_csv)('/store/kaggle/titanic/test.csv')
+#  test_x = pipe(
+#      preprocess_params.items(),
+#      map(lambda x: compose(*reversed(x[1]['funcs']))(test_df)),
+#      list,
+#  )
 #
 #  test_dataset = delayed(TitanicDataset)(test_x)
 #
-#  predict_result = delayed(predict)(
-#      delayed(lambda x: x[0])(train_result),
-#      test_dataset
-#  )
 #  submission_df = delayed(pd.DataFrame)(
 #      {
 #          'PassengerId': delayed(lambda x: x['PassengerId'])(test_df),
