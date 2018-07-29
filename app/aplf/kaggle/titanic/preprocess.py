@@ -2,6 +2,7 @@ from cytoolz.curried import keymap, filter, pipe, merge, map
 from toolz import curry
 from sklearn import preprocessing
 import numpy as np
+import pandas as pd
 from dask import delayed
 import re
 
@@ -27,18 +28,22 @@ def string_len(series):
 
 
 @curry
-def one_hot(class_len, series):
-    return pipe(series,
-                map(lambda x: np.eye(class_len)[x]),
-                list,
-                np.array)
+def clean_up_rare(series, callback, min_stat=10):
+    rare_values = series.value_counts() < min_stat
+    return series.apply(lambda x: callback(rare_values, x))
+
+
+@curry
+def one_hot(series):
+    max_value = series.max() + 1
+    eye = np.eye(max_value)
+    return pipe(series, map(lambda x: eye[x]), list)
 
 
 def string_int(series):
     def _int(x):
         matched = re.findall(r'\d+', x)
         return int(matched[0]) if len(matched) > 0 else 0
-
     return series.apply(_int)
 
 
@@ -80,6 +85,7 @@ def cabin_to_class(series):
             return 0
 
     return series.apply(_contain)
+
 
 def ticket_to_class(series):
     def _contain(x):

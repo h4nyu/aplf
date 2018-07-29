@@ -15,7 +15,8 @@ from .preprocess import (
     cabin_to_class,
     string_int,
     smooth_outer,
-    ticket_to_class
+    ticket_to_class,
+    clean_up_rare
 )
 from .train import train
 from .predict import predict, evaluate
@@ -30,7 +31,8 @@ preprocess_params = {
             delayed(lambda df: df['Fare']),
             delayed(lambda s: s.fillna(s.median())),
             delayed(lambda s: pd.qcut(s, 4)),
-            #  delayed(label_encode),
+            delayed(label_encode),
+            delayed(one_hot),
         ]
     },
     'AgeBin': {
@@ -38,7 +40,8 @@ preprocess_params = {
             delayed(lambda df: df['Age']),
             delayed(lambda s: s.fillna(s.mean())),
             delayed(lambda s: pd.cut(s, 5)),
-            #  delayed(label_encode),
+            delayed(label_encode),
+            delayed(one_hot),
         ]
     },
 
@@ -46,40 +49,40 @@ preprocess_params = {
         'funcs': [
             delayed(lambda df: df['SibSp'] + df['Parch'] + 1),
             delayed(lambda s: s == 1),
+            delayed(label_encode),
+            delayed(one_hot),
         ]
     },
     'TitleCode': {
         'funcs': [
             delayed(lambda df: df['Name'].str.split(", ", expand=True)[1].str.split(".", expand=True)[0]),
-            #  delayed(label_encode),
+            lambda x: delayed(clean_up_rare)(
+                x,
+                lambda rares, x: "Misc"  if rares.loc[x] == True else x
+            ),
+            delayed(label_encode),
+            delayed(one_hot),
         ]
     },
-    #  'Pclass': {
-    #      'funcs': [
-    #          delayed(lambda df: df['Pclass']),
-    #      ]
-    #  },
-    #  'SibSp': {
-    #      'funcs': [
-    #          delayed(lambda df: df['SibSp']),
-    #      ]
-    #  },
-    #  'Parch': {
-    #      'funcs': [
-    #          delayed(lambda df: df['Parch']),
-    #      ]
-    #  },
+    'Pclass': {
+        'funcs': [
+            delayed(lambda df: df['Pclass']),
+            delayed(one_hot),
+        ]
+    },
     'SexCode': {
         'funcs': [
             delayed(lambda df: df['Sex']),
             delayed(label_encode),
+            delayed(one_hot),
         ]
     },
     'Embarked': {
         'funcs': [
             delayed(lambda df: df['Embarked']),
             delayed(lambda s:s.fillna(s.mode()[0])),
-            #  delayed(label_encode),
+            delayed(label_encode),
+            delayed(one_hot),
         ]
     },
 }
@@ -103,19 +106,19 @@ preprocessed_train_df = pipe(
 #      x=train_x,
 #      y=train_y
 #  )
-
+#
 #  train_result = delayed(train)(
 #      model_path='/store/kaggle/titanic/model.pt',
 #      loss_path='/store/kaggle/titanic/train_loss.json',
 #      dataset=train_dataset
 #  )
-#
-#  test_df = delayed(pd.read_csv)('/store/kaggle/titanic/test.csv')
-#  test_x = pipe(
-#      preprocess_params.items(),
-#      map(lambda x: compose(*reversed(x[1]['funcs']))(test_df)),
-#      list,
-#  )
+
+test_df = delayed(pd.read_csv)('/store/kaggle/titanic/test.csv')
+test_x = pipe(
+    preprocess_params.items(),
+    map(lambda x: compose(*reversed(x[1]['funcs']))(test_df)),
+    list,
+)
 #
 #  test_dataset = delayed(TitanicDataset)(test_x)
 #
