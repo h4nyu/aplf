@@ -40,10 +40,16 @@ class TgsSaltDataset(Dataset):
 
     def __getitem__(self, idx):
         depth = self.df['z'].iloc[idx],
-        image = torch.DoubleTensor(
-            io.imread(self.df['image'].iloc[idx], as_gray=True)
+        image = torch.FloatTensor(
+            io.imread(
+                self.df['image'].iloc[idx],
+                as_gray=True
+            ).reshape(1, 101, 101)
         )
-        mask = torch.DoubleTensor(
-            io.imread(self.df['mask'].iloc[idx], as_gray=True).astype(bool).astype(float)
+        mask = torch.FloatTensor(
+            io.imread(
+                self.df['mask'].iloc[idx],
+                as_gray=True
+            ).astype(bool).astype(float).reshape(1, 101, 101)
         )
         return depth, image, mask
