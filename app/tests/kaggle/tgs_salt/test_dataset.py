@@ -3,7 +3,10 @@ from aplf.kaggle.tgs_salt.dataset import TgsSaltDataset
 
 def test_dataset():
     dataset = TgsSaltDataset(
-        image_dir='/store/kaggle/tgs-salt/images',
-        mark_dir='/store/kaggle/tgs-salt/masks'
+        dataset_dir='/store/kaggle/tgs-salt',
     )
     assert len(dataset) == 4000
+    x, y = dataset[0]
+    print(y)
+
+
