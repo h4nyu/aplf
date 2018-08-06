@@ -15,7 +15,7 @@ cycler==0.10.0            # via matplotlib
 cytoolz==0.9.0.1
 dask[array,complete]==0.18.2
 decorator==4.3.0          # via ipython, networkx, traitlets
-distributed==1.22.0       # via dask
+distributed==1.22.1       # via dask
 entrypoints==0.2.3        # via nbconvert
 graphviz==0.8.4
 heapdict==1.0.0           # via zict
@@ -23,17 +23,17 @@ html5lib==1.0.1           # via bleach
 idna==2.7                 # via requests
 ipykernel==4.8.2          # via ipywidgets, jupyter, jupyter-console, notebook, qtconsole
 ipython-genutils==0.2.0   # via nbformat, notebook, qtconsole, traitlets
-ipython==6.4.0            # via ipykernel, ipywidgets, jupyter-console
-ipywidgets==7.3.1         # via jupyter
+ipython==6.5.0            # via ipykernel, ipywidgets, jupyter-console
+ipywidgets==7.3.2         # via jupyter
 jedi==0.12.1              # via ipython
 jinja2==2.10              # via bokeh, nbconvert, notebook
-joblib==0.12.1
+joblib==0.12.2
 jsonschema==2.6.0         # via nbformat
 jupyter-client==5.2.3     # via ipykernel, jupyter-console, notebook, qtconsole
 jupyter-console==5.2.0    # via jupyter
 jupyter-core==4.4.0       # via jupyter-client, nbconvert, nbformat, notebook, qtconsole
 jupyter==1.0.0
-kaggle==1.4.2
+kaggle==1.4.5
 kiwisolver==1.0.1         # via matplotlib
 locket==0.2.0             # via partd
 markupsafe==1.0           # via jinja2
@@ -46,14 +46,14 @@ networkx==2.1             # via scikit-image
 notebook==5.6.0           # via jupyter, widgetsnbextension
 numpy==1.15.0
 packaging==17.1           # via bokeh
-pandas==0.23.3            # via dask
+pandas==0.23.4            # via dask
 pandocfilters==1.4.2      # via nbconvert
 parso==0.3.1              # via jedi
 partd==0.3.8              # via dask
 pexpect==4.6.0            # via ipython
 pickleshare==0.7.4        # via ipython
 pillow==5.2.0             # via scikit-image, torchvision
-prometheus-client==0.3.0  # via notebook
+prometheus-client==0.3.1  # via notebook
 prompt-toolkit==1.0.15    # via ipython, jupyter-console
 psutil==5.4.6             # via distributed
 ptyprocess==0.6.0         # via pexpect, terminado

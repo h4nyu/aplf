@@ -9,7 +9,6 @@ def test_dataset():
     )
 
     with Client('dask-scheduler:8786') as c:
-
         try:
             result = c.compute(
                 g.trained,
