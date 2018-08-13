@@ -8,8 +8,9 @@ class Graph(object):
     def __init__(self,
                  dataset_dir,
                  model_path,
-                 val_split_size=0.25):
-
+                 val_split_size=0.25,
+                 epochs=10):
+
         dataset_df = delayed(load_dataset_df)(dataset_dir)
         splited = delayed(train_test_split)(
             dataset_df,
@@ -25,10 +26,11 @@ class Graph(object):
         trained = delayed(train)(
             model_path=model_path,
             train_dataset=train_dataset,
-            val_dataset=val_dataset
+            val_dataset=val_dataset,
+            epochs=epochs,
         )
+        progress_file = delayed(lambda df: df.to_json(f"{dataset_dir}/progress.json"))(trained)
 
-
-        self.train_dataset = train_dataset
-        self.val_dataset = val_dataset
-        self.trained = trained
+        self.output = delayed(lambda x: x)((
+            progress_file
+        ))
