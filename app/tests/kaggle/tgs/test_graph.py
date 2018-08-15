@@ -5,9 +5,13 @@ from aplf.kaggle.tgs.graph import Graph
 def test_dataset():
     g = Graph(
         dataset_dir='/store/kaggle/tgs',
-        model_path='/store/kaggle/tgs/model.pt',
+        output_dir='/store/kaggle/tgs/output',
+        batch_size=64,
+        epochs=40,
+        val_split_size=0.1,
+        patience=20,
     )
-
+
     with Client('dask-scheduler:8786') as c:
         try:
             result = g.output.compute()
