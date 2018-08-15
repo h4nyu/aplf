@@ -8,7 +8,7 @@ import os
 import glob
 
 
-def load_dataset_df(dataset_dir):
+def load_dataset_df(dataset_dir, csv_fn='train.csv'):
 
     dataset_dir = dataset_dir
     image_dir = os.path.join(dataset_dir, "images")
@@ -18,7 +18,7 @@ def load_dataset_df(dataset_dir):
         os.path.join(dataset_dir, "depths.csv")
     )
     depth_df = depth_df.set_index('id')
-    df = pd.read_csv(os.path.join(dataset_dir, "train.csv"))
+    df = pd.read_csv(os.path.join(dataset_dir, csv_fn))
     df = df.drop('rle_mask', axis=1)
     df = df.set_index('id')
     df['image'] = df.index.map(
@@ -32,7 +32,8 @@ def load_dataset_df(dataset_dir):
 
 
 class TgsSaltDataset(Dataset):
-    def __init__(self, df):
+    def __init__(self, df, is_train=True):
+        self.is_train = is_train
         self.df = df
 
     def __len__(self):
@@ -47,10 +48,13 @@ class TgsSaltDataset(Dataset):
                 as_gray=True
             ).reshape(1, 101, 101)
         )
-        mask = torch.FloatTensor(
-            io.imread(
-                self.df['mask'].iloc[idx],
-                as_gray=True
-            ).astype(bool).astype(float).reshape(1, 101, 101)
-        )
-        return id, depth, image, mask
+        if self.is_train:
+            mask = torch.FloatTensor(
+                io.imread(
+                    self.df['mask'].iloc[idx],
+                    as_gray=True
+                ).astype(bool).astype(float).reshape(1, 101, 101)
+            )
+            return id, depth, image, mask
+        else:
+            return id, depth, image

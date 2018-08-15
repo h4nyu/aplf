@@ -35,7 +35,9 @@ def train(model_path,
     model.train()
 
     optimizer = optim.Adam(model.parameters())
-    critertion = nn.BCELoss(size_average=True)
+    critertion = nn.NLLLoss(
+        size_average=True
+    )
     losses = []
     val_losses = []
     df = pd.DataFrame()
@@ -43,9 +45,9 @@ def train(model_path,
     for e in range(epochs):
         for (train_id, train_depth, train_image, train_mask), (val_id, val_depth, val_image, val_mask) in zip(train_loader, val_loader):
             train_image = train_image.to(device)
-            train_mask = train_mask.to(device)
-            val_image = train_image.to(device)
-            val_mask = train_mask.to(device)
+            val_image = val_image.to(device)
+            train_mask = train_mask.to(device).view(-1, 101, 101).long()
+            val_mask = val_mask.to(device).view(-1, 101, 101).long()
 
             optimizer.zero_grad()
             output = model(train_image)
@@ -56,9 +58,13 @@ def train(model_path,
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
+            print(loss.item())
 
             output = model(val_image)
-            val_loss = critertion(output, val_mask)
+            val_loss = critertion(
+                output,
+                val_mask
+            )
             val_losses.append(val_loss.item())
             is_overfit = el(val_loss.item())
             if is_overfit:
