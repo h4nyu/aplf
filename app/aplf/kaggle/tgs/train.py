@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import pandas as pd
 from .model import TgsSaltcNet
 from aplf.utils import EarlyStop
+from tensorboardX import SummaryWriter
 
 
 def train(model_path,
@@ -15,6 +16,7 @@ def train(model_path,
           patience,
           batch_size,
           ):
+    writer = SummaryWriter()
     device = torch.device('cpu')
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -67,10 +69,14 @@ def train(model_path,
             )
             val_losses.append(val_loss.item())
             is_overfit = el(val_loss.item())
+
             if is_overfit:
                 break
+        dummy_s2 = torch.rand(1)
+        writer.add_scalar('data/scalar2', dummy_s2[0], e)
         if is_overfit:
             break
+    writer.close()
 
     torch.save(model, model_path)
 

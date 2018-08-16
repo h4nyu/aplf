@@ -2,6 +2,17 @@ version: "3"
 
 services:
 
+  tensorboard:
+    build:
+      context: ./app
+    environment:
+      - DASK_CONFIG=/srv/dask.config.yml
+    command: tensorboard --logdir runs
+    volumes:
+      - ./app:/srv
+      - ./store:/store
+
+
   dask-scheduler:
     build:
       context: ./app
@@ -46,6 +57,7 @@ services:
     depends_on:
       - front
       - dask-scheduler
+      - tensorboard
 
   notebook:
     build:

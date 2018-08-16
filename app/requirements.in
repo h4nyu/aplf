@@ -8,6 +8,7 @@ sklearn
 scipy
 scikit-image
 tensorboardX
+tensorflow
 
 # graph
 bokeh
