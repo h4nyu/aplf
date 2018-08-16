@@ -19,7 +19,6 @@ def load_dataset_df(dataset_dir, csv_fn='train.csv'):
     )
     depth_df = depth_df.set_index('id')
     df = pd.read_csv(os.path.join(dataset_dir, csv_fn))
-    df = df.drop('rle_mask', axis=1)
     df = df.set_index('id')
     df['image'] = df.index.map(
         lambda x: os.path.join(image_dir, f"{x}.png")
