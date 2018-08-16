@@ -45,6 +45,7 @@ class Graph(object):
             zip(train_datasets, val_datasets),
             enumerate,
             map(lambda x: delayed(train)(
+                model_id=x[0],
                 model_path=f"{output_dir}/model_{x[0]}.pt",
                 train_dataset=x[1][0],
                 val_dataset=x[1][1],

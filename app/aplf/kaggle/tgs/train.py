@@ -10,7 +10,8 @@ from aplf import config
 from tensorboardX import SummaryWriter
 
 
-def train(model_path,
+def train(model_id,
+          model_path,
           train_dataset,
           val_dataset,
           epochs,
@@ -70,7 +71,8 @@ def train(model_path,
             )
             val_losses.append(val_loss.item())
             is_overfit = el(val_loss.item())
-            writer.add_scalar('data/scalar2', loss.item(), n_itr)
+            writer.add_scalar(f'data/train_loss_{model_id}', loss.item(), n_itr)
+            writer.add_scalar(f'data/val_loss_{model_id}', val_loss.item(), n_itr)
             n_itr += 1
 
             if is_overfit:

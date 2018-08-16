@@ -8,6 +8,7 @@ def test_train():
     train_df, val_df = train_test_split(dataset_df)
     output_dir = '/store/tmp'
     train(
+        model_id=1,
         model_path=f"{output_dir}/model.pt",
         train_dataset=TgsSaltDataset(train_df),
         val_dataset=TgsSaltDataset(val_df),
