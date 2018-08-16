@@ -1,19 +1,38 @@
-import numpy as np
 
 
-def rl_enc(img, order='F'):
-    """Convert binary mask image to run-length array or string.
-
-    Args:
-    img: image in shape [n, m]
-    order: is down-then-right, i.e. Fortran(F)
-    string: return in string or array
-
-    Return:
-    run-length as a string: <start[1s] length[1s] ... ...>
+def rl_enc(img, order='F', format=True):
     """
-    bytez = img.reshape(img.shape[0] * img.shape[1], order=order)
-    bytez = np.concatenate([[0], bytez, [0]])
-    runs = np.where(bytez[1:] != bytez[:-1])[0] + 1  # pos start at 1
-    runs[1::2] -= runs[::2]
-    return ' '.join(str(x) for x in runs)
+    img is binary mask image, shape (r,c)
+    order is down-then-right, i.e. Fortran
+    format determines if the order needs to be preformatted (according to submission rules) or not
+
+    returns run length as an array or string (if format is True)
+    """
+    bytes = img.reshape(img.shape[0] * img.shape[1], order=order)
+    runs = []  # list of run lengths
+    r = 0  # the current run length
+    pos = 1  # count starts from 1 per WK
+    for c in bytes:
+        if (c == 0):
+            if r != 0:
+                runs.append((pos, r))
+                pos += r
+                r = 0
+            pos += 1
+        else:
+            r += 1
+
+    # if last run is unsaved (i.e. data ends with 1)
+    if r != 0:
+        runs.append((pos, r))
+        pos += r
+        r = 0
+
+    if format:
+        z = ''
+
+        for rr in runs:
+            z += '{} {} '.format(rr[0], rr[1])
+        return z[:-1]
+    else:
+        return runs
