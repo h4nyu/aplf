@@ -16,7 +16,7 @@ def train(model_path,
           patience,
           batch_size,
           ):
-    writer = SummaryWriter()
+    writer = SummaryWriter('/store')
     device = torch.device('cpu')
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -44,6 +44,7 @@ def train(model_path,
     val_losses = []
     df = pd.DataFrame()
     el = EarlyStop(patience, base_size=5)
+    n_itr = 0
     for e in range(epochs):
         for (train_id, train_depth, train_image, train_mask), (val_id, val_depth, val_image, val_mask) in zip(train_loader, val_loader):
             train_image = train_image.to(device)
@@ -69,11 +70,12 @@ def train(model_path,
             )
             val_losses.append(val_loss.item())
             is_overfit = el(val_loss.item())
+            dummy_s2 = torch.rand(1)
+            writer.add_scalar('data/scalar2', dummy_s2[0], n_itr)
+            n_itr += 1
 
             if is_overfit:
                 break
-        dummy_s2 = torch.rand(1)
-        writer.add_scalar('data/scalar2', dummy_s2[0], e)
         if is_overfit:
             break
     writer.close()

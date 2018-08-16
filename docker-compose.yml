@@ -7,7 +7,8 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: tensorboard --logdir runs
+      - TENSORBOARD_LOG_DIR=/store
+    command: tensorboard --logdir=/store runs
     volumes:
       - ./app:/srv
       - ./store:/store
@@ -18,6 +19,7 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
+      - TENSORBOARD_LOG_DIR=/store
     command: dask-scheduler
     volumes:
       - ./app:/srv
@@ -28,6 +30,7 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
+      - TENSORBOARD_LOG_DIR=/store
     command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space
     volumes:
       - ./app:/srv
@@ -76,6 +79,7 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
+      - TENSORBOARD_LOG_DIR=/store
     volumes:
       - ./app:/srv
       - ./store:/store
