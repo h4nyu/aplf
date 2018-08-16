@@ -20,6 +20,7 @@ RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-la
 
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH /opt/conda/bin:$PATH
+RUN pip install --upgrade pip
 WORKDIR /srv
 COPY ./requirements.txt /srv/requirements.txt
 COPY ./dev-requirements.txt /srv/dev-requirements.txt
