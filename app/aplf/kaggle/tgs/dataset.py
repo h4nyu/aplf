@@ -20,10 +20,10 @@ def load_dataset_df(dataset_dir, csv_fn='train.csv'):
     depth_df = depth_df.set_index('id')
     df = pd.read_csv(os.path.join(dataset_dir, csv_fn))
     df = df.set_index('id')
-    df['image'] = df.index.map(
+    df['x_image'] = df.index.map(
         lambda x: os.path.join(image_dir, f"{x}.png")
     )
-    df['mask'] = df.index.map(
+    df['y_mask_true'] = df.index.map(
         lambda x: os.path.join(mask_dir, f"{x}.png")
     )
     df = pd.concat([df, depth_df], join='inner', axis=1)
@@ -35,6 +35,14 @@ class TgsSaltDataset(Dataset):
         self.is_train = is_train
         self.df = df
 
+    def train(self):
+        self.is_train = True
+        return self
+
+    def eval(self):
+        self.is_train = False
+        return self
+
     def __len__(self):
         return len(self.df)
 
@@ -43,17 +51,26 @@ class TgsSaltDataset(Dataset):
         depth = self.df['z'].iloc[idx],
         image = torch.FloatTensor(
             io.imread(
-                self.df['image'].iloc[idx],
+                self.df['x_image'].iloc[idx],
                 as_gray=True
             ).reshape(1, 101, 101)
         )
         if self.is_train:
             mask = torch.FloatTensor(
                 io.imread(
-                    self.df['mask'].iloc[idx],
+                    self.df['y_mask_true'].iloc[idx],
                     as_gray=True
                 ).astype(bool).astype(float).reshape(1, 101, 101)
             )
-            return id, depth, image, mask
+            return {
+                'id': id,
+                'depth': depth,
+                'image': image,
+                'mask': mask,
+            }
         else:
-            return id, depth, image
+            return {
+                'id': id,
+                'depth': depth,
+                'image': image,
+            }

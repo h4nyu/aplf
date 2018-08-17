@@ -41,7 +41,7 @@ class Graph(object):
             list
         )
 
-        traineds = pipe(
+        model_paths = pipe(
             zip(train_datasets, val_datasets),
             enumerate,
             map(lambda x: delayed(train)(
@@ -53,12 +53,6 @@ class Graph(object):
                 batch_size=batch_size,
                 patience=patience,
             )),
-            list
-        )
-
-        model_paths = pipe(
-            traineds,
-            map(delayed(lambda x: x["model_path"])),
             list
         )
 
@@ -74,37 +68,24 @@ class Graph(object):
             dataset=val_datasets[0]
         )
 
-        progresses = pipe(
-            traineds,
-            map(delayed(lambda x: x["progress"])),
-            list
-        )
-
-        progress_file = pipe(
-            progresses,
-            enumerate,
-            map(delayed(lambda x: x[1].to_json(f"{output_dir}/progress_{x[0]}.json"))),
-            list
-        )
-
-        submission_df = delayed(load_dataset_df)(
-            dataset_dir,
-            'sample_submission.csv'
-        )
-
-        submission_dataset = delayed(TgsSaltDataset)(
-            submission_df,
-            is_train=False
-        )
-
-        submission_df = delayed(predict)(
-            model_paths=model_paths,
-            output_dir=f"{output_dir}/sub",
-            dataset=submission_dataset
-        )
-        submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(submission_df)
+        #  submission_df = delayed(load_dataset_df)(
+        #      dataset_dir,
+        #      'sample_submission.csv'
+        #  )
+        #
+        #  submission_dataset = delayed(TgsSaltDataset)(
+        #      submission_df,
+        #      is_train=False
+        #  )
+        #
+        #  submission_df = delayed(predict)(
+        #      model_paths=model_paths,
+        #      output_dir=f"{output_dir}/sub",
+        #      dataset=submission_dataset
+        #  )
+        #  submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(submission_df)
 
         self.output = delayed(lambda x: x)((
-            submission_df,
-            submission_file
+            eval_val,
+            #  submission_file
         ))

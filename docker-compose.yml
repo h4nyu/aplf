@@ -1,5 +1,8 @@
 version: "3"
 
+volumes:
+  log:
+
 services:
 
   tensorboard:
@@ -7,11 +10,11 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-      - TENSORBOARD_LOG_DIR=/store/log
-    command: tensorboard --logdir=/store/log runs
+    command: tensorboard --logdir=/log runs
     volumes:
       - ./app:/srv
       - ./store:/store
+      - log:/log
 
 
   dask-scheduler:
@@ -19,22 +22,22 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-      - TENSORBOARD_LOG_DIR=/store/log
     command: dask-scheduler
     volumes:
       - ./app:/srv
       - ./store:/store
+      - log:/log
 
   dask-worker:
     build:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-      - TENSORBOARD_LOG_DIR=/store/log
     command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space
     volumes:
       - ./app:/srv
       - ./store:/store
+      - log:/log
     depends_on:
       - dask-scheduler
 
@@ -71,6 +74,7 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
+      - log:/log
     ports:
       - "${NOTEBOOK_PORT}:8888"
 
@@ -79,11 +83,11 @@ services:
       context: ./app
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-      - TENSORBOARD_LOG_DIR=/store/log
     volumes:
       - ./app:/srv
       - ./store:/store
       - ~/.kaggle:/root/.kaggle
+      - log:/log
     depends_on:
       - dask-worker
       - web

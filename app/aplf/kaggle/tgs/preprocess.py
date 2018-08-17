@@ -1,3 +1,7 @@
+from cytoolz.curried import keymap, filter, pipe, merge, map
+from sklearn.metrics import jaccard_similarity_score
+import pandas as pd
+from skimage import io
 
 
 def rl_enc(img, order='F', format=True):
@@ -36,3 +40,19 @@ def rl_enc(img, order='F', format=True):
         return z[:-1]
     else:
         return runs
+
+
+def mean_iou(y_preds, y_trues):
+    score_sum = 0
+    for y_pred, y_true in zip(y_preds, y_trues):
+        y_pred_image = io.imread(
+            y_pred,
+            as_gray=True
+        ).reshape(-1)
+
+        y_true_image = io.imread(
+            y_true,
+            as_gray=True
+        ).reshape(-1)
+        score_sum += jaccard_similarity_score(y_pred_image, y_true_image)
+    return score_sum / len(y_preds)

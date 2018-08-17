@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import pandas as pd
-from .model import TgsSaltcNet
+from .model import UNet
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
@@ -24,35 +24,33 @@ def train(model_id,
         device = torch.device("cuda")
 
     train_loader = DataLoader(
-        train_dataset,
+        train_dataset.train(),
         batch_size=batch_size,
         shuffle=True
     )
 
     val_batch_size = int(batch_size * len(val_dataset) / len(train_dataset))
     val_loader = DataLoader(
-        val_dataset,
+        val_dataset.train(),
         batch_size=val_batch_size,
         shuffle=True
     )
-    model = TgsSaltcNet().to(device)
+    model = UNet().to(device)
     model.train()
 
     optimizer = optim.Adam(model.parameters())
     critertion = nn.NLLLoss(
         size_average=True
     )
-    losses = []
-    val_losses = []
-    df = pd.DataFrame()
     el = EarlyStop(patience, base_size=5)
     n_itr = 0
     for e in range(epochs):
-        for (train_id, train_depth, train_image, train_mask), (val_id, val_depth, val_image, val_mask) in zip(train_loader, val_loader):
-            train_image = train_image.to(device)
-            val_image = val_image.to(device)
-            train_mask = train_mask.to(device).view(-1, 101, 101).long()
-            val_mask = val_mask.to(device).view(-1, 101, 101).long()
+        for train_sample, val_sample in zip(train_loader, val_loader):
+            train_image = train_sample['image'].to(device)
+            val_image = val_sample['image'].to(device)
+            train_mask = train_sample['mask'].to(
+                device).view(-1, 101, 101).long()
+            val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
 
             optimizer.zero_grad()
             output = model(train_image)
@@ -62,17 +60,15 @@ def train(model_id,
             )
             loss.backward()
             optimizer.step()
-            losses.append(loss.item())
 
             output = model(val_image)
             val_loss = critertion(
                 output,
                 val_mask
             )
-            val_losses.append(val_loss.item())
             is_overfit = el(val_loss.item())
-            writer.add_scalar(f'data/train_loss_{model_id}', loss.item(), n_itr)
-            writer.add_scalar(f'data/val_loss_{model_id}', val_loss.item(), n_itr)
+            writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
+            writer.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
             n_itr += 1
 
             if is_overfit:
@@ -80,12 +76,6 @@ def train(model_id,
         if is_overfit:
             break
     writer.close()
-
     torch.save(model, model_path)
 
-    df['train'] = losses
-    df['val'] = val_losses
-    return {
-        'model_path': model_path,
-        'progress': df
-    }
+    return model_path
