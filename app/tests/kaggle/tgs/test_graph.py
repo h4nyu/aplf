@@ -7,11 +7,11 @@ def test_dataset():
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         batch_size=32,
-        epochs=50,
-        val_split_size=0.2,
-        patience=15,
+        epochs=100,
+        val_split_size=0.3,
+        patience=20,
         base_size=10,
-        parallel=1,
+        parallel=2,
     )
 
     with Client('dask-scheduler:8786') as c:
