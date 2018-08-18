@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 from sklearn.metrics import jaccard_similarity_score
 import pandas as pd
 from skimage import io
@@ -41,3 +41,11 @@ def rl_enc(img, order='F', format=True):
     else:
         return runs
 
+
+def take_topk(scores, paths, top_num):
+    return pipe(
+        zip(scores, paths),
+        lambda x: topk(top_num, x, key=lambda y: y[0]),
+        map(lambda x: x[1]),
+        list
+    )

@@ -8,10 +8,10 @@ def test_dataset():
         output_dir='/store/kaggle/tgs/output',
         batch_size=16,
         epochs=100,
-        val_split_size=0.4,
+        val_split_size=0.3,
         patience=20,
         base_size=10,
-        parallel=5,
+        parallel=4,
         top_num=2,
     )
 

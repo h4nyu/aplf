@@ -5,6 +5,7 @@ import numpy as np
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
+from .preprocess import take_topk
 
 
 class Graph(object):
@@ -72,10 +73,7 @@ class Graph(object):
                       map(delayed(lambda df: df['score'].mean())),
                       list)
 
-        top_model_paths = delayed(lambda s, p: list(topk(top_num, zip(s, p), key=lambda x: x[0])))(
-            scores,
-            model_paths
-        )
+        top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
 
         submission_df = delayed(load_dataset_df)(
             dataset_dir,
