@@ -15,8 +15,9 @@ def train(model_id,
           train_dataset,
           val_dataset,
           epochs,
-          patience,
           batch_size,
+          patience,
+          base_size,
           ):
     writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     device = torch.device('cpu')
@@ -42,14 +43,13 @@ def train(model_id,
     critertion = nn.NLLLoss(
         size_average=True
     )
-    el = EarlyStop(patience, base_size=5)
+    el = EarlyStop(patience, base_size=base_size)
     n_itr = 0
     for e in range(epochs):
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
             val_image = val_sample['image'].to(device)
-            train_mask = train_sample['mask'].to(
-                device).view(-1, 101, 101).long()
+            train_mask = train_sample['mask'].to(device).view(-1, 101, 101).long()
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
 
             optimizer.zero_grad()
@@ -67,8 +67,8 @@ def train(model_id,
                 val_mask
             )
             is_overfit = el(val_loss.item())
-            writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
             writer.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
+            writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
             n_itr += 1
 
             if is_overfit:

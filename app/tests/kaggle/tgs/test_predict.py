@@ -15,6 +15,9 @@ def test_predict():
     predicted_df = predict(
         model_paths=model_paths,
         output_dir='/store/tmp',
-        dataset=dataset
+        dataset=dataset,
+        log_interval=1
+
     )
+    print(predicted_df)
     assert len(predicted_df) == len(dataset_df)

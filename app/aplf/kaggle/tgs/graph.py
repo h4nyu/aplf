@@ -14,6 +14,7 @@ class Graph(object):
                  batch_size,
                  val_split_size,
                  patience,
+                 base_size,
                  parallel,
                  ):
 
@@ -23,7 +24,9 @@ class Graph(object):
         spliteds = pipe(
             ids,
             map(lambda x: delayed(train_test_split)(
-                dataset_df, test_size=val_split_size, shuffle=True
+                dataset_df,
+                test_size=val_split_size,
+                shuffle=True
             )),
             list
         )
@@ -52,40 +55,50 @@ class Graph(object):
                 epochs=epochs,
                 batch_size=batch_size,
                 patience=patience,
+                base_size=base_size,
             )),
             list
         )
 
         eval_train = delayed(predict)(
             model_paths=model_paths,
-            output_dir=f"{output_dir}/train",
-            dataset=train_datasets[0]
+            output_dir=f"predict/train",
+            dataset=train_datasets[0],
         )
 
-        eval_val = delayed(predict)(
+        eval_val_df = delayed(predict)(
             model_paths=model_paths,
-            output_dir=f"{output_dir}/val",
-            dataset=val_datasets[0]
+            output_dir=f"predict/val",
+            dataset=val_datasets[0],
+            log_interval=1,
         )
 
-        #  submission_df = delayed(load_dataset_df)(
-        #      dataset_dir,
-        #      'sample_submission.csv'
-        #  )
-        #
-        #  submission_dataset = delayed(TgsSaltDataset)(
-        #      submission_df,
-        #      is_train=False
-        #  )
-        #
-        #  submission_df = delayed(predict)(
-        #      model_paths=model_paths,
-        #      output_dir=f"{output_dir}/sub",
-        #      dataset=submission_dataset
-        #  )
-        #  submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(submission_df)
+        score = delayed(lambda df: df['score'].mean())(eval_val_df)
+        submission_df = delayed(load_dataset_df)(
+            dataset_dir,
+            'sample_submission.csv'
+        )
+
+        submission_dataset = delayed(TgsSaltDataset)(
+            submission_df,
+            is_train=False
+        )
+
+        submission_df = delayed(predict)(
+            model_paths=model_paths,
+            output_dir=f"predict/sub",
+            dataset=submission_dataset,
+            log_interval=100,
+        )
+
+        submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
+        submission_file = delayed(lambda df, s: df.to_csv(f"{output_dir}/submission_{int(s*100)}.csv"))(
+            submission_df,
+            score
+        )
 
         self.output = delayed(lambda x: x)((
-            eval_val,
+            eval_val_df,
+            score,
             #  submission_file
         ))
