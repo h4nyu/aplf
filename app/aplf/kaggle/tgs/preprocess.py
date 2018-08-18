@@ -40,3 +40,4 @@ def rl_enc(img, order='F', format=True):
         return z[:-1]
     else:
         return runs
+

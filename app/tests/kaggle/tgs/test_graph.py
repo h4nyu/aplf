@@ -6,12 +6,13 @@ def test_dataset():
     g = Graph(
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
-        batch_size=32,
+        batch_size=16,
         epochs=100,
-        val_split_size=0.3,
+        val_split_size=0.4,
         patience=20,
         base_size=10,
-        parallel=2,
+        parallel=5,
+        top_num=2,
     )
 
     with Client('dask-scheduler:8786') as c:

@@ -1,6 +1,7 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 from sklearn.model_selection import train_test_split
 from dask import delayed
+import numpy as np
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
@@ -16,6 +17,7 @@ class Graph(object):
                  patience,
                  base_size,
                  parallel,
+                 top_num,
                  ):
 
         ids = list(range(parallel))
@@ -60,20 +62,21 @@ class Graph(object):
             list
         )
 
-        eval_train = delayed(predict)(
-            model_paths=model_paths,
-            output_dir=f"predict/train",
-            dataset=train_datasets[0],
+        scores = pipe(zip(val_datasets, model_paths),
+                      map(lambda x: delayed(predict)(
+                          model_paths=[x[1]],
+                          output_dir=f"predict/val",
+                          dataset=x[0],
+                          log_interval=1,
+                      )),
+                      map(delayed(lambda df: df['score'].mean())),
+                      list)
+
+        top_model_paths = delayed(lambda s, p: list(topk(top_num, zip(s, p), key=lambda x: x[0])))(
+            scores,
+            model_paths
         )
 
-        eval_val_df = delayed(predict)(
-            model_paths=model_paths,
-            output_dir=f"predict/val",
-            dataset=val_datasets[0],
-            log_interval=1,
-        )
-
-        score = delayed(lambda df: df['score'].mean())(eval_val_df)
         submission_df = delayed(load_dataset_df)(
             dataset_dir,
             'sample_submission.csv'
@@ -85,20 +88,19 @@ class Graph(object):
         )
 
         submission_df = delayed(predict)(
-            model_paths=model_paths,
+            model_paths=top_model_paths,
             output_dir=f"predict/sub",
             dataset=submission_dataset,
             log_interval=100,
         )
 
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
-        submission_file = delayed(lambda df, s: df.to_csv(f"{output_dir}/submission_{int(s*100)}.csv"))(
+        submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(
             submission_df,
-            score
         )
 
         self.output = delayed(lambda x: x)((
-            eval_val_df,
-            score,
-            #  submission_file
+            top_model_paths,
+            scores,
+            submission_file
         ))
