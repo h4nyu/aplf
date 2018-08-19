@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 from dask import delayed
 import numpy as np
 from .dataset import TgsSaltDataset, load_dataset_df
-from .train import train
+from .train import train, boost_fit
 from .predict import predict
 from .preprocess import take_topk
 
@@ -18,7 +18,6 @@ class Graph(object):
                  patience,
                  base_size,
                  parallel,
-                 top_num,
                  ):
 
         ids = list(range(parallel))
@@ -47,33 +46,30 @@ class Graph(object):
             list
         )
 
-        model_paths = pipe(
-            zip(train_datasets, val_datasets),
-            enumerate,
-            map(lambda x: delayed(train)(
-                model_id=x[0],
-                model_path=f"{output_dir}/model_{x[0]}.pt",
-                train_dataset=x[1][0],
-                val_dataset=x[1][1],
+        model_paths = []
+        for model_id, (train_dataset, val_dataset) in enumerate(zip(train_datasets, val_datasets)):
+            fitted = delayed(boost_fit)(
+                prev_model_paths=model_paths,
+                model_id=model_id,
+                model_path=f"{output_dir}/model_{model_id}.pt",
+                train_dataset=train_dataset,
+                val_dataset=val_dataset,
                 epochs=epochs,
                 batch_size=batch_size,
                 patience=patience,
                 base_size=base_size,
-            )),
-            list
-        )
+            )
+            model_paths.append(fitted)
 
-        scores = pipe(zip(val_datasets, model_paths),
+        scores = pipe(val_datasets,
                       map(lambda x: delayed(predict)(
-                          model_paths=[x[1]],
+                          model_paths=model_paths,
                           output_dir=f"predict/val",
-                          dataset=x[0],
-                          log_interval=1,
+                          dataset=x,
                       )),
                       map(delayed(lambda df: df['score'].mean())),
                       list)
 
-        top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
 
         submission_df = delayed(load_dataset_df)(
             dataset_dir,
@@ -86,10 +82,9 @@ class Graph(object):
         )
 
         submission_df = delayed(predict)(
-            model_paths=top_model_paths,
+            model_paths=model_paths,
             output_dir=f"predict/sub",
             dataset=submission_dataset,
-            log_interval=100,
         )
 
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
@@ -98,7 +93,6 @@ class Graph(object):
         )
 
         self.output = delayed(lambda x: x)((
-            top_model_paths,
             scores,
             submission_file
         ))

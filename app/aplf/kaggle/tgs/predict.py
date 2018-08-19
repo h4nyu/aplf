@@ -1,7 +1,8 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, compose
 from sklearn.metrics import jaccard_similarity_score
 import torchvision
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 from tensorboardX import SummaryWriter
 import torchvision.utils as vutils
 from skimage import io
@@ -16,7 +17,6 @@ from .dataset import TgsSaltDataset
 def predict(model_paths,
             output_dir,
             dataset,
-            log_interval=100,
             ):
 
     writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
@@ -31,8 +31,8 @@ def predict(model_paths,
                   list)
     for m in models:
         m.eval()
-    df = pd.DataFrame()
 
+    df = pd.DataFrame()
     sample_ids = []
     rle_masks = []
     scores = []
@@ -42,9 +42,10 @@ def predict(model_paths,
         sample_id = sample['id'][0]
         image = sample['image'].to(device)
 
-        output = pipe(models,
-                      map(lambda x: x(image)),
-                      reduce(lambda x, y: x + y))
+        output = models[0](image)
+        for m in models[1:]:
+            output = m(output, image)
+        output = F.softmax(output, dim=1)
         output = torch.argmax(output, dim=1).float()
         sample_ids.append(sample_id)
         rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))
@@ -53,14 +54,14 @@ def predict(model_paths,
         if 'mask' in sample.keys():
             mask = sample['mask'].to(device)[0]
             log_images.append(mask)
-            score = jaccard_similarity_score(output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
+            score = jaccard_similarity_score(
+                output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
             scores.append(score)
 
-        if n_itr % log_interval == 0:
-            writer.add_image(
-                f"{output_dir}/{sample_id}",
-                vutils.make_grid(log_images, scale_each=True),
-            )
+        writer.add_image(
+            f"{output_dir}/{sample_id}",
+            vutils.make_grid(log_images, scale_each=True),
+        )
 
         n_itr += 1
 
