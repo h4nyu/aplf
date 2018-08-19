@@ -64,7 +64,7 @@ def predict(model_paths,
         )
 
         n_itr += 1
-
+    writer.close()
     df['id'] = sample_ids
     df['rle_mask'] = rle_masks
     if len(scores) > 0:
