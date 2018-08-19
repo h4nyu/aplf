@@ -7,11 +7,11 @@ def test_dataset():
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         batch_size=16,
-        epochs=100,
-        val_split_size=0.3,
+        epochs=200,
+        val_split_size=0.4,
         patience=20,
         base_size=10,
-        parallel=4,
+        parallel=3,
         top_num=2,
     )
 
