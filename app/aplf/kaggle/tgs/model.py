@@ -18,15 +18,15 @@ class UNet(nn.Module):
         self.center0 = nn.Conv2d(64, 128, kernel_size=3)
         self.center1 = nn.Conv2d(128, 128, kernel_size=3)
 
-        self.deconv1 = nn.ConvTranspose2d(128, 64, 3, stride=3)
+        self.deconv1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
         self.deconv1_0 = nn.Conv2d(128, 64, kernel_size=3)
         self.deconv1_1 = nn.Conv2d(64, 64, kernel_size=3)
 
-        self.deconv0 = nn.ConvTranspose2d(64, 32, 3, stride=3)
+        self.deconv0 = nn.ConvTranspose2d(64, 32, 2, stride=2)
         self.deconv0_0 = nn.Conv2d(64, 32, kernel_size=3)
         self.deconv0_1 = nn.Conv2d(32, 32, kernel_size=3)
 
-        self.outconv = nn.Conv2d(32, 2, kernel_size=3)
+        self.outconv = nn.Conv2d(32, 2, kernel_size=1)
 
     def forward(self, input):
 
@@ -88,6 +88,5 @@ class UNet(nn.Module):
         x = F.layer_norm(x, x.size()[2:])
         x = F.dropout(x, p=self.drop_p, training=self.training)
         x = self.outconv(x)
-        x = F.log_softmax(x, dim=1)
         x = F.interpolate(x, size=input.size()[2:])
         return x

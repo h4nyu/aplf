@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce
+import torch.nn.functional as F
 from sklearn.metrics import jaccard_similarity_score
 import torchvision
 from torch.utils.data import DataLoader
@@ -44,6 +45,7 @@ def predict(model_paths,
 
         output = pipe(models,
                       map(lambda x: x(image)),
+                      map(lambda x: F.softmax(x, dim=1)),
                       reduce(lambda x, y: x + y))
         output = torch.argmax(output, dim=1).float()
         sample_ids.append(sample_id)
@@ -53,7 +55,8 @@ def predict(model_paths,
         if 'mask' in sample.keys():
             mask = sample['mask'].to(device)[0]
             log_images.append(mask)
-            score = jaccard_similarity_score(output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
+            score = jaccard_similarity_score(
+                output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
             scores.append(score)
 
         if n_itr % log_interval == 0:

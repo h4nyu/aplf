@@ -50,13 +50,14 @@ def train(model_id,
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
             val_image = val_sample['image'].to(device)
-            train_mask = train_sample['mask'].to(device).view(-1, 101, 101).long()
+            train_mask = train_sample['mask'].to(
+                device).view(-1, 101, 101).long()
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
 
             optimizer.zero_grad()
             output = model(train_image)
             loss = critertion(
-                output,
+                F.log_softmax(output, dim=1),
                 train_mask
             )
             loss.backward()
@@ -64,7 +65,7 @@ def train(model_id,
 
             output = model(val_image)
             val_loss = critertion(
-                output,
+                F.log_softmax(output, dim=1),
                 val_mask
             )
             is_overfit = el(val_loss.item())
