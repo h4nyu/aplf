@@ -48,7 +48,7 @@ class Graph(object):
 
         model_paths = []
         for model_id, (train_dataset, val_dataset) in enumerate(zip(train_datasets, val_datasets)):
-            fitted = delayed(boost_fit)(
+            model_path = delayed(boost_fit)(
                 prev_model_paths=model_paths,
                 model_id=model_id,
                 model_path=f"{output_dir}/model_{model_id}.pt",
@@ -59,17 +59,14 @@ class Graph(object):
                 patience=patience,
                 base_size=base_size,
             )
-            model_paths.append(fitted)
+            model_paths.append(model_path)
 
-        scores = pipe(val_datasets,
-                      map(lambda x: delayed(predict)(
-                          model_paths=model_paths,
-                          output_dir=f"predict/val",
-                          dataset=x,
-                      )),
-                      map(delayed(lambda df: df['score'].mean())),
-                      list)
-
+        score = delayed(predict)(
+            model_paths=model_paths,
+            dataset=val_datasets[-1],
+            prefix='predict/val'
+        )
+        score = delayed(lambda df: df['score'].mean())(score)
 
         submission_df = delayed(load_dataset_df)(
             dataset_dir,
@@ -83,8 +80,8 @@ class Graph(object):
 
         submission_df = delayed(predict)(
             model_paths=model_paths,
-            output_dir=f"predict/sub",
             dataset=submission_dataset,
+            prefix=f"predict/sub",
         )
 
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
@@ -93,6 +90,6 @@ class Graph(object):
         )
 
         self.output = delayed(lambda x: x)((
-            scores,
-            submission_file
+            score,
+            #  submission_file
         ))

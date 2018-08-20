@@ -16,7 +16,6 @@ def test_predict():
 
     predicted_df = predict(
         model_paths=model_paths,
-        output_dir='/store/tmp',
         dataset=dataset,
     )
     print(predicted_df)

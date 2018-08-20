@@ -15,11 +15,10 @@ from .dataset import TgsSaltDataset
 
 
 def predict(model_paths,
-            output_dir,
             dataset,
+            prefix='predict'
             ):
 
-    writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
     device = torch.device('cpu')
     if torch.cuda.is_available():
@@ -38,33 +37,32 @@ def predict(model_paths,
     scores = []
 
     n_itr = 0
-    for sample in loader:
-        sample_id = sample['id'][0]
-        image = sample['image'].to(device)
+    with SummaryWriter(config["TENSORBORAD_LOG_DIR"]) as w:
+        for sample in loader:
+            sample_id = sample['id'][0]
+            image = sample['image'].to(device)
 
-        output = models[0](image)
-        for m in models[1:]:
-            output = m(output, image)
-        output = F.softmax(output, dim=1)
-        output = torch.argmax(output, dim=1).float()
-        sample_ids.append(sample_id)
-        rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))
+            output = models[0](image)
+            for m in models[1:]:
+                output = m(output, image)
+            output = F.softmax(output, dim=1)
+            output = torch.argmax(output, dim=1).float()
+            sample_ids.append(sample_id)
+            rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))
 
-        log_images = [image[0], output]
-        if 'mask' in sample.keys():
-            mask = sample['mask'].to(device)[0]
-            log_images.append(mask)
-            score = jaccard_similarity_score(
-                output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
-            scores.append(score)
+            log_images = [image[0], output]
+            if 'mask' in sample.keys():
+                mask = sample['mask'].to(device)[0]
+                log_images.append(mask)
+                score = jaccard_similarity_score(
+                    output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
+                scores.append(score)
+            w.add_image(
+                f"{prefix}/{sample_id}",
+                vutils.make_grid(log_images),
+            )
+            n_itr += 1
 
-        writer.add_image(
-            f"{output_dir}/{sample_id}",
-            vutils.make_grid(log_images, scale_each=True),
-        )
-
-        n_itr += 1
-    writer.close()
     df['id'] = sample_ids
     df['rle_mask'] = rle_masks
     if len(scores) > 0:

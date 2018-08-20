@@ -47,38 +47,39 @@ def train(model_id,
     )
     el = EarlyStop(patience, base_size=base_size)
     n_itr = 0
-    for e in range(epochs):
-        for train_sample, val_sample in zip(train_loader, val_loader):
-            train_image = train_sample['image'].to(device)
-            val_image = val_sample['image'].to(device)
-            train_mask = train_sample['mask'].to(
-                device).view(-1, 101, 101).long()
-            val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
+    with SummaryWriter(config["TENSORBORAD_LOG_DIR"]) as w:
+        for e in range(epochs):
+            for train_sample, val_sample in zip(train_loader, val_loader):
+                train_image = train_sample['image'].to(device)
+                val_image = val_sample['image'].to(device)
+                train_mask = train_sample['mask'].to(
+                    device).view(-1, 101, 101).long()
+                val_mask = val_sample['mask'].to(
+                    device).view(-1, 101, 101).long()
 
-            optimizer.zero_grad()
-            output = model(train_image)
-            loss = critertion(
-                output,
-                train_mask
-            )
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                output = model(train_image)
+                loss = critertion(
+                    output,
+                    train_mask
+                )
+                loss.backward()
+                optimizer.step()
 
-            output = model(val_image)
-            val_loss = critertion(
-                output,
-                val_mask
-            )
-            is_overfit = el(val_loss.item())
-            writer.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
-            writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
-            n_itr += 1
+                output = model(val_image)
+                val_loss = critertion(
+                    output,
+                    val_mask
+                )
+                is_overfit = el(val_loss.item())
+                w.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
+                w.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
+                n_itr += 1
 
+                if is_overfit:
+                    break
             if is_overfit:
                 break
-        if is_overfit:
-            break
-    writer.close()
     torch.save(model, model_path)
 
     return model_path
@@ -130,8 +131,6 @@ def boost_fit(model_id,
         size_average=True
     )
     el = EarlyStop(patience, base_size=base_size)
-    n_itr = 0
-
     for e in range(epochs):
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
@@ -160,15 +159,13 @@ def boost_fit(model_id,
                 val_mask
             )
             is_overfit = el(val_loss.item())
-            writer.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
-            writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
-            n_itr += 1
+            writer.add_scalar(f'loss/val_{model_id}', val_loss.item())
+            writer.add_scalar(f'loss/train_{model_id}', loss.item())
 
             if is_overfit:
                 break
         if is_overfit:
             break
-    writer.close()
     torch.save(model, model_path)
 
     return model_path
