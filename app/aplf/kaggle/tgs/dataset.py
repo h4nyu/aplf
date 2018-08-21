@@ -1,4 +1,17 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map
+import random
+from torchvision.transforms.functional import hflip, vflip, rotate
+from torchvision.transforms import (
+    RandomRotation,
+    ToPILImage,
+    Compose, ToTensor,
+    CenterCrop,
+    RandomAffine,
+    TenCrop,
+    RandomApply,
+    RandomHorizontalFlip,
+    RandomVerticalFlip
+)
 from skimage import io
 import torch
 from torch.utils.data import Dataset
@@ -34,6 +47,13 @@ class TgsSaltDataset(Dataset):
     def __init__(self, df, is_train=True):
         self.is_train = is_train
         self.df = df
+        self.transforms = [
+            lambda x:x,
+            hflip,
+            vflip,
+            lambda x: rotate(x, 90),
+            lambda x: rotate(x, -90)
+        ]
 
     def train(self):
         self.is_train = True
@@ -56,6 +76,12 @@ class TgsSaltDataset(Dataset):
             ).reshape(1, 101, 101)
         )
         if self.is_train:
+            transform = Compose([
+                ToPILImage(),
+                random.choice(self.transforms),
+                random.choice(self.transforms),
+                ToTensor()
+            ])
             mask = torch.FloatTensor(
                 io.imread(
                     self.df['y_mask_true'].iloc[idx],
@@ -65,8 +91,8 @@ class TgsSaltDataset(Dataset):
             return {
                 'id': id,
                 'depth': depth,
-                'image': image,
-                'mask': mask,
+                'image': transform(image),
+                'mask': transform(mask),
             }
         else:
             return {

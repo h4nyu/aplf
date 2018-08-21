@@ -12,7 +12,6 @@ import pandas as pd
 from aplf import config
 from .preprocess import rl_enc
 from .dataset import TgsSaltDataset
-from .postprocess import dense_crf
 
 
 def predict(model_paths,

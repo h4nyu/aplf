@@ -11,8 +11,8 @@ def test_dataset():
         val_split_size=0.3,
         patience=10,
         base_size=10,
-        parallel=3,
-        top_num=2,
+        parallel=2,
+        top_num=1,
     )
 
     with Client('dask-scheduler:8786') as c:

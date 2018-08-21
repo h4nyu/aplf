@@ -36,7 +36,9 @@ class Graph(object):
         train_datasets = pipe(
             spliteds,
             map(delayed(lambda x: x[0])),
-            map(delayed(TgsSaltDataset)),
+            map(lambda x: delayed(TgsSaltDataset)(
+                x,
+            )),
             list
         )
 
@@ -48,7 +50,9 @@ class Graph(object):
         )
 
         model_paths = pipe(
+
             zip(train_datasets, val_datasets),
+
             enumerate,
             map(lambda x: delayed(train)(
                 model_id=x[0],
