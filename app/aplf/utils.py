@@ -12,14 +12,11 @@ class EarlyStop(object):
 
     def __call__(self, val_loss):
         self.losses.append(val_loss)
-        if len(self.losses) > (self.patience):
+        if len(self.losses) > (self.patience + self.base_size):
             self.losses = self.losses[1:]
 
-        if len(self.losses) == (self.patience):
-            self.flag = pipe(self.losses[self.base_size:],
-                             map(lambda x: x > np.mean(
-                                 self.losses[:self.base_size])),
-                             all)
+        if len(self.losses) == (self.patience + self.base_size):
+            self.flag = np.mean(self.losses[:self.base_size]) < np.min(self.losses[self.base_size:])
         return self.flag
 
     def clear(self):

@@ -9,6 +9,7 @@ scipy
 scikit-image
 tensorboardX
 tensorflow
+pydensecrf
 
 # graph
 bokeh
