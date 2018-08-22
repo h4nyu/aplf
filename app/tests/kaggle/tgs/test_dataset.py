@@ -31,7 +31,6 @@ def test_dataset():
 def test_rotate():
     writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     dataset_df = load_dataset_df('/store/kaggle/tgs')
-    assert len(dataset_df) == 4000
     dataset = TgsSaltDataset(dataset_df)
     writer.add_image(
         f"test/rotate",

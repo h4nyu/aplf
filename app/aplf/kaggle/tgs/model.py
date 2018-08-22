@@ -3,80 +3,119 @@ import torch
 import torch.nn.functional as F
 
 
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=2):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction),
+            nn.ELU(inplace=True),
+            nn.Linear(channel // reduction, channel),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
+
+
+class DownSample(nn.Module):
+
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=3)
+        self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=3)
+        self.se = SELayer(out_ch)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.activation = nn.ELU()
+
+    def forward(self, x):
+        x = self.conv0(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.conv1(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.se(x)
+        x = self.pool(x)
+        return x
+
+
+class UpSample(nn.Module):
+
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=3)
+        self.deconv = nn.ConvTranspose2d(out_ch, out_ch, 2, stride=2)
+        self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=3)
+        self.se = SELayer(out_ch)
+        self.activation = nn.ELU()
+
+    def forward(self, x, bypass):
+        x = torch.cat([x, F.interpolate(bypass, size=x.size()[2:])], 1)
+        x = self.conv0(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.deconv(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.conv1(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.se(x)
+        return x
+
+
+class Center(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=3)
+        self.deconv = nn.ConvTranspose2d(out_ch, out_ch, 2, stride=2)
+        self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=3)
+        self.se = SELayer(out_ch)
+        self.activation = nn.ELU()
+
+    def forward(self, x):
+        x = self.conv0(x)
+        x = F.relu(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.deconv(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.conv1(x)
+        x = self.activation(x)
+        x = F.layer_norm(x, x.size()[2:])
+        x = self.se(x)
+        return x
+
+
 class UNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.drop_p = 0.2
-        self.pool = nn.MaxPool2d(2, 2)
 
-        self.conv0 = nn.Conv2d(1, 16, kernel_size=3)
-        self.conv0_0 = nn.Conv2d(16, 16, kernel_size=3)
-
-        self.conv1 = nn.Conv2d(16, 32, kernel_size=3)
-        self.conv1_0 = nn.Conv2d(32, 32, kernel_size=3)
-
-        self.center0 = nn.Conv2d(32, 64, kernel_size=3)
-        self.center1 = nn.Conv2d(64, 64, kernel_size=3)
-
-        self.deconv1 = nn.ConvTranspose2d(64, 32, 3, stride=3)
-        self.deconv1_0 = nn.Conv2d(64, 32, kernel_size=3)
-        self.deconv1_1 = nn.Conv2d(32, 32, kernel_size=3)
-
-        self.deconv0 = nn.ConvTranspose2d(32, 16, 3, stride=3)
-        self.deconv0_0 = nn.Conv2d(32, 16, kernel_size=3)
-        self.outconv = nn.Conv2d(16, 2, kernel_size=3)
+        self.down0 = DownSample(1, 32)
+        self.down1 = DownSample(32, 32)
+        self.down2 = DownSample(32, 32)
+        self.down3 = DownSample(32, 32)
+        self.up0 = UpSample(64, 32)
+        self.up1 = UpSample(64, 32)
+        self.up2 = UpSample(64, 32)
+        self.up3 = UpSample(64, 2)
+        self.center = Center(32, 32)
 
     def forward(self, input):
-
-        x = self.conv0(input)
-        x = F.relu(x)
-        x = F.layer_norm(x, x.size()[2:])
-        x = F.dropout(x, p=self.drop_p, training=self.training)
-        x = self.conv0_0(x)
-        conv0 = F.relu(x)
-
-        x = self.pool(conv0)
-        x = F.layer_norm(x, x.size()[2:])
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = F.layer_norm(x, x.size()[2:])
-        x = F.dropout(x, p=self.drop_p, training=self.training)
-        x = self.conv1_0(x)
-        conv1 = F.relu(x)
-
-        x = self.pool(conv1)
-        x = F.layer_norm(x, x.size()[2:])
-        x = self.center0(x)
-        x = F.relu(x)
-        x = F.layer_norm(x, x.size()[2:])
-        x = F.dropout(x, p=self.drop_p, training=self.training)
-        x = self.center1(x)
-        x = F.relu(x)
-
-        x = self.deconv1(x)
-        x = F.relu(x)
-        x = F.interpolate(x, size=conv1.size()[2:])
-        x = torch.cat([x, conv1], 1)
-        x = F.layer_norm(x, x.size()[2:])
-        x = self.deconv1_0(x)
-        x = F.relu(x)
-        x = F.layer_norm(x, x.size()[2:])
-        x = F.dropout(x, p=self.drop_p, training=self.training)
-        x = self.deconv1_1(x)
-        x = F.relu(x)
-
-        x = F.layer_norm(x, x.size()[2:])
-        x = self.deconv0(x)
-        x = F.relu(x)
-        x = F.interpolate(x, size=conv0.size()[2:])
-        x = torch.cat([x, conv0], 1)
-        x = F.layer_norm(x, x.size()[2:])
-        x = F.dropout(x, p=self.drop_p, training=self.training)
-        x = self.deconv0_0(x)
-        x = F.relu(x)
-        x = F.layer_norm(x, x.size()[2:])
-        x = self.outconv(x)
-        x = F.relu(x)
+        down0 = self.down0(input)
+        down1 = self.down1(down0)
+        down2 = self.down2(down1)
+        down3 = self.down3(down1)
+        x = self.center(down3)
+        x = self.up0(x, down3)
+        x = self.up1(x, down2)
+        x = self.up2(x, down1)
+        x = self.up3(x, down0)
         x = F.interpolate(x, size=input.size()[2:])
         return x
-

@@ -41,7 +41,8 @@ def train(model_id,
 
     optimizer = optim.Adam(model.parameters())
     critertion = nn.NLLLoss(
-        size_average=True
+        weight=torch.tensor([1.0, 2.0]).to(device),
+        size_average=True,
     )
     el = EarlyStop(patience, base_size=base_size)
     n_itr = 0
