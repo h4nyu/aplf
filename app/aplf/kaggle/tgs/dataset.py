@@ -50,7 +50,7 @@ class TgsSaltDataset(Dataset):
         self.transforms = [
             lambda x:x,
             hflip,
-            vflip,
+            #  vflip,
             lambda x: rotate(x, 90),
             lambda x: rotate(x, -90)
         ]

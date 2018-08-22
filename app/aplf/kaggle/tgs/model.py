@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class SELayer(nn.Module):
-    def __init__(self, channel, reduction=2):
+    def __init__(self, channel, reduction=1):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
@@ -27,6 +27,7 @@ class DownSample(nn.Module):
 
     def __init__(self, in_ch, out_ch):
         super().__init__()
+        self.drop_p = 0.2
         self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=3)
         self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=3)
         self.se = SELayer(out_ch)
@@ -42,6 +43,7 @@ class DownSample(nn.Module):
         x = F.layer_norm(x, x.size()[2:])
         x = self.se(x)
         x = self.pool(x)
+        x = F.dropout2d(x, p=self.drop_p, training=self.training)
         return x
 
 
@@ -49,11 +51,13 @@ class UpSample(nn.Module):
 
     def __init__(self, in_ch, out_ch):
         super().__init__()
+        self.drop_p = 0.2
         self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=3)
         self.deconv = nn.ConvTranspose2d(out_ch, out_ch, 2, stride=2)
         self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=3)
         self.se = SELayer(out_ch)
         self.activation = nn.ELU()
+
 
     def forward(self, x, *args):
         x = torch.cat([x, *pipe(args, map(lambda l:F.interpolate(l, size=x.size()[2:])), list)], 1)
@@ -67,12 +71,14 @@ class UpSample(nn.Module):
         x = self.activation(x)
         x = F.layer_norm(x, x.size()[2:])
         x = self.se(x)
+        x = F.dropout2d(x, p=self.drop_p, training=self.training)
         return x
 
 
 class Center(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
+        self.drop_p = 0.2
         self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=3)
         self.deconv = nn.ConvTranspose2d(out_ch, out_ch, 2, stride=2)
         self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=3)
@@ -90,27 +96,26 @@ class Center(nn.Module):
         x = self.activation(x)
         x = F.layer_norm(x, x.size()[2:])
         x = self.se(x)
+        x = F.dropout2d(x, p=self.drop_p, training=self.training)
         return x
 
 
 class UNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.drop_p = 0.2
-
-        self.down0 = DownSample(1, 16)
-        self.down1 = DownSample(16, 16)
-        self.down2 = DownSample(16, 16)
-        self.center = Center(16, 16)
-        self.up0 = UpSample(32, 16)
-        self.up1 = UpSample(48, 2)
+        self.down0 = DownSample(1, 64)
+        self.down1 = DownSample(64, 64)
+        self.center = Center(64, 64)
+        self.up0 = UpSample(128, 64)
+        self.up1 = UpSample(65, 64)
+        self.out = nn.Conv2d(64, 2, kernel_size=5)
 
     def forward(self, input):
         down0 = self.down0(input)
         down1 = self.down1(down0)
-        down2 = self.down2(down1)
-        x = self.center(down2)
-        x = self.up0(x, down2)
-        x = self.up1(x, down1, down0)
+        x = self.center(down1)
+        x = self.up0(x, down1)
+        x = self.up1(x, input)
+        x = self.out(x)
         x = F.interpolate(x, size=input.size()[2:])
         return x
