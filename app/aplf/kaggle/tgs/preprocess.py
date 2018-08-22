@@ -49,3 +49,16 @@ def take_topk(scores, paths, top_num):
         map(lambda x: x[1]),
         list
     )
+
+
+def is_not_reg(rle_mask):
+    if(isinstance(rle_mask, str)):
+        return pipe(rle_mask.split(' '),
+                    len,
+                    lambda x: x > 4)
+    else:
+        return True
+
+
+def cleanup(df):
+    return df[df['rle_mask'].apply(is_not_reg)]
