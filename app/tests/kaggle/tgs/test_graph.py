@@ -6,10 +6,10 @@ def test_graph():
     g = Graph(
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
-        batch_size=64,
+        batch_size=32,
         epochs=200,
         val_split_size=0.3,
-        patience=10,
+        patience=15,
         base_size=10,
         parallel=1,
         top_num=1,

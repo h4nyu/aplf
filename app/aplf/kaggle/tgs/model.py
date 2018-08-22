@@ -1,3 +1,4 @@
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -54,8 +55,8 @@ class UpSample(nn.Module):
         self.se = SELayer(out_ch)
         self.activation = nn.ELU()
 
-    def forward(self, x, bypass):
-        x = torch.cat([x, F.interpolate(bypass, size=x.size()[2:])], 1)
+    def forward(self, x, *args):
+        x = torch.cat([x, *pipe(args, map(lambda l:F.interpolate(l, size=x.size()[2:])), list)], 1)
         x = self.conv0(x)
         x = self.activation(x)
         x = F.layer_norm(x, x.size()[2:])
@@ -97,25 +98,19 @@ class UNet(nn.Module):
         super().__init__()
         self.drop_p = 0.2
 
-        self.down0 = DownSample(1, 32)
-        self.down1 = DownSample(32, 32)
-        self.down2 = DownSample(32, 32)
-        self.down3 = DownSample(32, 32)
-        self.up0 = UpSample(64, 32)
-        self.up1 = UpSample(64, 32)
-        self.up2 = UpSample(64, 32)
-        self.up3 = UpSample(64, 2)
-        self.center = Center(32, 32)
+        self.down0 = DownSample(1, 16)
+        self.down1 = DownSample(16, 16)
+        self.down2 = DownSample(16, 16)
+        self.center = Center(16, 16)
+        self.up0 = UpSample(32, 16)
+        self.up1 = UpSample(48, 2)
 
     def forward(self, input):
         down0 = self.down0(input)
         down1 = self.down1(down0)
         down2 = self.down2(down1)
-        down3 = self.down3(down1)
-        x = self.center(down3)
-        x = self.up0(x, down3)
-        x = self.up1(x, down2)
-        x = self.up2(x, down1)
-        x = self.up3(x, down0)
+        x = self.center(down2)
+        x = self.up0(x, down2)
+        x = self.up1(x, down1, down0)
         x = F.interpolate(x, size=input.size()[2:])
         return x

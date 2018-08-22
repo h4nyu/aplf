@@ -25,8 +25,8 @@ def test_downsample():
 
 
 def test_upsample():
-    model = UpSample(64, 32)
+    model = UpSample(96, 32)
     in_image = torch.empty(32, 32, 101, 101)
     bypass_image = torch.empty(32, 32, 101, 101)
-    output = model(in_image, bypass_image)
+    output = model(in_image, bypass_image, bypass_image)
     assert output.size() == (32, 32, 196, 196)
