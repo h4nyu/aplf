@@ -55,7 +55,7 @@ def is_not_reg(rle_mask):
     if(isinstance(rle_mask, str)):
         return pipe(rle_mask.split(' '),
                     len,
-                    lambda x: x > 4)
+                    lambda x: x > 6)
     else:
         return True
 

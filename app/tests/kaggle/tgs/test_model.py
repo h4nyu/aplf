@@ -18,14 +18,14 @@ def test_se_layer():
 
 
 def test_downsample():
-    model = DownSample(1, 32)
+    model = DownSample(1, 32, kernel_size=3)
     in_image = torch.empty(32, 1, 101, 101)
     output = model(in_image)
     assert output.size() == (32, 32, 48, 48)
 
 
 def test_upsample():
-    model = UpSample(96, 32)
+    model = UpSample(96, 32, kernel_size=3)
     in_image = torch.empty(32, 32, 101, 101)
     bypass_image = torch.empty(32, 32, 101, 101)
     output = model(in_image, bypass_image, bypass_image)

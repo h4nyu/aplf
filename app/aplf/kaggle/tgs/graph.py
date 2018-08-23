@@ -5,7 +5,7 @@ import numpy as np
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
-from .preprocess import take_topk
+from .preprocess import take_topk, cleanup
 
 
 class Graph(object):
@@ -24,6 +24,7 @@ class Graph(object):
         ids = list(range(parallel))
 
         dataset_df = delayed(load_dataset_df)(dataset_dir, 'train.csv')
+        dataset_df = delayed(cleanup)(dataset_df)
         spliteds = pipe(
             ids,
             map(lambda x: delayed(train_test_split)(
