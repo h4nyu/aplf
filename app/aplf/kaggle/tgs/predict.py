@@ -45,8 +45,8 @@ def predict(model_paths,
 
         output = pipe(models,
                       map(lambda x: x(image)),
-                      map(lambda x: F.softmax(x, dim=1)),
-                      reduce(lambda x, y: x + y))
+                      reduce(lambda x, y: x + y),
+                      lambda x: F.softmax(x, dim=1))
         output = torch.argmax(output, dim=1).float()
         sample_ids.append(sample_id)
         rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))

@@ -2,10 +2,11 @@ from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 from sklearn.model_selection import train_test_split
 from dask import delayed
 import numpy as np
+import pandas as pd
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
-from .preprocess import take_topk, cleanup
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs
 
 
 class Graph(object):
@@ -25,10 +26,13 @@ class Graph(object):
 
         dataset_df = delayed(load_dataset_df)(dataset_dir, 'train.csv')
         dataset_df = delayed(cleanup)(dataset_df)
+        dataset_df = delayed(cut_bin)(dataset_df, 'z', parallel)
+        dataset_dfs = delayed(groupby)(dataset_df, 'z_bin').compute()
+
         spliteds = pipe(
-            ids,
+            dataset_dfs,
             map(lambda x: delayed(train_test_split)(
-                dataset_df,
+                x,
                 test_size=val_split_size,
                 shuffle=True
             )),
@@ -51,9 +55,7 @@ class Graph(object):
         )
 
         model_paths = pipe(
-
             zip(train_datasets, val_datasets),
-
             enumerate,
             map(lambda x: delayed(train)(
                 model_id=x[0],
@@ -84,17 +86,26 @@ class Graph(object):
             dataset_dir,
             'sample_submission.csv'
         )
+        submission_df = delayed(cut_bin)(submission_df, 'z', parallel)
+        submission_dfs = delayed(groupby)(submission_df, 'z_bin').compute()
 
-        submission_dataset = delayed(TgsSaltDataset)(
-            submission_df,
-            is_train=False
+        submission_datasets = pipe(
+            submission_dfs,
+            map(lambda x: delayed(TgsSaltDataset)(
+                x,
+                is_train=False
+            )),
+            list
         )
-
-        submission_df = delayed(predict)(
-            model_paths=top_model_paths,
-            output_dir=f"predict/sub",
-            dataset=submission_dataset,
-            log_interval=100,
+        submission_df = pipe(
+            zip(submission_datasets, model_paths),
+            map(lambda x: delayed(predict)(
+                model_paths=[x[1]],
+                output_dir=f"predict/sub",
+                dataset=x[0],
+                log_interval=100,
+            )),
+            delayed(pd.concat)
         )
 
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
@@ -103,7 +114,9 @@ class Graph(object):
         )
 
         self.output = delayed(lambda x: x)((
-            top_model_paths,
             scores,
+            submission_df,
             submission_file
+            #  top_model_paths,
+            #  scores,
         ))

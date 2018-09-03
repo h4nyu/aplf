@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class SELayer(nn.Module):
-    def __init__(self, channel, reduction=8):
+    def __init__(self, channel, reduction=2):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
@@ -49,22 +49,23 @@ class DownSample(nn.Module):
 
 class UpSample(nn.Module):
 
-    def __init__(self, in_ch, out_ch, kernel_size=3):
+    def __init__(self, in_ch, out_ch, other_ch=0, kernel_size=3):
         super().__init__()
         self.drop_p = 0.2
-        self.conv0 = nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size)
-        self.deconv = nn.ConvTranspose2d(out_ch, out_ch, 2, stride=2)
+        self.deconv = nn.ConvTranspose2d(in_ch, in_ch, 2, stride=2)
+        self.conv0 = nn.Conv2d(in_ch + other_ch,
+                               out_ch,
+                               kernel_size=kernel_size)
         self.conv1 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size)
         self.se = SELayer(out_ch)
         self.activation = nn.ELU()
 
-
     def forward(self, x, *args):
-        x = torch.cat([x, *pipe(args, map(lambda l:F.interpolate(l, size=x.size()[2:])), list)], 1)
-        x = self.conv0(x)
+        x = self.deconv(x)
         x = self.activation(x)
         x = F.layer_norm(x, x.size()[2:])
-        x = self.deconv(x)
+        x = torch.cat([x, *args], 1)
+        x = self.conv0(x)
         x = self.activation(x)
         x = F.layer_norm(x, x.size()[2:])
         x = self.conv1(x)
@@ -104,20 +105,20 @@ class UNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.activation = nn.ELU()
-        self.down0 = DownSample(1, 64)
-        self.down1 = DownSample(64, 64)
-        self.center = Center(64, 64)
-        self.up0 = UpSample(128, 127)
-        self.up1 = UpSample(128, 64)
-        self.out = nn.Conv2d(64, 2, kernel_size=5)
+        self.down0 = DownSample(1, 48)
+        self.down1 = DownSample(48, 16)
+        self.center = Center(16, 8)
+        self.up0 = UpSample(8, 32, 48)
+        self.up1 = UpSample(33, 2)
 
     def forward(self, input):
-        down0 = self.down0(input)
+        x = input
+        down0 = self.down0(x)
         down1 = self.down1(down0)
         x = self.center(down1)
-        x = self.up0(x, down0)
+        print(x.size())
+        print(down0.size())
+        x = self.up0(x, F.interpolate(down0, x.size()[2:]))
+        print(x.size())
         x = self.up1(x, input)
-        x = self.out(x)
-        x = self.activation(x)
-        x = F.interpolate(x, size=input.size()[2:])
         return x
