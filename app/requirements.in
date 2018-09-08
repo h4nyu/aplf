@@ -16,8 +16,6 @@ bokeh
 graphviz
 matplotlib
 
-# notebook
-jupyter
 
 # workflow engine
 dask[complete]       
