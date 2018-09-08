@@ -65,19 +65,6 @@ services:
       - dask-scheduler
       - tensorboard
 
-  notebook:
-    build:
-      context: ./app
-    environment:
-      - JUPYTER_CONFIG_DIR=/srv
-    command: jupyter notebook
-    volumes:
-      - ./app:/srv
-      - ./store:/store
-      - log:/log
-    ports:
-      - "${NOTEBOOK_PORT}:8888"
-
   app:
     build:
       context: ./app
