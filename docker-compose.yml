@@ -14,7 +14,7 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - log:/log
+      - ./log:/log
 
 
   dask-scheduler:
@@ -26,7 +26,7 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - log:/log
+      - ./log:/log
 
   dask-worker:
     build:
@@ -37,7 +37,7 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - log:/log
+      - ./log:/log
     depends_on:
       - dask-scheduler
 
@@ -74,7 +74,7 @@ services:
       - ./app:/srv
       - ./store:/store
       - ~/.kaggle:/root/.kaggle
-      - log:/log
+      - ./log:/log
     depends_on:
       - dask-worker
       - web

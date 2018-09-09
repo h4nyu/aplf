@@ -12,7 +12,8 @@ def test_train():
         model_path=f"{output_dir}/model.pt",
         train_dataset=TgsSaltDataset(train_df),
         val_dataset=TgsSaltDataset(val_df),
-        epochs=1,
-        batch_size=128,
+        epochs=200,
+        batch_size=32,
         patience=10,
+        base_size=10
     )

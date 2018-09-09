@@ -2,7 +2,6 @@ from aplf import config
 import torch
 from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
-import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 
 
@@ -10,13 +9,6 @@ def test_dataset():
     dataset_df = load_dataset_df('/store/kaggle/tgs')
     dataset = TgsSaltDataset(dataset_df)
     assert len(dataset) == 4000
-
-
-#  def test_iou():
-#      dataset_df = load_dataset_df('/store/kaggle/tgs').dropna().head(5)
-#      y_true = dataset_df['y_mask_true']
-#      y_pred = dataset_df['y_mask_true']
-#      assert mean_iou(y_pred, y_true) == 1
 
 
 def test_cleanup():
@@ -32,6 +24,7 @@ def test_rle_decode():
     output = rle_decode(sample['rle_mask'], (101, 101))
     output = torch.FloatTensor(output).view(1, 101, 101)
     assert output.sum() == 487
+
 
 def test_add_mask_size():
     dataset_df = load_dataset_df('/store/kaggle/tgs')

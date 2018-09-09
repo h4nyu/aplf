@@ -1,7 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce
 import torch.nn.functional as F
-from sklearn.metrics import jaccard_similarity_score
-import torchvision
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 import torchvision.utils as vutils
@@ -12,6 +10,7 @@ import pandas as pd
 from aplf import config
 from .preprocess import rl_enc
 from .dataset import TgsSaltDataset
+from .metric import iou
 
 
 def predict(model_paths,
@@ -55,8 +54,7 @@ def predict(model_paths,
         if 'mask' in sample.keys():
             mask = sample['mask'].to(device)[0]
             log_images.append(mask)
-            score = jaccard_similarity_score(
-                output.cpu().numpy().reshape(-1), mask.cpu().numpy().reshape(-1))
+            score = iou(output.cpu().numpy(), mask.cpu().numpy())
             scores.append(score)
 
         if n_itr % log_interval == 0:

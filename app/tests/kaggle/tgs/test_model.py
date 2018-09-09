@@ -1,32 +1,45 @@
-from aplf.kaggle.tgs.model import UNet, SELayer, DownSample, UpSample
+from aplf.kaggle.tgs.model import UNet, SEBlock, DownSample, UpSample, DoubleConv2D, ResBlock
 import torch
 
 
 def test_model():
     model = UNet()
-    print(model)
     in_image = torch.empty(32, 1, 101, 101)
     out_image = model(in_image)
     assert out_image.size() == (32, 2, 101, 101)
 
 
 def test_se_layer():
-    model = SELayer(32, 2)
+    model = SEBlock(32, 2)
     in_image = torch.empty(32, 32, 101, 101)
     output = model(in_image)
     assert output.size() == (32, 32, 101, 101)
+
+
+def test_double_conv2d():
+    model = DoubleConv2D(32, 16)
+    in_image = torch.empty(32, 32, 101, 101)
+    output = model(in_image)
+    assert output.size() == (32, 16, 101, 101)
+
+
+def test_res_block():
+    model = ResBlock(32, 16)
+    in_image = torch.empty(32, 32, 101, 101)
+    output = model(in_image)
+    assert output.size() == (32, 16, 101, 101)
 
 
 def test_downsample():
     model = DownSample(1, 32, kernel_size=3)
     in_image = torch.empty(32, 1, 101, 101)
     output = model(in_image)
-    assert output.size() == (32, 32, 48, 48)
+    assert output.size() == (32, 32, 50, 50)
 
 
 def test_upsample():
-    model = UpSample(16, 32, 32, kernel_size=3)
+    model = UpSample(16, 32, 32)
     in_image = torch.empty(32, 16, 48, 48)
     bypass_image = torch.empty(32, 32, 96, 96)
     output = model(in_image, bypass_image)
-    assert output.size() == (32, 32, 92, 92)
+    assert output.size() == (32, 32, 96, 96)

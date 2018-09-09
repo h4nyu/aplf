@@ -26,13 +26,11 @@ class Graph(object):
 
         dataset_df = delayed(load_dataset_df)(dataset_dir, 'train.csv')
         dataset_df = delayed(cleanup)(dataset_df)
-        dataset_df = delayed(cut_bin)(dataset_df, 'z', parallel)
-        dataset_dfs = delayed(groupby)(dataset_df, 'z_bin').compute()
 
         spliteds = pipe(
-            dataset_dfs,
+            ids,
             map(lambda x: delayed(train_test_split)(
-                x,
+                dataset_df,
                 test_size=val_split_size,
                 shuffle=True
             )),
@@ -70,15 +68,17 @@ class Graph(object):
             list
         )
 
-        scores = pipe(zip(val_datasets, model_paths),
-                      map(lambda x: delayed(predict)(
-                          model_paths=[x[1]],
-                          output_dir=f"predict/val",
-                          dataset=x[0],
-                          log_interval=1,
-                      )),
-                      map(delayed(lambda df: df['score'].mean())),
-                      list)
+        scores = pipe(
+            zip(val_datasets, model_paths),
+            map(lambda x: delayed(predict)(
+                model_paths=[x[1]],
+                output_dir=f"predict/val",
+                dataset=x[0],
+                log_interval=1,
+            )),
+            map(delayed(lambda df: df['score'].mean())),
+            list
+        )
 
         top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
 
@@ -86,26 +86,16 @@ class Graph(object):
             dataset_dir,
             'sample_submission.csv'
         )
-        submission_df = delayed(cut_bin)(submission_df, 'z', parallel)
-        submission_dfs = delayed(groupby)(submission_df, 'z_bin').compute()
 
-        submission_datasets = pipe(
-            submission_dfs,
-            map(lambda x: delayed(TgsSaltDataset)(
-                x,
-                is_train=False
-            )),
-            list
+        submission_dataset = delayed(TgsSaltDataset)(
+            submission_df,
+            is_train=False
         )
-        submission_df = pipe(
-            zip(submission_datasets, model_paths),
-            map(lambda x: delayed(predict)(
-                model_paths=[x[1]],
-                output_dir=f"predict/sub",
-                dataset=x[0],
-                log_interval=100,
-            )),
-            delayed(pd.concat)
+        submission_df = delayed(predict)(
+            model_paths=top_model_paths,
+            output_dir=f"predict/sub",
+            dataset=submission_df,
+            log_interval=10,
         )
 
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
