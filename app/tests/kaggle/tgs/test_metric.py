@@ -14,6 +14,6 @@ def test_dataset():
     scores = []
     for i in range(12):
         sample = dataset[i]
-        score = iou(sample['image'].numpy(), sample['mask'].numpy())
+        score = iou(sample['mask'].numpy(), sample['image'].numpy())
         scores.append(score)
     assert np.round(np.mean(scores), decimals=3) == 0.167

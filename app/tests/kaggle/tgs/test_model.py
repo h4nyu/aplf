@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.model import UNet, SEBlock, DownSample, UpSample, DoubleConv2D, ResBlock
+from aplf.kaggle.tgs.model import UNet, SEBlock, DownSample, UpSample, ResBlock
 import torch
 
 
@@ -16,13 +16,6 @@ def test_se_layer():
     assert output.size() == (32, 32, 101, 101)
 
 
-def test_double_conv2d():
-    model = DoubleConv2D(32, 16)
-    in_image = torch.empty(32, 32, 101, 101)
-    output = model(in_image)
-    assert output.size() == (32, 16, 101, 101)
-
-
 def test_res_block():
     model = ResBlock(32, 16)
     in_image = torch.empty(32, 32, 101, 101)
@@ -33,8 +26,9 @@ def test_res_block():
 def test_downsample():
     model = DownSample(1, 32, kernel_size=3)
     in_image = torch.empty(32, 1, 101, 101)
-    output = model(in_image)
-    assert output.size() == (32, 32, 50, 50)
+    pooled, conved = model(in_image)
+    assert pooled.size() == (32, 32, 50, 50)
+    assert conved.size() == (32, 32, 101, 101)
 
 
 def test_upsample():

@@ -7,7 +7,7 @@ def test_graph():
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         batch_size=32,
-        epochs=200,
+        epochs=1000,
         val_split_size=0.2,
         patience=10,
         base_size=10,

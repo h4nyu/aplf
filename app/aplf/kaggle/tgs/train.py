@@ -43,11 +43,10 @@ def train(model_id,
     model.train()
 
     optimizer = optim.Adam(model.parameters())
-    critertion = nn.NLLLoss(
-        weight=torch.tensor([1.2, 1.0]).to(device),
-    )
+    critertion = nn.CrossEntropyLoss()
     el = EarlyStop(patience, base_size=base_size)
     n_itr = 0
+    is_overfit = False
     for e in range(epochs):
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
@@ -60,13 +59,16 @@ def train(model_id,
             output = model(train_image)
 
             loss = critertion(
-                F.log_softmax(output, dim=1),
+                output,
                 train_mask
             )
+            loss.backward()
+            optimizer.step()
+
             score = pipe(
                 zip(
-                    output.cpu().detach().numpy(),
-                    train_mask.cpu().detach().numpy()
+                    output.argmax(dim=1).cpu().detach().numpy(),
+                    train_sample['mask'].numpy()
                 ),
                 map(lambda x: iou(*x)),
                 list,
@@ -76,26 +78,25 @@ def train(model_id,
                                score,
                                n_itr
                               )
-            loss.backward()
-            optimizer.step()
             print(f"train_iou: {score}")
             output = model(val_image)
             val_loss = critertion(
-                F.log_softmax(output, dim=1),
+                output,
                 val_mask
             )
-            is_overfit = el(val_loss.item())
             writer.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
             writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
             score = pipe(
                 zip(
-                    output.cpu().detach().numpy(),
-                    val_mask.cpu().detach().numpy()
+                    output.argmax(dim=1).cpu().detach().numpy(),
+                    val_sample['mask'].numpy()
                 ),
                 map(lambda x: iou(*x)),
                 list,
                 np.mean
             )
+            if score > 0:
+                is_overfit = el(-score)
             print(f"val_iou: {score}")
             writer.add_scalar(
                 f'loss/val_iou_{model_id}',

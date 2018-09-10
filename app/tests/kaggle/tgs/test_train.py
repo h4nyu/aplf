@@ -8,12 +8,12 @@ def test_train():
     train_df, val_df = train_test_split(dataset_df)
     output_dir = '/store/tmp'
     train(
-        model_id=1,
+        model_id=0,
         model_path=f"{output_dir}/model.pt",
         train_dataset=TgsSaltDataset(train_df),
         val_dataset=TgsSaltDataset(val_df),
-        epochs=200,
+        epochs=1000,
         batch_size=32,
-        patience=10,
+        patience=15,
         base_size=10
     )

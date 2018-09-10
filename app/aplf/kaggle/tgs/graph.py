@@ -82,19 +82,19 @@ class Graph(object):
 
         top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
 
-        submission_df = delayed(load_dataset_df)(
+        predict_dataset_df = delayed(load_dataset_df)(
             dataset_dir,
             'sample_submission.csv'
         )
 
-        submission_dataset = delayed(TgsSaltDataset)(
-            submission_df,
+        predict_dataset = delayed(TgsSaltDataset)(
+            predict_dataset_df,
             is_train=False
         )
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
             output_dir=f"predict/sub",
-            dataset=submission_df,
+            dataset=predict_dataset,
             log_interval=10,
         )
 
@@ -107,6 +107,4 @@ class Graph(object):
             scores,
             submission_df,
             submission_file
-            #  top_model_paths,
-            #  scores,
         ))

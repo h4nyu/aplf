@@ -45,8 +45,8 @@ def predict(model_paths,
         output = pipe(models,
                       map(lambda x: x(image)),
                       reduce(lambda x, y: x + y),
-                      lambda x: F.softmax(x, dim=1))
-        output = torch.argmax(output, dim=1).float()
+                      lambda x: F.softmax(x, dim=1),
+                      lambda x: x.argmax(dim=1).float())
         sample_ids.append(sample_id)
         rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))
 
@@ -61,6 +61,7 @@ def predict(model_paths,
             writer.add_image(
                 f"{output_dir}/{sample_id}",
                 vutils.make_grid(log_images, scale_each=True),
+                n_itr
             )
 
         n_itr += 1
