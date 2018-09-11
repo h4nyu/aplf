@@ -27,7 +27,7 @@ class Graph(object):
 
         ids = pipe(
             range(parallel),
-            map(uuid.uuid4),
+            map(lambda x: uuid.uuid4()),
             list
         )
 
@@ -100,7 +100,7 @@ class Graph(object):
         )
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
-            log_dir=f"{id}/{x[0]}/sub",
+            log_dir=f"{id}/sub",
             dataset=predict_dataset,
             log_interval=10,
         )
@@ -111,6 +111,7 @@ class Graph(object):
         )
 
         self.output = delayed(lambda x: x)((
+            top_model_paths,
             scores,
             submission_df,
             submission_file

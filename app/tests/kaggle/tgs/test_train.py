@@ -2,6 +2,7 @@ from aplf.kaggle.tgs.train import train
 from datetime import datetime
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from sklearn.model_selection import train_test_split
+import uuid
 
 
 def test_train():
@@ -9,7 +10,7 @@ def test_train():
     train_df, val_df = train_test_split(dataset_df)
     output_dir = '/store/tmp'
     train(
-        model_id=0,
+        model_id='mock',
         model_path=f"{output_dir}/model.pt",
         train_dataset=TgsSaltDataset(train_df),
         val_dataset=TgsSaltDataset(val_df),
