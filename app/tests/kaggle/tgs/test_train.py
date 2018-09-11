@@ -1,4 +1,5 @@
 from aplf.kaggle.tgs.train import train
+from datetime import datetime
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from sklearn.model_selection import train_test_split
 
@@ -15,5 +16,6 @@ def test_train():
         epochs=1000,
         batch_size=32,
         patience=15,
-        base_size=10
+        base_size=10,
+        log_dir=f'{datetime.now().isoformat()}'
     )

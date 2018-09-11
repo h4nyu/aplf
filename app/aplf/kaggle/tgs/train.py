@@ -21,6 +21,7 @@ def train(model_id,
           batch_size,
           patience,
           base_size,
+          log_dir,
           ):
     writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     device = torch.device('cpu')
@@ -47,7 +48,14 @@ def train(model_id,
     el = EarlyStop(patience, base_size=base_size)
     n_itr = 0
     is_overfit = False
-    for e in range(epochs):
+    len_batch = len(train_loader)
+    for epoch in range(epochs):
+        sum_train_loss = 0
+        sum_train_score = 0
+        sum_val_loss = 0
+        sum_val_score = 0
+        batch_idx = 0
+
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
             val_image = val_sample['image'].to(device)
@@ -65,7 +73,8 @@ def train(model_id,
             loss.backward()
             optimizer.step()
 
-            score = pipe(
+            sum_train_loss += loss.item()
+            sum_train_score += pipe(
                 zip(
                     output.argmax(dim=1).cpu().detach().numpy(),
                     train_sample['mask'].numpy()
@@ -74,19 +83,14 @@ def train(model_id,
                 list,
                 np.mean
             )
-            writer.add_scalar(f'loss/train_iou_{model_id}',
-                               score,
-                               n_itr
-                              )
-            print(f"train_iou: {score}")
+
             output = model(val_image)
             val_loss = critertion(
                 output,
                 val_mask
             )
-            writer.add_scalar(f'loss/val_{model_id}', val_loss.item(), n_itr)
-            writer.add_scalar(f'loss/train_{model_id}', loss.item(), n_itr)
-            score = pipe(
+            sum_val_loss += val_loss.item()
+            sum_val_score += pipe(
                 zip(
                     output.argmax(dim=1).cpu().detach().numpy(),
                     val_sample['mask'].numpy()
@@ -95,20 +99,34 @@ def train(model_id,
                 list,
                 np.mean
             )
-            if score > 0:
-                is_overfit = el(-score)
-            print(f"val_iou: {score}")
-            writer.add_scalar(
-                f'loss/val_iou_{model_id}',
-                score,
-                n_itr
-            )
-            n_itr += 1
 
-            if is_overfit:
-                break
+        writer.add_scalar(
+            f'{log_dir}/train_iou_{model_id}',
+            sum_train_score/len_batch,
+            epoch
+        )
+        writer.add_scalar(
+            f'{log_dir}/val_iou_{model_id}',
+            sum_val_score/len_batch,
+            epoch
+        )
+
+        writer.add_scalar(
+            f'{log_dir}/val_{model_id}',
+            sum_val_score/len_batch,
+            epoch
+        )
+        writer.add_scalar(
+            f'{log_dir}/train_{model_id}',
+            sum_train_loss/len_batch,
+            epoch
+        )
+
+        if sum_val_score/batch_idx > 0:
+            is_overfit = el(sum_val_score/batch_idx)
         if is_overfit:
             break
+
     writer.close()
     torch.save(model, model_path)
 

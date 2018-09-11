@@ -148,7 +148,8 @@ class UNet(nn.Module):
         self.down3 = DownSample(16, 16)
         self.up0 = UpSample(16, 32, 16)
         self.up1 = UpSample(32, 64, 32)
-        self.up2 = UpSample(64, 2, 64)
+        self.up2 = UpSample(64, 128, 64)
+        self.ouput = nn.Conv2d(128, 2, kernel_size=3)
 
     def forward(self, x):
         x, down0 = self.down0(x)
@@ -158,4 +159,10 @@ class UNet(nn.Module):
         x = self.up0(x, down2)
         x = self.up1(x, down1)
         x = self.up2(x, down0)
+        x = self.ouput(x)
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(101, 101)
+        )
         return x
