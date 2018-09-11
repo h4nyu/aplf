@@ -113,7 +113,7 @@ def train(model_id,
 
         writer.add_scalar(
             f'{log_dir}/val_{model_id}',
-            sum_val_score/len_batch,
+            sum_val_loss/len_batch,
             epoch
         )
         writer.add_scalar(
@@ -122,8 +122,8 @@ def train(model_id,
             epoch
         )
 
-        if sum_val_score/batch_idx > 0:
-            is_overfit = el(sum_val_score/batch_idx)
+        if sum_val_score/len_batch > 0:
+            is_overfit = el(- sum_val_score/len_batch)
         if is_overfit:
             break
 

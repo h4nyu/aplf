@@ -11,8 +11,8 @@ def test_graph():
         val_split_size=0.2,
         patience=10,
         base_size=10,
-        parallel=1,
-        top_num=1,
+        parallel=3,
+        top_num=2,
     )
 
     with Client('dask-scheduler:8786') as c:

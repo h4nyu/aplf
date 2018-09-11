@@ -114,22 +114,11 @@ class UpSample(nn.Module):
                  ):
         super().__init__()
         self.block = nn.Sequential(
-            nn.Conv2d(
+            ResBlock(
                 in_ch+other_ch,
                 out_ch,
-                kernel_size=3,
-                padding=1
             ),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(
-                out_ch,
-                out_ch,
-                kernel_size=3,
-                padding=1
-            ),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
+            SEBlock(out_ch),
         )
 
     def forward(self, x, other):
@@ -145,20 +134,24 @@ class UNet(nn.Module):
         self.down0 = DownSample(1, 64)
         self.down1 = DownSample(64, 32)
         self.down2 = DownSample(32, 16)
-        self.down3 = DownSample(16, 16)
-        self.up0 = UpSample(16, 32, 16)
-        self.up1 = UpSample(32, 64, 32)
-        self.up2 = UpSample(64, 128, 64)
+        self.down3 = DownSample(16, 8)
+        self.down4 = DownSample(8, 8)
+        self.up0 = UpSample(8, 16, 8)
+        self.up1 = UpSample(16, 32, 16)
+        self.up2 = UpSample(32, 64, 32)
+        self.up3 = UpSample(64, 128, 64)
         self.ouput = nn.Conv2d(128, 2, kernel_size=3)
 
     def forward(self, x):
         x, down0 = self.down0(x)
         x, down1 = self.down1(x)
         x, down2 = self.down2(x)
-        _, x = self.down3(x)
-        x = self.up0(x, down2)
-        x = self.up1(x, down1)
-        x = self.up2(x, down0)
+        x, down3 = self.down3(x)
+        _, x = self.down4(x)
+        x = self.up0(x, down3)
+        x = self.up1(x, down2)
+        x = self.up2(x, down1)
+        x = self.up3(x, down0)
         x = self.ouput(x)
         x = F.interpolate(
             x,

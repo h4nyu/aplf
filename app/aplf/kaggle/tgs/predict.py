@@ -14,7 +14,7 @@ from .metric import iou
 
 
 def predict(model_paths,
-            output_dir,
+            log_dir,
             dataset,
             log_interval=100,
             ):
@@ -59,7 +59,7 @@ def predict(model_paths,
 
         if n_itr % log_interval == 0:
             writer.add_image(
-                f"{output_dir}/{sample_id}",
+                f"{log_dir}/{sample_id}",
                 vutils.make_grid(log_images, scale_each=True),
                 n_itr
             )

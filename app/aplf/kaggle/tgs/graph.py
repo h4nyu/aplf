@@ -1,6 +1,7 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 from sklearn.model_selection import train_test_split
 from dask import delayed
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from .dataset import TgsSaltDataset, load_dataset_df
@@ -64,6 +65,7 @@ class Graph(object):
                 batch_size=batch_size,
                 patience=patience,
                 base_size=base_size,
+                log_dir=f'{datetime.now().isoformat()}/{x[0]}',
             )),
             list
         )
@@ -72,7 +74,7 @@ class Graph(object):
             zip(val_datasets, model_paths),
             map(lambda x: delayed(predict)(
                 model_paths=[x[1]],
-                output_dir=f"predict/val",
+                log_dir=f'{datetime.now().isoformat()}/val',
                 dataset=x[0],
                 log_interval=1,
             )),
@@ -93,7 +95,7 @@ class Graph(object):
         )
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
-            output_dir=f"predict/sub",
+            log_dir=f'{datetime.now().isoformat()}/sub',
             dataset=predict_dataset,
             log_interval=10,
         )

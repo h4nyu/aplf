@@ -14,8 +14,8 @@ def test_train():
         train_dataset=TgsSaltDataset(train_df),
         val_dataset=TgsSaltDataset(val_df),
         epochs=1000,
-        batch_size=32,
-        patience=15,
-        base_size=10,
+        batch_size=64,
+        patience=5,
+        base_size=5,
         log_dir=f'{datetime.now().isoformat()}'
     )
