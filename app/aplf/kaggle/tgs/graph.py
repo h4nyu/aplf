@@ -4,6 +4,7 @@ from dask import delayed
 from datetime import datetime
 import numpy as np
 import pandas as pd
+import uuid
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
@@ -12,6 +13,7 @@ from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, ava
 
 class Graph(object):
     def __init__(self,
+                 id,
                  dataset_dir,
                  output_dir,
                  epochs,
@@ -23,7 +25,11 @@ class Graph(object):
                  top_num,
                  ):
 
-        ids = list(range(parallel))
+        ids = pipe(
+            range(parallel),
+            map(uuid.uuid4),
+            list
+        )
 
         dataset_df = delayed(load_dataset_df)(dataset_dir, 'train.csv')
         dataset_df = delayed(cleanup)(dataset_df)
@@ -54,28 +60,27 @@ class Graph(object):
         )
 
         model_paths = pipe(
-            zip(train_datasets, val_datasets),
-            enumerate,
+            zip(ids, train_datasets, val_datasets),
             map(lambda x: delayed(train)(
                 model_id=x[0],
                 model_path=f"{output_dir}/model_{x[0]}.pt",
-                train_dataset=x[1][0],
-                val_dataset=x[1][1],
+                train_dataset=x[1],
+                val_dataset=x[2],
                 epochs=epochs,
                 batch_size=batch_size,
                 patience=patience,
                 base_size=base_size,
-                log_dir=f'{datetime.now().isoformat()}/{x[0]}',
+                log_dir=f"{id}/{x[0]}",
             )),
             list
         )
 
         scores = pipe(
-            zip(val_datasets, model_paths),
+            zip(ids, model_paths, val_datasets),
             map(lambda x: delayed(predict)(
                 model_paths=[x[1]],
-                log_dir=f'{datetime.now().isoformat()}/val',
-                dataset=x[0],
+                log_dir=f"{id}/{x[0]}/val",
+                dataset=x[2],
                 log_interval=1,
             )),
             map(delayed(lambda df: df['score'].mean())),
@@ -95,7 +100,7 @@ class Graph(object):
         )
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
-            log_dir=f'{datetime.now().isoformat()}/sub',
+            log_dir=f"{id}/{x[0]}/sub",
             dataset=predict_dataset,
             log_interval=10,
         )
