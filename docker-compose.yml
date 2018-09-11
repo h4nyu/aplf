@@ -8,6 +8,9 @@ services:
   tensorboard:
     build:
       context: ./app
+      args:
+        - http_proxy
+        - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
     command: tensorboard --logdir=/log runs
@@ -20,6 +23,9 @@ services:
   dask-scheduler:
     build:
       context: ./app
+      args:
+        - http_proxy
+        - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
     command: dask-scheduler
@@ -31,6 +37,9 @@ services:
   dask-worker:
     build:
       context: ./app
+      args:
+        - http_proxy
+        - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
     command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space
@@ -44,6 +53,9 @@ services:
   front:
     build:
       context: ./front
+      args:
+        - http_proxy
+        - https_proxy
     environment:
       - NODE_ENV=development
     command: npm run watch
@@ -53,6 +65,9 @@ services:
   web:
     build:
       context: ./web
+      args:
+        - http_proxy
+        - https_proxy
 
     volumes:
       - ./front/dist:/public/aplf
@@ -68,6 +83,9 @@ services:
   app:
     build:
       context: ./app
+      args:
+        - http_proxy
+        - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
     volumes:
