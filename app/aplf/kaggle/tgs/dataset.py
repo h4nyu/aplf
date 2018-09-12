@@ -10,7 +10,8 @@ from torchvision.transforms import (
     TenCrop,
     RandomApply,
     RandomHorizontalFlip,
-    RandomVerticalFlip
+    RandomVerticalFlip,
+    RandomResizedCrop,
 )
 from skimage import io
 import torch
@@ -50,7 +51,13 @@ class TgsSaltDataset(Dataset):
         self.transforms = [
             lambda x:x,
             hflip,
+            RandomResizedCrop(
+                101,
+                scale=(0.1, 2.0),
+                ratio=(0.75, 1.0),
+            )
         ]
+
 
     def train(self):
         self.is_train = True
