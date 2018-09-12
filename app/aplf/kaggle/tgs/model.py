@@ -140,7 +140,7 @@ class UNet(nn.Module):
         self.up1 = UpSample(max_feature//4, max_feature//2, max_feature//4)
         self.up2 = UpSample(max_feature//2, max_feature, max_feature//2)
         self.up3 = UpSample(max_feature, max_feature*2, max_feature)
-        self.ouput = nn.Conv2d(max_feature, 2, kernel_size=3)
+        self.ouput = nn.Conv2d(max_feature*2, 2, kernel_size=3)
 
     def forward(self, x):
         x, down0 = self.down0(x)
