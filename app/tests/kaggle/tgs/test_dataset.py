@@ -43,6 +43,7 @@ def test_rotate():
         ),
     )
 
+
 def test_rotate():
     writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     dataset_df = load_dataset_df('/store/kaggle/tgs')
@@ -50,10 +51,12 @@ def test_rotate():
     writer.add_image(
         f"test/rotate",
         vutils.make_grid(
-            pipe(range(20),
-                 map(lambda x: dataset[12]),
-                 map(lambda x: [x['image'], x['mask']]),
-                 concat,
-                 list)
+            pipe(
+                range(20),
+                map(lambda x: dataset[15]),
+                map(lambda x: [x['image'], x['mask']]),
+                concat,
+                list
+            )
         ),
     )

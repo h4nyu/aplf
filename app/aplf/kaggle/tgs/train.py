@@ -11,10 +11,10 @@ from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
 from .metric import iou
+from os import path
 
 
-def train(model_id,
-          model_path,
+def train(model_path,
           train_dataset,
           val_dataset,
           epochs,
@@ -24,7 +24,6 @@ def train(model_id,
           base_size,
           log_dir,
           ):
-    writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     device = torch.device('cpu')
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -49,16 +48,15 @@ def train(model_id,
     optimizer = optim.Adam(model.parameters())
     critertion = nn.CrossEntropyLoss()
     el = EarlyStop(patience, base_size=base_size)
-    n_itr = 0
     is_overfit = False
     len_batch = len(train_loader)
     max_val_score = 0
+
     for epoch in range(epochs):
         sum_train_loss = 0
         sum_train_score = 0
         sum_val_loss = 0
         sum_val_score = 0
-        batch_idx = 0
 
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
@@ -104,37 +102,33 @@ def train(model_id,
                 np.mean
             )
 
-        writer.add_scalar(
-            f'{log_dir}/train_iou_{model_id}',
-            sum_train_score/len_batch,
-            epoch
-        )
-        writer.add_scalar(
-            f'{log_dir}/val_iou_{model_id}',
-            sum_val_score/len_batch,
-            epoch
-        )
+        with SummaryWriter(log_dir) as w:
 
-        writer.add_scalar(
-            f'{log_dir}/val_{model_id}',
-            sum_val_loss/len_batch,
-            epoch
-        )
-        writer.add_scalar(
-            f'{log_dir}/train_{model_id}',
-            sum_train_loss/len_batch,
-            epoch
-        )
+            w.add_scalars(
+                'iou',
+                {
+                    'train': sum_train_score / len_batch,
+                    'val': sum_val_score / len_batch,
+                },
+                epoch
+            )
+            w.add_scalars(
+                'loss',
+                {
+                    'train': sum_train_loss / len_batch,
+                    'val': sum_val_loss / len_batch,
+                },
+                epoch
+            )
 
-        if max_val_score < sum_val_score/len_batch:
+        if max_val_score < sum_val_score / len_batch:
             torch.save(model, model_path)
-            max_val_score = sum_val_score/len_batch
+            max_val_score = sum_val_score / len_batch
 
-        if sum_val_score/len_batch > 0:
-            is_overfit = el(- sum_val_score/len_batch)
+        if sum_val_score / len_batch > 0:
+            is_overfit = el(- sum_val_score / len_batch)
+
         if is_overfit:
             break
-
-    writer.close()
 
     return model_path

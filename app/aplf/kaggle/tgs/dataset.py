@@ -53,11 +53,10 @@ class TgsSaltDataset(Dataset):
             hflip,
             RandomResizedCrop(
                 101,
-                scale=(0.1, 2.0),
-                ratio=(0.75, 1.0),
+                scale=(0.1, 1.5),
+                ratio=(1.0, 1.0),
             )
         ]
-
 
     def train(self):
         self.is_train = True

@@ -5,11 +5,11 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import uuid
+from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
-from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs
-
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs 
 
 class Graph(object):
     def __init__(self,
@@ -63,7 +63,6 @@ class Graph(object):
         model_paths = pipe(
             zip(ids, train_datasets, val_datasets),
             map(lambda x: delayed(train)(
-                model_id=x[0],
                 model_path=f"{output_dir}/model_{x[0]}.pt",
                 train_dataset=x[1],
                 val_dataset=x[2],
@@ -72,7 +71,7 @@ class Graph(object):
                 feature_size=feature_size,
                 patience=patience,
                 base_size=base_size,
-                log_dir=f"{id}/{x[0]}",
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list
         )
@@ -81,7 +80,7 @@ class Graph(object):
             zip(ids, model_paths, val_datasets),
             map(lambda x: delayed(predict)(
                 model_paths=[x[1]],
-                log_dir=f"{id}/{x[0]}/val",
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/val',
                 dataset=x[2],
                 log_interval=1,
             )),
@@ -102,7 +101,7 @@ class Graph(object):
         )
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
-            log_dir=f"{id}/sub",
+            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
             dataset=predict_dataset,
             log_interval=10,
         )

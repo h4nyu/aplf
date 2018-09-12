@@ -14,12 +14,11 @@ from .metric import iou
 
 
 def predict(model_paths,
-            log_dir,
             dataset,
+            log_dir,
             log_interval=100,
             ):
 
-    writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
     device = torch.device('cpu')
     if torch.cuda.is_available():
@@ -29,6 +28,7 @@ def predict(model_paths,
                   map(torch.load),
                   map(lambda x: x.to(device)),
                   list)
+
     for m in models:
         m.eval()
     df = pd.DataFrame()
@@ -58,11 +58,12 @@ def predict(model_paths,
             scores.append(score)
 
         if n_itr % log_interval == 0:
-            writer.add_image(
-                f"{log_dir}/{sample_id}",
-                vutils.make_grid(log_images, scale_each=True),
-                n_itr
-            )
+            with SummaryWriter(log_dir) as w:
+                w.add_image(
+                    f"predict",
+                    vutils.make_grid(log_images, scale_each=True),
+                    n_itr
+                )
 
         n_itr += 1
 
@@ -71,4 +72,5 @@ def predict(model_paths,
     if len(scores) > 0:
         df['score'] = scores
     df = df.set_index('id')
+
     return df
