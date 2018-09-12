@@ -11,7 +11,7 @@ def test_graph():
         batch_size=32,
         epochs=1000,
         val_split_size=0.1,
-        patience=10,
+        patience=15,
         base_size=10,
         parallel=1,
         top_num=1,

@@ -49,6 +49,7 @@ def train(model_id,
     n_itr = 0
     is_overfit = False
     len_batch = len(train_loader)
+    max_val_score = 0
     for epoch in range(epochs):
         sum_train_loss = 0
         sum_train_score = 0
@@ -122,12 +123,15 @@ def train(model_id,
             epoch
         )
 
+        if max_val_score < sum_val_score/len_batch:
+            torch.save(model, model_path)
+            max_val_score = sum_val_score/len_batch
+
         if sum_val_score/len_batch > 0:
             is_overfit = el(- sum_val_score/len_batch)
         if is_overfit:
             break
 
     writer.close()
-    torch.save(model, model_path)
 
     return model_path
