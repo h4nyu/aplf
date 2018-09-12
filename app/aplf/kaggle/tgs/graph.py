@@ -23,6 +23,7 @@ class Graph(object):
                  base_size,
                  parallel,
                  top_num,
+                 feature_size,
                  ):
 
         ids = pipe(
@@ -68,6 +69,7 @@ class Graph(object):
                 val_dataset=x[2],
                 epochs=epochs,
                 batch_size=batch_size,
+                feature_size=feature_size,
                 patience=patience,
                 base_size=base_size,
                 log_dir=f"{id}/{x[0]}",

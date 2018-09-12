@@ -19,6 +19,7 @@ def train(model_id,
           val_dataset,
           epochs,
           batch_size,
+          feature_size,
           patience,
           base_size,
           log_dir,
@@ -40,7 +41,9 @@ def train(model_id,
         batch_size=val_batch_size,
         shuffle=True
     )
-    model = UNet().to(device)
+    model = UNet(
+        feature_size=feature_size
+    ).to(device)
     model.train()
 
     optimizer = optim.Adam(model.parameters())
