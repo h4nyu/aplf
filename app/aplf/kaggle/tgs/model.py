@@ -129,18 +129,18 @@ class UpSample(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self):
+    def __init__(self, max_feature=32):
         super().__init__()
-        self.down0 = DownSample(1, 32)
-        self.down1 = DownSample(32, 16)
-        self.down2 = DownSample(16, 8)
-        self.down3 = DownSample(8, 4)
-        self.down4 = DownSample(4, 4)
-        self.up0 = UpSample(4, 8, 4)
-        self.up1 = UpSample(8, 16, 8)
-        self.up2 = UpSample(16, 32, 16)
-        self.up3 = UpSample(32, 64, 32)
-        self.ouput = nn.Conv2d(64, 2, kernel_size=3)
+        self.down0 = DownSample(1, max_feature)
+        self.down1 = DownSample(max_feature, max_feature//2)
+        self.down2 = DownSample(max_feature//2, max_feature//4)
+        self.down3 = DownSample(max_feature//4, max_feature//8)
+        self.down4 = DownSample(max_feature//8, max_feature//8)
+        self.up0 = UpSample(max_feature//8, max_feature//4, max_feature//8)
+        self.up1 = UpSample(max_feature//4, max_feature//2, max_feature//4)
+        self.up2 = UpSample(max_feature//2, max_feature, max_feature//2)
+        self.up3 = UpSample(max_feature, max_feature*2, max_feature)
+        self.ouput = nn.Conv2d(max_feature, 2, kernel_size=3)
 
     def forward(self, x):
         x, down0 = self.down0(x)
