@@ -56,7 +56,7 @@ services:
         - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space
+    command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space --nprocs=1  --nthreads=1
     volumes:
       - ./app:/srv
       - ./store:/store

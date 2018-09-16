@@ -19,5 +19,5 @@ def test_train():
         feature_size=32,
         patience=5,
         base_size=5,
-        log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/mock/{datetime.now().isoformat()}',
+        log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/test',
     )

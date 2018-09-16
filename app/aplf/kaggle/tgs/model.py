@@ -158,4 +158,5 @@ class UNet(nn.Module):
             mode='bilinear',
             size=(101, 101)
         )
+        x = F.softmax(x, dim=1)
         return x

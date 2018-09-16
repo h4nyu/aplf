@@ -32,7 +32,10 @@ class Graph(object):
             list
         )
 
-        dataset_df = delayed(load_dataset_df)(dataset_dir, 'train.csv')
+        dataset_df = delayed(load_dataset_df)(
+            dataset_dir, 
+            'train.csv'
+        )
         dataset_df = delayed(cleanup)(dataset_df)
 
         spliteds = pipe(

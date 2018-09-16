@@ -1,8 +1,11 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry
 from sklearn.metrics import jaccard_similarity_score
 import numpy as np
 import pandas as pd
 from skimage import io
+import torch.nn.functional as F
+import scipy
+import torch
 
 
 def rle_decode(mask_rle, shape):
@@ -105,3 +108,21 @@ def groupby(df, colunm_name):
 
 def avarage_dfs(dfs):
     return dfs
+
+
+def hflip(image):
+    return image.flip([2])
+
+def vflip(image):
+    return image.flip([1])
+
+@curry
+def crop(image, start, end):
+    c, w, h = image.shape
+    start_h, start_w = start
+    end_h, end_w = end
+    image = image[:, start_w:end_w, start_h:end_h]
+    image = image.view(-1, *image.shape)
+    image = F.interpolate(image, mode='bilinear', size=(h, w))
+    image = image.view(c, h, w)
+    return image

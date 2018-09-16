@@ -46,7 +46,7 @@ def train(model_path,
     model.train()
 
     optimizer = optim.Adam(model.parameters())
-    critertion = nn.CrossEntropyLoss()
+    critertion = nn.NLLLoss()
     el = EarlyStop(patience, base_size=base_size)
     is_overfit = False
     len_batch = len(train_loader)
@@ -69,7 +69,7 @@ def train(model_path,
             output = model(train_image)
 
             loss = critertion(
-                output,
+                output.log(),
                 train_mask
             )
             loss.backward()
@@ -88,7 +88,7 @@ def train(model_path,
 
             output = model(val_image)
             val_loss = critertion(
-                output,
+                output.log(),
                 val_mask
             )
             sum_val_loss += val_loss.item()

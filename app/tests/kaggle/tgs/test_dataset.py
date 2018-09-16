@@ -28,35 +28,17 @@ def test_dataset():
     assert len(dataset[0]) == 4
 
 
-def test_rotate():
-    writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
+def test_flip():
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
     dataset_df = load_dataset_df('/store/kaggle/tgs')
     dataset = TgsSaltDataset(dataset_df)
     writer.add_image(
-        f"test/rotate",
+        f"flip",
         vutils.make_grid(
             pipe(range(8),
-                 map(lambda x: dataset[4]),
+                 map(lambda x: dataset[12]),
                  map(lambda x: [x['image'], x['mask']]),
                  concat,
                  list)
-        ),
-    )
-
-
-def test_rotate():
-    writer = SummaryWriter(config["TENSORBORAD_LOG_DIR"])
-    dataset_df = load_dataset_df('/store/kaggle/tgs')
-    dataset = TgsSaltDataset(dataset_df)
-    writer.add_image(
-        f"test/rotate",
-        vutils.make_grid(
-            pipe(
-                range(20),
-                map(lambda x: dataset[15]),
-                map(lambda x: [x['image'], x['mask']]),
-                concat,
-                list
-            )
         ),
     )

@@ -1,18 +1,5 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose
 import random
-from torchvision.transforms.functional import hflip, vflip, rotate
-from torchvision.transforms import (
-    RandomRotation,
-    ToPILImage,
-    Compose, ToTensor,
-    CenterCrop,
-    RandomAffine,
-    TenCrop,
-    RandomApply,
-    RandomHorizontalFlip,
-    RandomVerticalFlip,
-    RandomResizedCrop,
-)
 from skimage import io
 import torch
 from torch.utils.data import Dataset
@@ -20,6 +7,9 @@ import numpy as np
 import pandas as pd
 import os
 import glob
+import random
+import torch.nn.functional as F
+from .preprocess import hflip, vflip, crop
 
 
 def load_dataset_df(dataset_dir, csv_fn='train.csv'):
@@ -48,15 +38,6 @@ class TgsSaltDataset(Dataset):
     def __init__(self, df, is_train=True):
         self.is_train = is_train
         self.df = df
-        self.transforms = [
-            lambda x:x,
-            hflip,
-            RandomResizedCrop(
-                101,
-                scale=(0.1, 1.5),
-                ratio=(1.0, 1.0),
-            )
-        ]
 
     def train(self):
         self.is_train = True
@@ -72,34 +53,58 @@ class TgsSaltDataset(Dataset):
     def __getitem__(self, idx):
         id = self.df.index[idx]
         depth = self.df['z'].iloc[idx],
-        image = torch.FloatTensor(
-            io.imread(
-                self.df['x_image'].iloc[idx],
-                as_gray=True
-            ).reshape(1, 101, 101)
+        img_ary = io.imread(
+            self.df['x_image'].iloc[idx],
+            as_gray=True
         )
+        h, w = img_ary.shape
+        limit_h = h // 3
+        limit_w = w // 3
+        start = (
+            np.random.randint(0, limit_w),
+            np.random.randint(0, limit_h),
+        )
+
+        end = (
+            np.random.randint(w - limit_w, w),
+            np.random.randint(h - limit_h, h),
+        )
+
+        transforms = [
+            torch.FloatTensor,
+            lambda x: x.view(1, h, w),
+        ]
+
         if self.is_train:
-            transform = Compose([
-                ToPILImage(),
-                random.choice(self.transforms),
-                random.choice(self.transforms),
-                ToTensor()
-            ])
-            mask = torch.FloatTensor(
-                io.imread(
-                    self.df['y_mask_true'].iloc[idx],
-                    as_gray=True
-                ).astype(bool).astype(float).reshape(1, 101, 101)
-            )
+            mask_ary = io.imread(
+                self.df['y_mask_true'].iloc[idx],
+                as_gray=True
+            ).astype(bool).astype(int)
+
+            transform = compose(*reversed([
+                *transforms,
+                random.choice([
+                    lambda x: x,
+                    crop(start=start, end=end)
+                ]),
+                random.choice([
+                    lambda x: x,
+                    hflip,
+                ]),
+            ]))
+
             return {
                 'id': id,
                 'depth': depth,
-                'image': transform(image),
-                'mask': transform(mask),
+                'image': transform(img_ary),
+                'mask': transform(mask_ary),
             }
         else:
+            transform = compose(*reversed([
+                *transforms
+            ]))
             return {
                 'id': id,
                 'depth': depth,
-                'image': image,
+                'image': transform(img_ary),
             }

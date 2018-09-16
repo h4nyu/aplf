@@ -44,7 +44,7 @@ def predict(model_paths,
 
         output = pipe(models,
                       map(lambda x: x(image)),
-                      reduce(lambda x, y: x + y),
+                      reduce(lambda x, y: x + y / 2),
                       lambda x: F.softmax(x, dim=1),
                       lambda x: x.argmax(dim=1).float())
         sample_ids.append(sample_id)
