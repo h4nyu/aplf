@@ -10,7 +10,7 @@ bokeh==0.13.0
 certifi==2018.8.24        # via kaggle, requests
 chardet==3.0.4            # via requests
 click==6.7                # via distributed
-cloudpickle==0.5.5        # via dask, distributed, scikit-image
+cloudpickle==0.5.6        # via dask, distributed, scikit-image
 cycler==0.10.0            # via matplotlib
 cytoolz==0.9.0.1
 dask[array,complete]==0.19.1
@@ -18,11 +18,11 @@ decorator==4.3.0          # via networkx
 distributed==1.23.1       # via dask
 gast==0.2.0               # via tensorflow
 graphviz==0.9
-grpcio==1.14.2            # via tensorflow
+grpcio==1.15.0            # via tensorflow
 heapdict==1.0.0           # via zict
 idna==2.7                 # via requests
 jinja2==2.10              # via bokeh
-joblib==0.12.4
+joblib==0.12.5
 kaggle==1.4.7.1
 kiwisolver==1.0.1         # via matplotlib
 locket==0.2.0             # via partd
@@ -61,7 +61,7 @@ toolz==0.9.0              # via cytoolz, dask, distributed, partd
 torch==0.4.1
 torchvision==0.2.1
 tornado==5.1              # via bokeh, distributed
-tqdm==4.25.0              # via kaggle
+tqdm==4.26.0              # via kaggle
 unidecode==1.0.22         # via python-slugify
 urllib3==1.22             # via kaggle, requests
 werkzeug==0.14.1          # via tensorboard
