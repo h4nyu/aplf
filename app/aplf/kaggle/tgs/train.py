@@ -10,7 +10,8 @@ from .model import UNet
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
-from .metric import iou from os import path
+from .metric import iou 
+from os import path
 from .utils import AverageMeter
 
 device = torch.device('cpu')

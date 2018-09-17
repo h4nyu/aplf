@@ -9,13 +9,13 @@ def test_graph():
         id=f"{datetime.now().isoformat()}",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
-        batch_size=32,
+        batch_size=28,
         epochs=1000,
-        val_split_size=0.2,
-        feature_size=32,
+        val_split_size=0.15,
+        feature_size=64,
         patience=20,
         base_size=10,
-        parallel=2
+        parallel=4,
         top_num=2,
     )
 
