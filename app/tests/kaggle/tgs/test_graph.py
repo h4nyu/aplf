@@ -11,11 +11,11 @@ def test_graph():
         output_dir='/store/kaggle/tgs/output',
         batch_size=32,
         epochs=1000,
-        val_split_size=0.1,
-        feature_size=24,
+        val_split_size=0.2,
+        feature_size=32,
         patience=20,
         base_size=10,
-        devices=['cuda', 'cuda', 'cuda'],
+        parallel=2
         top_num=2,
     )
 
