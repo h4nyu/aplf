@@ -10,8 +10,16 @@ from .model import UNet
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
-from .metric import iou
-from os import path
+from .metric import iou from os import path
+from .utils import AverageMeter
+
+device = torch.device('cpu')
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+
+
+def validate():
+    pass
 
 
 def train(model_path,
@@ -24,9 +32,6 @@ def train(model_path,
           base_size,
           log_dir,
           ):
-    device = torch.device('cpu')
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
 
     train_loader = DataLoader(
         train_dataset.train(),
@@ -132,3 +137,17 @@ def train(model_path,
             break
 
     return model_path
+
+
+def train_mean_teacher(model_path,
+                       train_dataset,
+                       val_dataset,
+                       epochs,
+                       batch_size,
+                       feature_size,
+                       patience,
+                       base_size,
+                       log_dir,
+                       ):
+
+    meters = AverageMeterSet()
