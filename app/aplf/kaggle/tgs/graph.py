@@ -83,7 +83,7 @@ class Graph(object):
             zip(ids, model_paths, val_datasets),
             map(lambda x: delayed(predict)(
                 model_paths=[x[1]],
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/val',
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/val',
                 dataset=x[2],
                 log_interval=1,
             )),
