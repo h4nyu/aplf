@@ -39,7 +39,7 @@ class ResBlock(nn.Module):
             nn.BatchNorm2d(out_ch),
         )
         self.activation = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(p=0.3)
+        self.dropout = nn.Dropout(p=0.3, inplace=True)
 
     def forward(self, x):
         residual = x
