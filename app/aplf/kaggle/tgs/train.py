@@ -14,9 +14,6 @@ from .metric import iou
 from os import path
 from .utils import AverageMeter
 
-device = torch.device('cpu')
-if torch.cuda.is_available():
-    device = torch.device("cuda")
 
 
 def validate():
@@ -33,6 +30,7 @@ def train(model_path,
           base_size,
           log_dir,
           ):
+    device = torch.device("cuda")
 
     train_loader = DataLoader(
         train_dataset.train(),

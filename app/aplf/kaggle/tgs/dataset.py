@@ -58,8 +58,8 @@ class TgsSaltDataset(Dataset):
             as_gray=True
         )
         h, w = img_ary.shape
-        limit_h = h // 3
-        limit_w = w // 3
+        limit_h = h // 4
+        limit_w = w // 4
         start = (
             np.random.randint(0, limit_w),
             np.random.randint(0, limit_h),
