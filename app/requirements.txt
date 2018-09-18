@@ -39,7 +39,7 @@ pillow==5.2.0             # via scikit-image, torchvision
 protobuf==3.6.1           # via tensorboard, tensorboardx, tensorflow
 psutil==5.4.7             # via distributed
 pydensecrf==1.0rc3
-pyparsing==2.2.0          # via matplotlib, packaging
+pyparsing==2.2.1          # via matplotlib, packaging
 python-dateutil==2.7.3    # via bokeh, kaggle, matplotlib, pandas
 python-slugify==1.2.6     # via kaggle
 pytz==2018.5              # via matplotlib, pandas
