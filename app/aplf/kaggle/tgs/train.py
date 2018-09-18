@@ -115,17 +115,18 @@ def train(model_path,
             ema_model_out = ema_model(train_image)
             model_out = model(train_image)
             class_loss = class_criterion(model_out, train_mask)
-            sum_class_loss += class_loss.item()
-            consistency_loss = consistency_criterion(model_out, ema_model_out)
-            sum_consistency_loss += consistency_loss.item()
-            loss = class_loss + consistency_loss
 
-            ema_model_out = ema_model(unsupervised_image)
-            model_out = model(unsupervised_image)
+            consistency_input = torch.cat([
+                train_image,
+                unsupervised_image
+            ])
+            model_out = model(consistency_input)
+            ema_model_out = ema_model(consistency_input)
             consistency_loss = consistency_criterion(model_out, ema_model_out)
-            loss += consistency_loss
-            sum_train_loss += loss.item()
+            loss = consistency_loss + class_loss
+            sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
+            sum_train_loss += loss.item()
 
             optimizer.zero_grad()
             loss.backward()
@@ -139,7 +140,6 @@ def train(model_path,
                 val_image,
                 val_mask
             )
-            print(f'score:{val_score}')
             sum_val_loss += val_loss.item()
             sum_val_score += val_score
         print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
