@@ -116,7 +116,7 @@ def train(model_path,
             class_loss = class_criterion(model_out, train_mask)
             sum_class_loss += class_loss.item()
             consistency_loss = consistency_criterion(model_out, ema_model_out)
-            sum_consistency_loss += consistency_criterion.item()
+            sum_consistency_loss += consistency_loss.item()
             loss = class_loss + consistency_loss
 
             ema_model_out = ema_model(unsupervised_image)
@@ -124,7 +124,7 @@ def train(model_path,
             consistency_loss = consistency_criterion(model_out, ema_model_out)
             loss += consistency_loss
             sum_train_loss += loss.item()
-            sum_consistency_loss += consistency_criterion.item()
+            sum_consistency_loss += consistency_loss.item()
 
             optimizer.zero_grad()
             loss.backward()
