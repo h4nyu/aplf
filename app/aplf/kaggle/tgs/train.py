@@ -51,6 +51,7 @@ def train(model_path,
           patience,
           base_size,
           log_dir,
+          alpha,
           ):
     device = torch.device("cuda")
 
@@ -130,7 +131,7 @@ def train(model_path,
             loss.backward()
             optimizer.step()
 
-            ema_model = update_ema_variables(model, ema_model, 0.8)
+            ema_model = update_ema_variables(model, ema_model, alpha)
 
             val_loss, val_score = validate(
                 model,

@@ -24,6 +24,7 @@ class Graph(object):
                  parallel,
                  top_num,
                  feature_size,
+                 alpha,
                  ):
 
         ids = pipe(
@@ -86,6 +87,7 @@ class Graph(object):
                 feature_size=feature_size,
                 patience=patience,
                 base_size=base_size,
+                alpha=alpha,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list
