@@ -7,16 +7,16 @@ import torch
 import pytest
 
 
-@pytest.mark.parametrize("csv_fn, is_train", [
+@pytest.mark.parametrize("csv_fn, has_y", [
     ('sample_submission.csv', False),
     ('train.csv', True),
 ])
-def test_predict(csv_fn, is_train):
+def test_predict(csv_fn, has_y):
     dataset_df = load_dataset_df(
         '/store/kaggle/tgs',
         csv_fn
     ).sample(10)
-    dataset = TgsSaltDataset(dataset_df, is_train=is_train)
+    dataset = TgsSaltDataset(dataset_df, has_y=has_y)
     model = UNet()
     model_paths = ['/store/tmp/model.pt']
     torch.save(model, model_paths[0])

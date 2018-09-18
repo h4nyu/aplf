@@ -7,15 +7,32 @@ import uuid
 
 
 def test_train():
-    dataset_df = load_dataset_df('/store/kaggle/tgs')
-    train_df, val_df = train_test_split(dataset_df)
-    output_dir = '/store/tmp'
+    dataset_df = load_dataset_df(
+        '/store/kaggle/tgs',
+        'train.csv'
+    )
+    train_df, val_df = train_test_split(dataset_df, test_size=0.1)
+
+    unsupervised_dataset = load_dataset_df(
+        '/store/kaggle/tgs',
+        'sample_submission.csv'
+    )
     train(
-        model_path=f"{output_dir}/model.pt",
-        train_dataset=TgsSaltDataset(train_df),
-        val_dataset=TgsSaltDataset(val_df),
-        epochs=1000,
-        batch_size=32,
+        model_path='/store/tmp/model.pt',
+        train_dataset=TgsSaltDataset(
+            train_df,
+            has_y=True
+        ),
+        val_dataset=TgsSaltDataset(
+            val_df,
+            has_y=True
+        ),
+        unsupervised_dataset=TgsSaltDataset(
+            unsupervised_dataset,
+            has_y=False
+        ),
+        epochs=2,
+        batch_size=28,
         feature_size=32,
         patience=5,
         base_size=5,

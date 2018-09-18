@@ -35,17 +35,9 @@ def load_dataset_df(dataset_dir, csv_fn='train.csv'):
 
 
 class TgsSaltDataset(Dataset):
-    def __init__(self, df, is_train=True):
-        self.is_train = is_train
+    def __init__(self, df, has_y=True):
+        self.has_y = has_y
         self.df = df
-
-    def train(self):
-        self.is_train = True
-        return self
-
-    def eval(self):
-        self.is_train = False
-        return self
 
     def __len__(self):
         return len(self.df)
@@ -75,7 +67,7 @@ class TgsSaltDataset(Dataset):
             lambda x: x.view(1, h, w),
         ]
 
-        if self.is_train:
+        if self.has_y:
             mask_ary = io.imread(
                 self.df['y_mask_true'].iloc[idx],
                 as_gray=True
@@ -83,14 +75,14 @@ class TgsSaltDataset(Dataset):
 
             transform = compose(*reversed([
                 *transforms,
-                random.choice([
-                    lambda x: x,
-                    crop(start=start, end=end)
-                ]),
-                random.choice([
-                    lambda x: x,
-                    hflip,
-                ]),
+                #  random.choice([
+                #      lambda x: x,
+                #      crop(start=start, end=end)
+                #  ]),
+                #  random.choice([
+                #      lambda x: x,
+                #      hflip,
+                #  ]),
             ]))
 
             return {

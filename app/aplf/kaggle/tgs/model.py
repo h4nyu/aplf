@@ -9,8 +9,10 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 use_dropout=True
                  ):
         super().__init__()
+        self.use_dropout = use_dropout
         if in_ch == out_ch:
             self.projection = None
         else:
@@ -37,12 +39,15 @@ class ResBlock(nn.Module):
             nn.BatchNorm2d(out_ch),
         )
         self.activation = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout(p=0.3)
 
     def forward(self, x):
         residual = x
         out = self.block(x)
         if self.projection:
             residual = self.projection(residual)
+        if self.use_dropout:
+            out = self.dropout(out)
         out += residual
         out = self.activation(out)
         return out
@@ -115,7 +120,7 @@ class UpSample(nn.Module):
         super().__init__()
         self.block = nn.Sequential(
             ResBlock(
-                in_ch+other_ch,
+                in_ch + other_ch,
                 out_ch,
             ),
             SEBlock(out_ch),
@@ -132,15 +137,17 @@ class UNet(nn.Module):
     def __init__(self, feature_size=32):
         super().__init__()
         self.down0 = DownSample(1, feature_size)
-        self.down1 = DownSample(feature_size, feature_size//2)
-        self.down2 = DownSample(feature_size//2, feature_size//4)
-        self.down3 = DownSample(feature_size//4, feature_size//8)
-        self.down4 = DownSample(feature_size//8, feature_size//8)
-        self.up0 = UpSample(feature_size//8, feature_size//4, feature_size//8)
-        self.up1 = UpSample(feature_size//4, feature_size//2, feature_size//4)
-        self.up2 = UpSample(feature_size//2, feature_size, feature_size//2)
-        self.up3 = UpSample(feature_size, feature_size*2, feature_size)
-        self.ouput = nn.Conv2d(feature_size*2, 2, kernel_size=3)
+        self.down1 = DownSample(feature_size, feature_size // 2)
+        self.down2 = DownSample(feature_size // 2, feature_size // 4)
+        self.down3 = DownSample(feature_size // 4, feature_size // 8)
+        self.down4 = DownSample(feature_size // 8, feature_size // 8)
+        self.up0 = UpSample(feature_size // 8,
+                            feature_size // 4, feature_size // 8)
+        self.up1 = UpSample(feature_size // 4,
+                            feature_size // 2, feature_size // 4)
+        self.up2 = UpSample(feature_size // 2, feature_size, feature_size // 2)
+        self.up3 = UpSample(feature_size, feature_size * 2, feature_size)
+        self.ouput = nn.Conv2d(feature_size * 2, 2, kernel_size=3)
 
     def forward(self, x):
         x, down0 = self.down0(x)
@@ -158,5 +165,4 @@ class UNet(nn.Module):
             mode='bilinear',
             size=(101, 101)
         )
-        x = F.softmax(x, dim=1)
         return x

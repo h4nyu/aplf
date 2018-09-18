@@ -52,6 +52,7 @@ class Graph(object):
             map(delayed(lambda x: x[0])),
             map(lambda x: delayed(TgsSaltDataset)(
                 x,
+                has_y=True
             )),
             list
         )
@@ -59,8 +60,18 @@ class Graph(object):
         val_datasets = pipe(
             spliteds,
             map(delayed(lambda x: x[1])),
-            map(delayed(TgsSaltDataset)),
+            map(lambda x: delayed(TgsSaltDataset)(x, has_y=True)),
             list
+        )
+
+        predict_dataset_df = delayed(load_dataset_df)(
+            dataset_dir,
+            'sample_submission.csv'
+        )
+
+        predict_dataset = delayed(TgsSaltDataset)(
+            predict_dataset_df,
+            has_y=False
         )
 
         model_paths = pipe(
@@ -69,6 +80,7 @@ class Graph(object):
                 model_path=f"{output_dir}/model_{x[0]}.pt",
                 train_dataset=x[1],
                 val_dataset=x[2],
+                unsupervised_dataset=predict_dataset,
                 epochs=epochs,
                 batch_size=batch_size,
                 feature_size=feature_size,
@@ -93,15 +105,6 @@ class Graph(object):
 
         top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
 
-        predict_dataset_df = delayed(load_dataset_df)(
-            dataset_dir,
-            'sample_submission.csv'
-        )
-
-        predict_dataset = delayed(TgsSaltDataset)(
-            predict_dataset_df,
-            is_train=False
-        )
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
             log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
