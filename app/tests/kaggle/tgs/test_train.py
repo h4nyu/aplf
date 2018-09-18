@@ -32,7 +32,7 @@ def test_train():
             has_y=False
         ),
         epochs=2,
-        batch_size=28,
+        batch_size=24,
         feature_size=32,
         patience=5,
         base_size=5,

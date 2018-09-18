@@ -12,7 +12,7 @@ def test_graph():
         batch_size=24,
         epochs=800,
         val_split_size=0.10,
-        feature_size=40,
+        feature_size=32,
         patience=20,
         base_size=10,
         parallel=6,
