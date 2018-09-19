@@ -24,21 +24,22 @@ def update_ema_variables(model, ema_model, alpha):
 
 
 def validate(model, critertion, x, y):
-    output = model(x)
-    loss = critertion(
-        output,
-        y
-    )
-    score = pipe(
-        zip(
-            output.argmax(dim=1).cpu().detach().numpy(),
-            y.cpu().detach().numpy()
-        ),
-        map(lambda x: iou(*x)),
-        list,
-        np.mean
-    )
-    return loss, score
+    with torch.no_grad():
+        output = model(x)
+        loss = critertion(
+            output,
+            y
+        )
+        score = pipe(
+            zip(
+                output.argmax(dim=1).cpu().detach().numpy(),
+                y.cpu().detach().numpy()
+            ),
+            map(lambda x: iou(*x)),
+            list,
+            np.mean
+        )
+        return loss, score
 
 
 def train(model_path,
@@ -53,6 +54,7 @@ def train(model_path,
           base_size,
           log_dir,
           alpha,
+          consistency_weight,
           ):
     device = torch.device("cuda")
 
@@ -120,9 +122,11 @@ def train(model_path,
                 unsupervised_image
             ])
             model_out = model(consistency_input)
-            ema_model_out = ema_model(consistency_input)
+
+            with torch.no_grad():
+                ema_model_out = ema_model(consistency_input)
             consistency_loss = consistency_criterion(model_out, ema_model_out)
-            loss = consistency_loss + class_loss
+            loss = consistency_weight * consistency_loss + class_loss
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
