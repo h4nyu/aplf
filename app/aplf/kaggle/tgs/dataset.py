@@ -79,10 +79,10 @@ class TgsSaltDataset(Dataset):
                 #      lambda x: x,
                 #      crop(start=start, end=end)
                 #  ]),
-                #  random.choice([
-                #      lambda x: x,
-                #      hflip,
-                #  ]),
+                random.choice([
+                    lambda x: x,
+                    hflip,
+                ]),
             ]))
 
             return {

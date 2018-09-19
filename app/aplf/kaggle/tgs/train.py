@@ -46,7 +46,8 @@ def train(model_path,
           val_dataset,
           unsupervised_dataset,
           epochs,
-          batch_size,
+          train_batch_size,
+          unsupervised_batch_size,
           feature_size,
           patience,
           base_size,
@@ -67,24 +68,22 @@ def train(model_path,
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=batch_size // 2,
+        batch_size=train_batch_size,
         shuffle=True
     )
 
     unsupervised_loader = DataLoader(
         unsupervised_dataset,
-        batch_size=batch_size // 2,
+        batch_size=unsupervised_batch_size,
         shuffle=True
     )
 
-    val_batch_size = int(batch_size * len(val_dataset) / len(train_dataset))
+    val_batch_size = int(train_batch_size * len(val_dataset) / len(train_dataset))
     val_loader = DataLoader(
         val_dataset,
         batch_size=val_batch_size,
         shuffle=True
     )
-
-    val_batch_size = int(batch_size * len(val_dataset) / len(train_dataset))
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = softmax_mse_loss

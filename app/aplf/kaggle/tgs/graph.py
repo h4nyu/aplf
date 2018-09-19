@@ -9,7 +9,8 @@ from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
-from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs 
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs
+
 
 class Graph(object):
     def __init__(self,
@@ -17,8 +18,9 @@ class Graph(object):
                  dataset_dir,
                  output_dir,
                  epochs,
-                 batch_size,
                  val_split_size,
+                 train_batch_size,
+                 unsupervised_batch_size,
                  patience,
                  base_size,
                  parallel,
@@ -34,7 +36,7 @@ class Graph(object):
         )
 
         dataset_df = delayed(load_dataset_df)(
-            dataset_dir, 
+            dataset_dir,
             'train.csv'
         )
         dataset_df = delayed(cleanup)(dataset_df)
@@ -83,7 +85,8 @@ class Graph(object):
                 val_dataset=x[2],
                 unsupervised_dataset=predict_dataset,
                 epochs=epochs,
-                batch_size=batch_size,
+                train_batch_size=train_batch_size,
+                unsupervised_batch_size=unsupervised_batch_size,
                 feature_size=feature_size,
                 patience=patience,
                 base_size=base_size,
