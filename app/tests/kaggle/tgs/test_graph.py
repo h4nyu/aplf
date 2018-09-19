@@ -14,7 +14,7 @@ def test_graph():
         epochs=800,
         val_split_size=0.10,
         feature_size=56,
-        alpha=0.3,
+        alpha=0.7,
         patience=20,
         base_size=10,
         parallel=6,
