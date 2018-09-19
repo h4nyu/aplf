@@ -11,7 +11,7 @@ def test_train():
         '/store/kaggle/tgs',
         'train.csv'
     )
-    train_df, val_df = train_test_split(dataset_df, test_size=0.1)
+    train_df, val_df = train_test_split(dataset_df, test_size=0.2)
 
     unsupervised_dataset = load_dataset_df(
         '/store/kaggle/tgs',
@@ -27,14 +27,19 @@ def test_train():
             val_df,
             has_y=True
         ),
-        unsupervised_dataset=TgsSaltDataset(
+        no_labeled_dataset=TgsSaltDataset(
             unsupervised_dataset,
             has_y=False
         ),
         epochs=2,
-        batch_size=24,
         feature_size=32,
+        labeled_batch_size=8,
+        no_labeled_batch_size=24,
         patience=5,
         base_size=5,
+        ema_decay=0.999,
+        consistency=100,
+        consistency_rampup=5,
+        depth=3,
         log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/test',
     )

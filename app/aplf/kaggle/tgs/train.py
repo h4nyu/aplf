@@ -14,13 +14,18 @@ from .metric import iou
 from os import path
 from .utils import AverageMeter
 from .losses import softmax_mse_loss
+from .ramps import sigmoid_rampup
+
+
+def get_current_consistency_weight(epoch, weight, rampup):
+    return weight * sigmoid_rampup(epoch, rampup)
 
 
 def update_ema_variables(model, ema_model, alpha):
-    # Use the true average until the exponential average is more correct
-    for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
-    return ema_model
+    with torch.no_grad():
+        for ema_param, param in zip(ema_model.parameters(), model.parameters()):
+            ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        return ema_model
 
 
 def validate(model, critertion, x, y):
@@ -45,42 +50,47 @@ def validate(model, critertion, x, y):
 def train(model_path,
           train_dataset,
           val_dataset,
-          unsupervised_dataset,
+          no_labeled_dataset,
           epochs,
-          train_batch_size,
-          unsupervised_batch_size,
+          labeled_batch_size,
+          no_labeled_batch_size,
           feature_size,
           patience,
           base_size,
           log_dir,
-          alpha,
-          consistency_weight,
+          ema_decay,
+          consistency,
+          consistency_rampup,
+          depth,
           ):
     device = torch.device("cuda")
 
     model = UNet(
-        feature_size=feature_size
+        feature_size=feature_size,
+        depth=depth,
     ).to(device)
     model.train()
     ema_model = UNet(
-        feature_size=feature_size
+        feature_size=feature_size,
+        depth=depth,
     ).to(device)
     ema_model.load_state_dict(model.state_dict())
     ema_model.train()
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=train_batch_size,
+        batch_size=labeled_batch_size,
         shuffle=True
     )
 
-    unsupervised_loader = DataLoader(
-        unsupervised_dataset,
-        batch_size=unsupervised_batch_size,
+    no_labeled_dataloader = DataLoader(
+        no_labeled_dataset,
+        batch_size=no_labeled_batch_size,
         shuffle=True
     )
 
-    val_batch_size = int(train_batch_size * len(val_dataset) / len(train_dataset))
+    val_batch_size = int(labeled_batch_size *
+                         len(val_dataset) / len(train_dataset))
     val_loader = DataLoader(
         val_dataset,
         batch_size=val_batch_size,
@@ -92,7 +102,7 @@ def train(model_path,
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
-        len(unsupervised_loader),
+        len(no_labeled_dataloader),
         len(val_loader)
     )
 
@@ -105,28 +115,32 @@ def train(model_path,
         sum_train_loss = 0
         sum_val_loss = 0
         sum_val_score = 0
-        for train_sample, unsupervised_sample, val_sample in zip(train_loader, unsupervised_loader, val_loader):
-
+        for train_sample, no_labeled_sample, val_sample in zip(train_loader, no_labeled_dataloader, val_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(
                 device).view(-1, 101, 101).long()
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
-            unsupervised_image = unsupervised_sample['image'].to(device)
-            ema_model_out = ema_model(train_image)
+            no_labeled_image = no_labeled_sample['image'].to(device)
             model_out = model(train_image)
             class_loss = class_criterion(model_out, train_mask)
 
-            consistency_input = torch.cat([
-                train_image,
-                unsupervised_image
-            ])
-            model_out = model(consistency_input)
-
             with torch.no_grad():
+                consistency_input = torch.cat([
+                    train_image,
+                    no_labeled_image
+                ])
                 ema_model_out = ema_model(consistency_input)
-            consistency_loss = consistency_criterion(model_out, ema_model_out)
-            loss = consistency_weight * consistency_loss + class_loss
+            model_out = model(consistency_input)
+            consistency_weight = get_current_consistency_weight(
+                consistency,
+                consistency_rampup,
+                epoch
+            )
+
+            consistency_loss = consistency_weight * \
+                consistency_criterion(model_out, ema_model_out)
+            loss = consistency_loss + class_loss
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
@@ -135,7 +149,8 @@ def train(model_path,
             loss.backward()
             optimizer.step()
 
-            ema_model = update_ema_variables(model, ema_model, alpha)
+            with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
 
             val_loss, val_score = validate(
                 model,

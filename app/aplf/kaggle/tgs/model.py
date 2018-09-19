@@ -134,32 +134,56 @@ class UpSample(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, feature_size=32):
+    def __init__(self, feature_size=32, depth=3):
         super().__init__()
-        self.down0 = DownSample(1, feature_size)
-        self.down1 = DownSample(feature_size, feature_size // 2)
-        self.down2 = DownSample(feature_size // 2, feature_size // 4)
-        self.down3 = DownSample(feature_size // 4, feature_size // 8)
-        self.down4 = DownSample(feature_size // 8, feature_size // 8)
-        self.up0 = UpSample(feature_size // 8,
-                            feature_size // 4, feature_size // 8)
-        self.up1 = UpSample(feature_size // 4,
-                            feature_size // 2, feature_size // 4)
-        self.up2 = UpSample(feature_size // 2, feature_size, feature_size // 2)
-        self.up3 = UpSample(feature_size, feature_size * 2, feature_size)
-        self.ouput = nn.Conv2d(feature_size * 2, 2, kernel_size=3)
+        self._input = DownSample(1, feature_size)
+        self.down_layers = pipe(
+            range(depth - 1),
+            map(lambda x: DownSample(
+                feature_size // (2 ** x),
+                feature_size // (2 ** (x + 1)),
+            )),
+            list,
+            nn.ModuleList
+        )
+
+        self.center = DownSample(
+            feature_size // (2 ** (depth - 1)),
+            feature_size // (2 ** (depth - 1)),
+        )
+
+        self.up_layers = pipe(
+            range(depth - 1),
+            reversed,
+            map(lambda x: UpSample(
+                feature_size // (2 ** (x + 1)),
+                feature_size // (2 ** x),
+                feature_size // (2 ** (x + 1)),
+            )),
+            list,
+            nn.ModuleList
+        )
+        self._output = UpSample(feature_size, 2, feature_size)
 
     def forward(self, x):
-        x, down0 = self.down0(x)
-        x, down1 = self.down1(x)
-        x, down2 = self.down2(x)
-        x, down3 = self.down3(x)
-        _, x = self.down4(x)
-        x = self.up0(x, down3)
-        x = self.up1(x, down2)
-        x = self.up2(x, down1)
-        x = self.up3(x, down0)
-        x = self.ouput(x)
+        # input
+        x, down0 = self._input(x)
+
+        # down samples
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            d_outs.append(d_out)
+
+        # center
+        _, x = self.center(x)
+
+        # up samples
+        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
+            x = layer(x, d_out)
+
+        # output
+        x = self._output(x, down0)
         x = F.interpolate(
             x,
             mode='bilinear',
