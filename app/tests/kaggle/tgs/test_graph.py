@@ -14,14 +14,14 @@ def test_graph():
         no_labeled_batch_size=24,
         val_split_size=0.20,
         feature_size=32,
-        depth=3,
+        depth=4,
         patience=20,
         base_size=10,
-        ema_decay=0.999,
-        consistency=100,
+        ema_decay=0.5,
+        consistency=1,
         consistency_rampup=30,
-        parallel=6,
-        top_num=3,
+        parallel=1,
+        top_num=1,
     )
 
     with Client('dask-scheduler:8786') as c:

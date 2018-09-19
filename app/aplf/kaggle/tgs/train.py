@@ -149,8 +149,6 @@ def train(model_path,
             loss.backward()
             optimizer.step()
 
-            with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
 
             val_loss, val_score = validate(
                 model,
@@ -160,8 +158,9 @@ def train(model_path,
             )
             sum_val_loss += val_loss.item()
             sum_val_score += val_score
-        print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
 
+
+        print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
                 'iou',
@@ -182,8 +181,11 @@ def train(model_path,
             )
 
         if max_val_score < sum_val_score / len_batch:
+
             torch.save(model, model_path)
             max_val_score = sum_val_score / len_batch
+            with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
 
         if sum_val_score / len_batch > 0:
             is_overfit = el(- sum_val_score / len_batch)
