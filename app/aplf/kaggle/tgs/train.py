@@ -133,9 +133,9 @@ def train(model_path,
                 ema_model_out = ema_model(consistency_input)
             model_out = model(consistency_input)
             consistency_weight = get_current_consistency_weight(
-                consistency,
-                consistency_rampup,
-                epoch
+                epoch=epoch,
+                weight=consistency,
+                rampup=consistency_rampup,
             )
 
             consistency_loss = consistency_weight * \
