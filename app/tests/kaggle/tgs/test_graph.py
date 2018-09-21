@@ -13,7 +13,7 @@ def test_graph():
         labeled_batch_size=32,
         no_labeled_batch_size=64,
         val_split_size=0.20,
-        feature_size=8,
+        feature_size=16,
         depth=3,
         patience=20,
         base_size=10,
