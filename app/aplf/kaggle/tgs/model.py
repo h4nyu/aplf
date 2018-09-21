@@ -134,45 +134,48 @@ class UpSample(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, feature_size=8, depth=3):
+    def __init__(self, feature_size=4, depth=3):
         super().__init__()
+
         self.down_layers = nn.ModuleList([
-            DownSample(1, feature_size),
+            DownSample(1, feature_size * (2**depth)),
             *pipe(
                 range(depth),
+                reversed,
                 map(lambda x: DownSample(
-                    feature_size * (2 ** x),
                     feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
                 )),
                 list,
             )
         ])
 
         self.center = DownSample(
-            feature_size * (2 ** depth),
-            feature_size * (2 ** depth),
+            feature_size,
+            feature_size,
         )
 
         self.up_layers = nn.ModuleList([
             *pipe(
-                range(depth),
-                reversed,
+                range(depth + 1),
                 map(lambda x: UpSample(
-                    feature_size * (2 ** (x + 1)),
                     feature_size * (2 ** x),
                     feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
                 )),
                 list,
             ),
-            UpSample(feature_size, feature_size, feature_size)
         ])
-        self._output = nn.Conv2d(feature_size, 2, kernel_size=3)
+        self._output = nn.Conv2d(
+            feature_size * (2**(depth+1)), 2, kernel_size=3)
 
     def forward(self, x):
         # down samples
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
+            print(x.size())
+            print(d_out.size())
             d_outs.append(d_out)
 
         # center
@@ -181,6 +184,7 @@ class UNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
+
 
         x = self._output(x)
         # output
