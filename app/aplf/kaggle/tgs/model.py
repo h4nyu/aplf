@@ -9,10 +9,8 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
-                 use_dropout=True
                  ):
         super().__init__()
-        self.use_dropout = use_dropout
         if in_ch == out_ch:
             self.projection = None
         else:
@@ -39,15 +37,12 @@ class ResBlock(nn.Module):
             nn.BatchNorm2d(out_ch),
         )
         self.activation = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(p=0.3, inplace=True)
 
     def forward(self, x):
         residual = x
         out = self.block(x)
         if self.projection:
             residual = self.projection(residual)
-        if self.use_dropout:
-            out = self.dropout(out)
         out += residual
         out = self.activation(out)
         return out
@@ -132,6 +127,68 @@ class UpSample(nn.Module):
         x = self.block(x)
         return x
 
+
+class UNet(nn.Module):
+    def __init__(self, feature_size=4, depth=3):
+        super().__init__()
+
+        self.down_layers = nn.ModuleList([
+            DownSample(1, feature_size * (2**depth)),
+            *pipe(
+                range(depth),
+                reversed,
+                map(lambda x: DownSample(
+                    feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
+                )),
+                list,
+            )
+        ])
+
+        self.center = DownSample(
+            feature_size,
+            feature_size,
+        )
+
+        self.up_layers = nn.ModuleList([
+            *pipe(
+                range(depth + 1),
+                map(lambda x: UpSample(
+                    feature_size * (2 ** x),
+                    feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
+                )),
+                list,
+            ),
+        ])
+        self._output = nn.Conv2d(
+            feature_size * (2**(depth+1)), 2, kernel_size=3)
+
+    def forward(self, x):
+        # down samples
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            print(x.size())
+            print(d_out.size())
+            d_outs.append(d_out)
+
+        # center
+        _, x = self.center(x)
+
+        # up samples
+        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
+            x = layer(x, d_out)
+
+
+        x = self._output(x)
+        # output
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(101, 101)
+        )
+        return x
 
 class UNet(nn.Module):
     def __init__(self, feature_size=4, depth=3):
