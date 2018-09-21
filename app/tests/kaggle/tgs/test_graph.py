@@ -11,7 +11,7 @@ def test_graph():
         output_dir='/store/kaggle/tgs/output',
         epochs=1200,
         labeled_batch_size=32,
-        no_labeled_batch_size=64,
+        no_labeled_batch_size=32,
         val_split_size=0.20,
         feature_size=16,
         depth=3,
