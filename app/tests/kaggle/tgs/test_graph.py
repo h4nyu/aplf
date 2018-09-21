@@ -18,7 +18,7 @@ def test_graph():
         patience=20,
         base_size=10,
         ema_decay=0.5,
-        consistency=1,
+        consistency=0.5,
         consistency_rampup=30,
         parallel=4,
         top_num=2,
