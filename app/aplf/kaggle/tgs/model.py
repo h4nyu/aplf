@@ -134,40 +134,43 @@ class UpSample(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, feature_size=32, depth=3):
+    def __init__(self, feature_size=8, depth=3):
         super().__init__()
-        self._input = DownSample(1, feature_size)
-        self.down_layers = pipe(
-            range(depth - 1),
-            map(lambda x: DownSample(
-                feature_size // (2 ** x),
-                feature_size // (2 ** (x + 1)),
-            )),
-            list,
-            nn.ModuleList
-        )
+        self.down_layers = nn.ModuleList([
+            DownSample(1, feature_size),
+            *pipe(
+                range(depth),
+                map(lambda x: DownSample(
+                    feature_size * (2 ** x),
+                    feature_size * (2 ** (x + 1)),
+                )),
+                list,
+            )
+        ])
 
         self.center = DownSample(
-            feature_size // (2 ** (depth - 1)),
-            feature_size // (2 ** (depth - 1)),
+            feature_size * (2 ** depth),
+            feature_size * (2 ** depth),
         )
 
-        self.up_layers = pipe(
-            range(depth - 1),
-            reversed,
-            map(lambda x: UpSample(
-                feature_size // (2 ** (x + 1)),
-                feature_size // (2 ** x),
-                feature_size // (2 ** (x + 1)),
-            )),
-            list,
-            nn.ModuleList
-        )
-        self._output = UpSample(feature_size, 2, feature_size)
+        self.up_layers = nn.ModuleList([
+            *pipe(
+                range(depth),
+                reversed,
+                map(lambda x: UpSample(
+                    feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
+                    feature_size * (2 ** (x + 1)),
+                )),
+                list,
+            ),
+            UpSample(feature_size, 2, feature_size)
+        ])
+
 
     def forward(self, x):
         # input
-        x, down0 = self._input(x)
+        #  x, down0 = self._input(x)
 
         # down samples
         d_outs = []
@@ -183,7 +186,6 @@ class UNet(nn.Module):
             x = layer(x, d_out)
 
         # output
-        x = self._output(x, down0)
         x = F.interpolate(
             x,
             mode='bilinear',
