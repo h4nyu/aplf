@@ -9,7 +9,7 @@ from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import train
 from .predict import predict
-from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json
 
 
 class Graph(object):
@@ -31,6 +31,7 @@ class Graph(object):
                  consistency_rampup,
                  depth,
                  ):
+        params = locals()
 
         ids = pipe(
             range(parallel),
@@ -114,6 +115,20 @@ class Graph(object):
             list
         )
 
+        param_files = pipe(
+            zip(ids, scores),
+            map(lambda x: dump_json(
+                f"{output_dir}/{x[0]}.json",
+                {
+                    'graph_id' : id,
+                    'model_id' : x[0],
+                    'score' : x[1],
+                    'params':params
+                },
+            )),
+            list
+        )
+
         top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
 
         submission_df = delayed(predict)(
@@ -132,5 +147,6 @@ class Graph(object):
             top_model_paths,
             scores,
             submission_df,
-            submission_file
+            submission_file,
+            param_files,
         ))

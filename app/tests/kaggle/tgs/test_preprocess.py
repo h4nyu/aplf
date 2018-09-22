@@ -36,3 +36,4 @@ def test_add_mask_size():
     output = rle_decode(sample['rle_mask'], (101, 101))
     output = torch.FloatTensor(output).view(1, 101, 101)
     assert output.sum() == 487
+
