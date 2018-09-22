@@ -231,8 +231,6 @@ class UNet(nn.Module):
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
-            print(x.size())
-            print(d_out.size())
             d_outs.append(d_out)
 
         # center
