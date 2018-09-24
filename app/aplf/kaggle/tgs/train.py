@@ -113,7 +113,7 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = lovasz_softmax
+    class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = softmax_mse_loss
     optimizer = optim.SGD(model.parameters(), lr = 0.1, momentum=0.9)
     reduce_LR = optim.lr_scheduler.ReduceLROnPlateau(
@@ -158,7 +158,7 @@ def train(model_path,
                 consistency_input = torch.cat([
                     train_image,
                     val_image,
-                    no_labeled_image,
+                    no_labeled_image
                 ])
 
                 # add hflop noise
