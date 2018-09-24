@@ -142,7 +142,7 @@ class UNet(nn.Module):
                 list,
             )
         ])
-        self.center = ResBlock(
+        self.center = SEBlock(
             feature_size * 2 ** depth,
             feature_size * 2 ** depth,
         )
