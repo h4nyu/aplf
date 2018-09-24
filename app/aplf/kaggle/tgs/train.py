@@ -37,6 +37,13 @@ def batch_hflip(images):
             list
         )
 
+def get_learning_rate(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
+
+
+
+
 
 def validate(critertion, x, y):
     loss = critertion(
@@ -64,6 +71,7 @@ def train(model_path,
           no_labeled_batch_size,
           feature_size,
           patience,
+          reduce_lr_patience,
           base_size,
           log_dir,
           ema_decay,
@@ -107,8 +115,13 @@ def train(model_path,
 
     class_criterion = lovasz_softmax
     consistency_criterion = softmax_mse_loss
-    optimizer = optim.Adam(model.parameters())
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+    optimizer = optim.SGD(model.parameters(), lr = 0.1, momentum=0.9)
+    reduce_LR = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        'min',
+        factor=0.5,
+        patience=reduce_lr_patience,
+    )
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
@@ -144,7 +157,8 @@ def train(model_path,
             with torch.no_grad():
                 consistency_input = torch.cat([
                     train_image,
-                    no_labeled_image
+                    val_image,
+                    no_labeled_image,
                 ])
 
                 # add hflop noise
@@ -172,7 +186,6 @@ def train(model_path,
             optimizer.step()
 
             with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_loss, val_score = validate(
                     class_criterion,
                     model(val_image),
@@ -191,9 +204,8 @@ def train(model_path,
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
 
-        scheduler.step(mean_val_loss)
+        reduce_LR.step(mean_val_loss)
         with SummaryWriter(log_dir) as w:
-
             w.add_scalars(
                 'iou',
                 {
@@ -212,10 +224,19 @@ def train(model_path,
                 },
                 epoch
             )
+            w.add_scalars(
+                'lr',
+                {
+                    'lr': get_learning_rate(optimizer),
+                },
+                epoch
+            )
 
         if max_iou_val <= mean_iou_val:
             max_iou_val = mean_iou_val
             torch.save(ema_model, model_path)
+            with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
 
         if max_iou_train <= mean_iou_train:
             max_iou_train = mean_iou_train

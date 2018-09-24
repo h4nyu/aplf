@@ -160,10 +160,11 @@ class UNet(nn.Module):
             ),
             UpSample(
                 feature_size,
-                2,
+                feature_size,
                 feature_size,
             ),
         ])
+        self.output = nn.Conv2d(feature_size, 2, kernel_size=3)
 
     def forward(self, x):
         # down samples
@@ -177,6 +178,14 @@ class UNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
+
+        x = self.output(x)
+
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(101, 101)
+        )
 
         return x
 
