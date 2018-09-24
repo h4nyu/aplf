@@ -15,6 +15,8 @@ from os import path
 from .utils import AverageMeter
 from .losses import softmax_mse_loss
 from .ramps import sigmoid_rampup
+from .preprocess import hflip
+
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
@@ -27,24 +29,30 @@ def update_ema_variables(model, ema_model, alpha):
             ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
         return ema_model
 
-
-def validate(model, critertion, x, y):
+def batch_hflip(images):
     with torch.no_grad():
-        output = model(x)
-        loss = critertion(
-            output,
-            y
+        return pipe(
+            images,
+            map(hflip),
+            list
         )
-        score = pipe(
-            zip(
-                output.argmax(dim=1).cpu().detach().numpy(),
-                y.cpu().detach().numpy()
-            ),
-            map(lambda x: iou(*x)),
-            list,
-            np.mean
-        )
-        return loss, score
+
+
+def validate(critertion, x, y):
+    loss = critertion(
+        x,
+        y
+    )
+    score = pipe(
+        zip(
+            x.argmax(dim=1).cpu().detach().numpy(),
+            y.cpu().detach().numpy()
+        ),
+        map(lambda x: iou(*x)),
+        list,
+        np.mean
+    )
+    return loss, score
 
 
 def train(model_path,
@@ -107,12 +115,14 @@ def train(model_path,
     )
 
     el = EarlyStop(patience, base_size=base_size)
-    max_val_score = 0
+    max_iou_val = 0
+    max_iou_train = 0
 
     for epoch in range(epochs):
         sum_class_loss = 0
         sum_consistency_loss = 0
         sum_train_loss = 0
+        sum_train_score = 0
         sum_val_loss = 0
         sum_val_score = 0
         for train_sample, no_labeled_sample, val_sample in zip(train_loader, no_labeled_dataloader, val_loader):
@@ -123,15 +133,26 @@ def train(model_path,
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
             no_labeled_image = no_labeled_sample['image'].to(device)
             model_out = model(train_image)
-            class_loss = class_criterion(model_out, train_mask)
+            class_loss, train_score = validate(
+                class_criterion,
+                model_out,
+                train_mask
+            )
+            sum_train_score += train_score
 
             with torch.no_grad():
                 consistency_input = torch.cat([
                     train_image,
                     no_labeled_image
                 ])
-                ema_model_out = ema_model(consistency_input)
+
+                # add hflop noise
+                ema_model_out = ema_model(
+                    consistency_input.flip([3])
+                ).flip([3])
+
             model_out = model(consistency_input)
+
             consistency_weight = get_current_consistency_weight(
                 epoch=epoch,
                 weight=consistency,
@@ -149,46 +170,57 @@ def train(model_path,
             loss.backward()
             optimizer.step()
 
+            with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
+                val_loss, val_score = validate(
+                    class_criterion,
+                    model(val_image),
+                    val_mask
+                )
+                sum_val_loss += val_loss.item()
+                sum_val_score += val_score
 
-
-            val_loss, val_score = validate(
-                model,
-                class_criterion,
-                val_image,
-                val_mask
-            )
-            sum_val_loss += val_loss.item()
-            sum_val_score += val_score
 
 
         print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
+        mean_iou_val = sum_val_score / len_batch
+        mean_iou_train = sum_train_score / len_batch
+        mean_train_loss = sum_train_loss / len_batch
+        mean_consistency_loss = sum_consistency_loss / len_batch
+        mean_val_loss = sum_val_loss / len_batch
+        mean_class_loss = sum_class_loss / len_batch
         with SummaryWriter(log_dir) as w:
+
             w.add_scalars(
                 'iou',
                 {
-                    'val': sum_val_score / len_batch,
+                    'val': mean_iou_val,
+                    'train': mean_iou_train,
                 },
                 epoch
             )
             w.add_scalars(
                 'loss',
                 {
-                    'train': sum_train_loss / len_batch,
-                    'consistency': sum_consistency_loss / len_batch,
-                    'class': sum_class_loss / len_batch,
-                    'val': sum_val_loss / len_batch,
+                    'train': mean_train_loss,
+                    'consistency': mean_consistency_loss,
+                    'class': mean_class_loss,
+                    'val': mean_val_loss,
                 },
                 epoch
             )
 
-        if max_val_score < sum_val_score / len_batch:
+        if max_iou_val < mean_iou_val:
+            max_iou_val = mean_iou_val
             with torch.no_grad():
                 ema_model = update_ema_variables(model, ema_model, ema_decay)
             torch.save(ema_model, model_path)
-            max_val_score = sum_val_score / len_batch
+
+        if max_iou_train < mean_iou_train:
+            max_iou_train = mean_iou_train
 
         if sum_val_score / len_batch > 0:
-            is_overfit = el(- sum_val_score / len_batch)
+            is_overfit = el(- mean_iou_val)
 
         if is_overfit:
             break

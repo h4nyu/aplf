@@ -1,5 +1,6 @@
 from aplf import config
 import torch
+from torch.utils.data import DataLoader
 from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from tensorboardX import SummaryWriter
@@ -37,3 +38,25 @@ def test_add_mask_size():
     output = torch.FloatTensor(output).view(1, 101, 101)
     assert output.sum() == 487
 
+
+def test_batch_hflip():
+    dataset_df = load_dataset_df(
+        '/store/kaggle/tgs',
+        'train.csv'
+    )
+
+    dataloader = DataLoader(
+        no_labeled_dataset,
+        batch_size=16,
+        shuffle=True
+    )
+    dataloader[0]
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
+    dataset_df = load_dataset_df('/store/kaggle/tgs')
+    writer.add_image(
+        f"flip",
+        vutils.make_grid(
+        ),
+    )
+    assert output.sum() == 487

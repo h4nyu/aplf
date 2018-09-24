@@ -1,12 +1,22 @@
 from aplf.kaggle.tgs.model import UNet, SEBlock, DownSample, UpSample, ResBlock
 import torch
+import pytest
 
-
-def test_model():
-    model = UNet()
-    in_image = torch.empty(32, 1, 101, 101)
-    out_image = model(in_image)
-    assert out_image.size() == (32, 2, 101, 101)
+@pytest.mark.parametrize("depth, feature_size", [
+    (3, 4),
+    (3, 8),
+    (4, 8),
+    (3, 16),
+])
+def test_model(depth, feature_size):
+    with torch.no_grad():
+        model = UNet(
+            feature_size=feature_size,
+            depth=depth
+        )
+        in_image = torch.empty(32, 1, 101, 101)
+        out_image = model(in_image)
+        assert out_image.size() == (32, 2, 101, 101)
 
 
 def test_se_layer():

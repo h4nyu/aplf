@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry, merge
 from sklearn.metrics import jaccard_similarity_score
 import numpy as np
 import pandas as pd
@@ -6,12 +6,13 @@ from skimage import io
 import torch.nn.functional as F
 import scipy
 import torch
+import json
 
 
 def rle_decode(mask_rle, shape):
     '''
     mask_rle: run-length as string formated (start length)
-    shape: (height,width) of array to return 
+    shape: (height,width) of array to return
     Returns numpy array, 1 - mask, 0 - background
 
     '''
@@ -126,3 +127,11 @@ def crop(image, start, end):
     image = F.interpolate(image, mode='bilinear', size=(h, w))
     image = image.view(c, h, w)
     return image
+
+@curry
+def dump_json(path, *dicts):
+    data = merge(*dicts)
+
+    with open(path, 'w') as f:
+        json.dump(data, f)
+    return path

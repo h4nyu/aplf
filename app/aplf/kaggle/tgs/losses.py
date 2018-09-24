@@ -9,5 +9,5 @@ def softmax_mse_loss(input_logits, target_logits):
     - Sends gradients to inputs but not the targets.
     """
     assert input_logits.size() == target_logits.size()
-    label = F.softmax(target_logits, dim=1).argmax(dim=1)
-    return F.cross_entropy(input_logits, label, size_average=True)
+    labels = F.softmax(target_logits, dim=1).argmax(dim=1)
+    return F.cross_entropy(input_logits, labels, size_average=True)
