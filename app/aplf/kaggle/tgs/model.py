@@ -129,71 +129,6 @@ class UpSample(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, feature_size=4, depth=4, order='asc'):
-        super().__init__()
-
-        self.down_layers = nn.ModuleList([
-            DownSample(1, feature_size * (2**depth)),
-            *pipe(
-                range(depth),
-                reversed,
-                map(lambda x: DownSample(
-                    feature_size * (2 ** (x + 1)),
-                    feature_size * (2 ** x),
-                )),
-                list,
-            )
-        ])
-
-        self.center = ResBlock(
-            feature_size,
-            feature_size,
-        )
-
-        self.up_layers = nn.ModuleList([
-            *pipe(
-                range(depth + 1),
-                map(lambda x: UpSample(
-                    feature_size * (2 ** x),
-                    feature_size * (2 ** (x + 1)),
-                    feature_size * (2 ** x),
-                )),
-                list,
-            ),
-        ])
-
-        if order == 'desc':
-            self.down_layers = reversed(self.down_layers)
-        self._output = nn.Conv2d(
-            feature_size * (2**(depth+1)), 2, kernel_size=3)
-
-    def forward(self, x):
-        # down samples
-        d_outs = []
-        for layer in self.down_layers:
-            x, d_out = layer(x)
-            print(x.size())
-            print(d_out.size())
-            d_outs.append(d_out)
-
-        # center
-        _, x = self.center(x)
-
-        # up samples
-        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
-            x = layer(x, d_out)
-
-
-        x = self._output(x)
-        # output
-        x = F.interpolate(
-            x,
-            mode='bilinear',
-            size=(101, 101)
-        )
-        return x
-
-class UNet(nn.Module):
     def __init__(self, feature_size=8, depth=3):
         super().__init__()
         self.down_layers = nn.ModuleList([
@@ -207,10 +142,9 @@ class UNet(nn.Module):
                 list,
             )
         ])
-
-        self.center = SEBlock(
-            feature_size * 2 ** (depth),
-            feature_size * 2 ** (depth),
+        self.center = ResBlock(
+            feature_size * 2 ** depth,
+            feature_size * 2 ** depth,
         )
 
         self.up_layers = nn.ModuleList([
@@ -238,7 +172,6 @@ class UNet(nn.Module):
             x, d_out = layer(x)
             d_outs.append(d_out)
 
-        # center
         x = self.center(x)
 
         # up samples

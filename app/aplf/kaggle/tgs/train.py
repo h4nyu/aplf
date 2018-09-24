@@ -13,7 +13,7 @@ from tensorboardX import SummaryWriter
 from .metric import iou
 from os import path
 from .utils import AverageMeter
-from .losses import softmax_mse_loss
+from .losses import softmax_mse_loss, lovasz_softmax
 from .ramps import sigmoid_rampup
 from .preprocess import hflip
 
@@ -105,9 +105,10 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = nn.CrossEntropyLoss(size_average=True)
+    class_criterion = lovasz_softmax
     consistency_criterion = softmax_mse_loss
     optimizer = optim.Adam(model.parameters())
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
@@ -189,6 +190,8 @@ def train(model_path,
         mean_consistency_loss = sum_consistency_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
+
+        scheduler.step(mean_val_loss)
         with SummaryWriter(log_dir) as w:
 
             w.add_scalars(
@@ -210,13 +213,11 @@ def train(model_path,
                 epoch
             )
 
-        if max_iou_val < mean_iou_val:
+        if max_iou_val <= mean_iou_val:
             max_iou_val = mean_iou_val
-            with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
             torch.save(ema_model, model_path)
 
-        if max_iou_train < mean_iou_train:
+        if max_iou_train <= mean_iou_train:
             max_iou_train = mean_iou_train
 
         if sum_val_score / len_batch > 0:
