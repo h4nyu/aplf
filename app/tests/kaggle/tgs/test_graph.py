@@ -14,7 +14,7 @@ def test_graph():
         no_labeled_batch_size=12,
         val_split_size=0.20,
         feature_size=20,
-        depth=3,
+        depth=4,
         patience=20,
         reduce_lr_patience=6,
         base_size=10,
