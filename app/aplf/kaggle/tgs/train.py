@@ -115,7 +115,7 @@ def train(model_path,
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = softmax_mse_loss
-    optimizer = optim.SGD(model.parameters(), lr = 0.1, momentum=0.9)
+    optimizer = optim.Adam(model.parameters())
     reduce_LR = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         'min',
@@ -204,7 +204,6 @@ def train(model_path,
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
 
-        reduce_LR.step(mean_val_loss)
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
                 'iou',
