@@ -6,7 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
-from .model import UNet
+from . import model as mdl
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
@@ -64,6 +64,7 @@ def train(model_path,
           train_dataset,
           val_dataset,
           no_labeled_dataset,
+          model_type,
           epochs,
           labeled_batch_size,
           no_labeled_batch_size,
@@ -79,7 +80,7 @@ def train(model_path,
           ):
     device = torch.device("cuda")
 
-    model = UNet(
+    model = getattr(mdl, model_type)(
         feature_size=feature_size,
         depth=depth,
     ).to(device)

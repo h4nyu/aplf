@@ -50,9 +50,7 @@ class SCSE(nn.Module):
     def forward(self, x):
         cSE = self.cSE(x)
         sSE = self.sSE(x)
-
         x = cSE + sSE
-
         return x
 
 
@@ -166,7 +164,78 @@ class UNet(nn.Module):
     def __init__(self, feature_size=8, depth=3):
         super().__init__()
         self.down_layers = nn.ModuleList([
-            DownSample(1, feature_size * (2 ** depth)),
+            DownSample(1, feature_size),
+            *pipe(
+                range(depth),
+                map(lambda x: DownSample(
+                    feature_size * (2 ** x),
+                    feature_size * (2 ** (x + 1)),
+                )),
+                list,
+            )
+        ])
+
+        self.center = nn.Sequential(
+            ResBlock(
+                in_ch=feature_size * 2 ** depth,
+                out_ch=feature_size * 2 ** depth,
+            ),
+            SCSE(feature_size * 2 ** depth),
+        )
+
+        self.up_layers = nn.ModuleList([
+            *pipe(
+                range(depth),
+                reversed,
+                map(lambda x: UpSample(
+                    feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
+                    feature_size * (2 ** (x + 1)),
+                )),
+                list,
+            ),
+            UpSample(
+                feature_size,
+                2,
+                feature_size,
+            ),
+        ])
+
+    def forward(self, x):
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(128, 128)
+        )
+        # down samples
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            d_outs.append(d_out)
+
+        x = self.center(x)
+
+        # up samples
+        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
+            x = layer(x, d_out)
+            print(x.size())
+
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(101, 101)
+        )
+        return x
+
+
+class RevertUNet(UNet):
+    def __init__(self,
+                 feature_size=8,
+                 depth=3,
+                 ):
+        super().__init__()
+        self.down_layers = nn.ModuleList([
+            DownSample(1, feature_size * 2 ** depth),
             *pipe(
                 range(depth),
                 reversed,
@@ -203,28 +272,4 @@ class UNet(nn.Module):
             ),
         ])
 
-    def forward(self, x):
-        x = F.interpolate(
-            x,
-            mode='bilinear',
-            size=(128, 128)
-        )
-        # down samples
-        d_outs = []
-        for layer in self.down_layers:
-            x, d_out = layer(x)
-            d_outs.append(d_out)
-
-        x = self.center(x)
-
-        # up samples
-        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
-            x = layer(x, d_out)
-
-        x = F.interpolate(
-            x,
-            mode='bilinear',
-            size=(101, 101)
-        )
-        return x
 
