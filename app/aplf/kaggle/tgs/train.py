@@ -177,8 +177,6 @@ def train(model_path,
             loss.backward()
             optimizer.step()
 
-            with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
 
             with torch.no_grad():
                 val_loss, val_score = validate(
@@ -196,6 +194,9 @@ def train(model_path,
         mean_consistency_loss = sum_consistency_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
+
+        with torch.no_grad():
+            ema_model = update_ema_variables(model, ema_model, ema_decay)
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(

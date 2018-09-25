@@ -170,6 +170,11 @@ class UNet(nn.Module):
         ])
 
     def forward(self, x):
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(128, 128)
+        )
         # down samples
         d_outs = []
         for layer in self.down_layers:
@@ -181,5 +186,11 @@ class UNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
+
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(101, 101)
+        )
         return x
 
