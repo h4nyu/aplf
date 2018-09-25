@@ -9,7 +9,7 @@ def test_graph():
         id=f"{datetime.now().isoformat()}",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
-        epochs=200,
+        epochs=1500,
         labeled_batch_size=32,
         no_labeled_batch_size=8,
         val_split_size=0.15,
@@ -20,7 +20,7 @@ def test_graph():
         base_size=10,
         ema_decay=0.1,
         consistency=0.5,
-        consistency_rampup=40,
+        consistency_rampup=20,
         parallel=4,
         top_num=2,
     )

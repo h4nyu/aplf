@@ -143,7 +143,7 @@ class UNet(nn.Module):
                 list,
             )
         ])
-        self.center = SEBlock(
+        self.center = ResBlock(
             feature_size,
             feature_size,
         )
@@ -164,7 +164,6 @@ class UNet(nn.Module):
                 feature_size * 2 ** depth,
             ),
         ])
-        #  self.output = nn.Conv2d(feature_size, 2, kernel_size=3)
 
     def forward(self, x):
         # down samples
@@ -178,15 +177,5 @@ class UNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
-            print(x.size())
-
-        #  x = self.output(x)
-
-        #  x = F.interpolate(
-        #      x,
-        #      mode='bilinear',
-        #      size=(101, 101)
-        #  )
-        #
         return x
 

@@ -122,10 +122,10 @@ class Graph(object):
             map(lambda x: dump_json(
                 f"{output_dir}/{x[0]}.json",
                 {
-                    'graph_id' : id,
-                    'model_id' : x[0],
-                    'score' : x[1],
-                    'params':params
+                    'graph_id': id,
+                    'model_id': x[0],
+                    'score': x[1],
+                    'params': params
                 },
             )),
             list
@@ -151,4 +151,39 @@ class Graph(object):
             submission_df,
             submission_file,
             param_files,
+        ))
+
+
+class SubmissionGraph(object):
+    def __init__(self,
+                 id,
+                 dataset_dir,
+                 output_dir,
+                 model_paths,
+                 ):
+        predict_dataset_df = delayed(load_dataset_df)(
+            dataset_dir,
+            'sample_submission.csv'
+        )
+
+        predict_dataset = delayed(TgsSaltDataset)(
+            predict_dataset_df,
+            has_y=False
+        )
+
+        submission_df = delayed(predict)(
+            model_paths=model_paths,
+            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
+            dataset=predict_dataset,
+            log_interval=10,
+        )
+
+        submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
+        submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(
+            submission_df,
+        )
+
+        self.output = delayed(lambda x: x)((
+            submission_df,
+            submission_file,
         ))

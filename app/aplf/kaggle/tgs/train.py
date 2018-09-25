@@ -13,10 +13,9 @@ from tensorboardX import SummaryWriter
 from .metric import iou
 from os import path
 from .utils import AverageMeter
-from .losses import softmax_mse_loss, lovasz_softmax
+from .losses import softmax_mse_loss, lovasz_softmax, FocalLoss
 from .ramps import sigmoid_rampup
 from .preprocess import hflip
-
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
@@ -29,6 +28,7 @@ def update_ema_variables(model, ema_model, alpha):
             ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
         return ema_model
 
+
 def batch_hflip(images):
     with torch.no_grad():
         return pipe(
@@ -37,12 +37,10 @@ def batch_hflip(images):
             list
         )
 
+
 def get_learning_rate(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
-
-
-
 
 
 def validate(critertion, x, y):
@@ -113,15 +111,9 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = nn.CrossEntropyLoss(size_average=True)
+    class_criterion = FocalLoss()
     consistency_criterion = softmax_mse_loss
     optimizer = optim.Adam(model.parameters())
-    reduce_LR = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer,
-        'min',
-        factor=0.5,
-        patience=reduce_lr_patience,
-    )
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
@@ -193,8 +185,6 @@ def train(model_path,
                 )
                 sum_val_loss += val_loss.item()
                 sum_val_score += val_score
-
-
 
         print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
         mean_iou_val = sum_val_score / len_batch
