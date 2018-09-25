@@ -79,13 +79,14 @@ def train(model_path,
           depth,
           ):
     device = torch.device("cuda")
+    Model = getattr(mdl, model_type)
 
-    model = getattr(mdl, model_type)(
+    model = Model(
         feature_size=feature_size,
         depth=depth,
     ).to(device)
     model.train()
-    ema_model = UNet(
+    ema_model = Model(
         feature_size=feature_size,
         depth=depth,
     ).to(device)
