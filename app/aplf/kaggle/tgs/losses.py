@@ -283,4 +283,4 @@ def softmax_mse_loss(input_logits, target_logits):
     """
     assert input_logits.size() == target_logits.size()
     labels = F.softmax(target_logits, dim=1).argmax(dim=1)
-    return FocalLoss()(input_logits, labels)
+    return nn.CrossEntropyLoss(size_average=True)(input_logits, labels)

@@ -111,7 +111,7 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = FocalLoss()
+    class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = softmax_mse_loss
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
@@ -178,6 +178,9 @@ def train(model_path,
             optimizer.step()
 
             with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
+
+            with torch.no_grad():
                 val_loss, val_score = validate(
                     class_criterion,
                     model(val_image),
@@ -224,8 +227,6 @@ def train(model_path,
         if max_iou_val <= mean_iou_val:
             max_iou_val = mean_iou_val
             torch.save(ema_model, model_path)
-            with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
 
         if max_iou_train <= mean_iou_train:
             max_iou_train = mean_iou_train

@@ -143,9 +143,13 @@ class UNet(nn.Module):
                 list,
             )
         ])
-        self.center = ResBlock(
-            feature_size,
-            feature_size,
+
+        self.center = nn.Sequential(
+            ResBlock(
+                in_ch=feature_size,
+                out_ch=feature_size,
+            ),
+            SEBlock(feature_size),
         )
 
         self.up_layers = nn.ModuleList([
