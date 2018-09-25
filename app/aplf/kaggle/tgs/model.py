@@ -4,6 +4,58 @@ import torch
 import torch.nn.functional as F
 
 
+class CSE(nn.Module):
+    def __init__(self, in_ch, r):
+        super(CSE, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+
+        self.fc = nn.Sequential(
+            nn.Linear(in_ch, in_ch // r),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_ch//r, in_ch),
+            nn.Sigmoid()
+        )
+
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
+
+class SSE(nn.Module):
+    def __init__(self, in_ch):
+        super(SSE, self).__init__()
+
+        self.conv = nn.Conv2d(in_ch, in_ch, kernel_size=1, stride=1)
+
+    def forward(self, x):
+        input_x = x
+
+        x = self.conv(x)
+        x = F.sigmoid(x)
+
+        x = input_x * x
+
+        return x
+
+class SCSE(nn.Module):
+    def __init__(self, in_ch, r=2):
+        super(SCSE, self).__init__()
+
+        self.cSE = CSE(in_ch, r)
+        self.sSE = SSE(in_ch)
+
+    def forward(self, x):
+        cSE = self.cSE(x)
+        sSE = self.sSE(x)
+
+        x = cSE + sSE
+
+        return x
+
+
 class ResBlock(nn.Module):
 
     def __init__(self,
@@ -48,24 +100,6 @@ class ResBlock(nn.Module):
         return out
 
 
-class SEBlock(nn.Module):
-    def __init__(self, channel, reduction=2 / 3):
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(channel, int(channel * reduction)),
-            nn.ReLU(inplace=True),
-            nn.Linear(int(channel * reduction), channel),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y
-
 
 class DownSample(nn.Module):
 
@@ -82,17 +116,17 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            SEBlock(out_ch),
+            SCSE(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            SEBlock(out_ch),
+            SCSE(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            SEBlock(out_ch),
+            SCSE(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -118,7 +152,7 @@ class UpSample(nn.Module):
                 in_ch + other_ch,
                 out_ch,
             ),
-            SEBlock(out_ch),
+            SCSE(out_ch),
         )
 
     def forward(self, x, other):
@@ -149,7 +183,7 @@ class UNet(nn.Module):
                 in_ch=feature_size,
                 out_ch=feature_size,
             ),
-            SEBlock(feature_size),
+            SCSE(feature_size),
         )
 
         self.up_layers = nn.ModuleList([

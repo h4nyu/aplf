@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.model import UNet, SEBlock, DownSample, UpSample, ResBlock
+from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock
 import torch
 import pytest
 
@@ -19,8 +19,8 @@ def test_model(depth, feature_size):
         assert out_image.size() == (32, 2, 101, 101)
 
 
-def test_se_layer():
-    model = SEBlock(32, 2)
+def test_scse():
+    model = SCSE(32, 2)
     in_image = torch.empty(32, 32, 101, 101)
     output = model(in_image)
     assert output.size() == (32, 32, 101, 101)
