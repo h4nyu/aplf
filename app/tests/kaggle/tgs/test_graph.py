@@ -21,9 +21,9 @@ def test_graph():
         base_size=10,
         ema_decay=0.5,
         consistency=0.1,
-        consistency_rampup=20,
-        parallel=4,
-        top_num=2,
+        consistency_rampup=30,
+        parallel=1,
+        top_num=1,
     )
 
     with Client('dask-scheduler:8786') as c:
