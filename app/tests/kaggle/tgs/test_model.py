@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RevertUNet
+from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RevertUNet, HybridUNet
 import torch
 import pytest
 
@@ -21,6 +21,19 @@ def test_unet(depth, feature_size):
 def test_revertunet(depth, feature_size):
     with torch.no_grad():
         model = RevertUNet(
+            feature_size=feature_size,
+            depth=depth
+        )
+        in_image = torch.empty(32, 1, 101, 101)
+        out_image = model(in_image)
+        assert out_image.size() == (32, 2, 101, 101)
+
+@pytest.mark.parametrize("depth, feature_size", [
+    (3, 4),
+])
+def test_hybrid_unet(depth, feature_size):
+    with torch.no_grad():
+        model = HybridUNet(
             feature_size=feature_size,
             depth=depth
         )
