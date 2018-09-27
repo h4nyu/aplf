@@ -163,7 +163,7 @@ class UpSample(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, feature_size=8, depth=3):
+    def __init__(self, feature_size=8, depth=4):
         super().__init__()
         self.down_layers = nn.ModuleList([
             DownSample(1, feature_size),
@@ -204,11 +204,6 @@ class UNet(nn.Module):
         ])
 
     def forward(self, x):
-        x = F.interpolate(
-            x,
-            mode='bilinear',
-            size=(128, 128)
-        )
         # down samples
         d_outs = []
         for layer in self.down_layers:
@@ -220,12 +215,8 @@ class UNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
+            print(x.size())
 
-        x = F.interpolate(
-            x,
-            mode='bilinear',
-            size=(101, 101)
-        )
         return x
 
 
@@ -275,7 +266,7 @@ class RevertUNet(UNet):
 
 
 
-class HybridUNet(UNet):
+class DUNet(UNet):
     def __init__(self,
                  feature_size=8,
                  depth=3,
@@ -318,6 +309,55 @@ class HybridUNet(UNet):
                 feature_size * 2 ** depth,
                 2,
                 feature_size,
+            ),
+        ])
+
+
+
+class EUNet(UNet):
+    def __init__(self,
+                 feature_size=8,
+                 depth=3,
+                 ):
+        super().__init__()
+        self.down_layers = nn.ModuleList([
+            DownSample(1, feature_size * 2 ** depth),
+            *pipe(
+                range(depth),
+                reversed,
+                map(lambda x: DownSample(
+                    feature_size * (2 ** (x + 1)),
+                    feature_size * (2 ** x),
+                )),
+                list,
+            )
+        ])
+
+        self.center = nn.Sequential(
+            ResBlock(
+                in_ch=feature_size,
+                out_ch=feature_size,
+            ),
+            SCSE(feature_size),
+        )
+
+        self.up_layers = nn.ModuleList([
+            *pipe(
+                self.down_layers,
+                reversed,
+                map(lambda x: x.out_ch),
+                take(depth),
+                map(lambda x: UpSample(
+                    feature_size,
+                    feature_size,
+                    x,
+                )),
+                list,
+            ),
+            UpSample(
+                feature_size,
+                2,
+                feature_size * 2 ** depth,
             ),
         ])
 
