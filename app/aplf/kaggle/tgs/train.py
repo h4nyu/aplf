@@ -118,6 +118,7 @@ def train(model_path,
         first=nn.CrossEntropyLoss(size_average=True),
         second=lovasz_softmax,
         rampup=consistency_rampup,
+        weight=consistency,
     )
 
     consistency_criterion = class_criterion

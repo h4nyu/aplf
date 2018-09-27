@@ -152,7 +152,28 @@ def binary_xloss(logits, labels, ignore=None):
 # --------------------------- MULTICLASS LOSSES ---------------------------
 
 
-def lovasz_softmax(probas, labels, only_present=False, per_image=False, ignore=None):
+def mean(l, ignore_nan=False, empty=0):
+    """
+    nanmean compatible with generators.
+    """
+    l = iter(l)
+    if ignore_nan:
+        l = ifilterfalse(np.isnan, l)
+    try:
+        n = 1
+        acc = next(l)
+    except StopIteration:
+        if empty == 'raise':
+            raise ValueError('Empty mean')
+        return empty
+    for n, v in enumerate(l, 2):
+        acc += v
+    if n == 1:
+        return acc
+    return acc / n
+
+
+def lovasz_softmax(probas, labels, only_present=False, per_image=True, ignore=None):
     """
     Multi-class Lovasz-Softmax loss
     probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1)
@@ -217,26 +238,6 @@ def xloss(logits, labels, ignore=None):
 
 # --------------------------- HELPER FUNCTIONS ---------------------------
 
-def mean(l, ignore_nan=False, empty=0):
-    """
-    nanmean compatible with generators.
-    """
-    l = iter(l)
-    if ignore_nan:
-        l = ifilterfalse(np.isnan, l)
-    try:
-        n = 1
-        acc = next(l)
-    except StopIteration:
-        if empty == 'raise':
-            raise ValueError('Empty mean')
-        return empty
-    for n, v in enumerate(l, 2):
-        acc += v
-    if n == 1:
-        return acc
-    return acc / n
-
 
 class FocalLoss(nn.Module):
     def __init__(self, gamma=0.5, alpha=None, size_average=True):
@@ -275,20 +276,18 @@ class FocalLoss(nn.Module):
             return loss.sum()
 
 
-
 class LossSwitcher(object):
     def __init__(self,
                  first,
                  second,
                  rampup,
+                 weight=1,
                  ):
         self.first = first
         self.second = second
         self.rampup = rampup
+        self.weight = weight
 
     def __call__(self, input_logits, labels, epoch):
-        alpha =  sigmoid_rampup(epoch, self.rampup)
+        alpha = self.weight * sigmoid_rampup(epoch, self.rampup)
         return (1 - alpha) * self.first(input_logits, labels) + alpha * self.second(input_logits, labels)
-
-
-
