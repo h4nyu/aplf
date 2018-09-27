@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 import numpy as np
+from .ramps import sigmoid_rampup
 
 
 """
@@ -274,13 +275,20 @@ class FocalLoss(nn.Module):
             return loss.sum()
 
 
-def softmax_mse_loss(input_logits, target_logits):
-    """Takes softmax on both sides and returns MSE loss
-    Note:
-    - Returns the sum over all examples. Divide by the batch size afterwards
-    if you want the mean.
-    - Sends gradients to inputs but not the targets.
-    """
-    assert input_logits.size() == target_logits.size()
-    labels = F.softmax(target_logits, dim=1).argmax(dim=1)
-    return nn.CrossEntropyLoss(size_average=True)(input_logits, labels)
+
+class LossSwitcher(object):
+    def __init__(self,
+                 first,
+                 second,
+                 rampup,
+                 ):
+        self.first = first
+        self.second = second
+        self.rampup = rampup
+
+    def __call__(self, input_logits, labels, epoch):
+        alpha =  sigmoid_rampup(epoch, self.rampup)
+        return (1 - alpha) * self.first(input_logits, labels) + alpha * self.second(input_logits, labels)
+
+
+

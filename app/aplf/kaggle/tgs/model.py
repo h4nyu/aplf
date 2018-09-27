@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, tail, take
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -108,6 +108,8 @@ class DownSample(nn.Module):
                  padding=1,
                  ):
         super().__init__()
+        self.in_ch = in_ch
+        self.out_ch = out_ch
 
         self.block = nn.Sequential(
             ResBlock(
@@ -218,7 +220,6 @@ class UNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
-            print(x.size())
 
         x = F.interpolate(
             x,
@@ -269,6 +270,54 @@ class RevertUNet(UNet):
                 feature_size * 2 ** depth,
                 2,
                 feature_size * 2 ** depth,
+            ),
+        ])
+
+
+
+class HybridUNet(UNet):
+    def __init__(self,
+                 feature_size=8,
+                 depth=3,
+                 ):
+        super().__init__()
+        self.down_layers = nn.ModuleList([
+            DownSample(1, feature_size),
+            *pipe(
+                range(depth),
+                map(lambda x: DownSample(
+                    feature_size * (2 ** x),
+                    feature_size * (2 ** (x + 1)),
+                )),
+                list,
+            )
+        ])
+
+        self.center = nn.Sequential(
+            ResBlock(
+                in_ch=feature_size * 2 ** depth,
+                out_ch=feature_size * 2 ** depth,
+            ),
+            SCSE(feature_size * 2 ** depth),
+        )
+
+        self.up_layers = nn.ModuleList([
+            *pipe(
+                self.down_layers,
+                reversed,
+                map(lambda x: x.out_ch),
+                take(depth),
+                map(lambda x: UpSample(
+                    feature_size * (2 ** depth),
+                    feature_size * (2 ** depth),
+                    x,
+                )),
+                list,
+            ),
+            UpSample(
+                feature_size * 2 ** depth,
+                2,
+                feature_size,
             ),
         ])
 

@@ -13,7 +13,7 @@ from tensorboardX import SummaryWriter
 from .metric import iou
 from os import path
 from .utils import AverageMeter
-from .losses import softmax_mse_loss, lovasz_softmax, FocalLoss
+from .losses import lovasz_softmax, FocalLoss, LossSwitcher
 from .ramps import sigmoid_rampup
 from .preprocess import hflip
 
@@ -43,10 +43,11 @@ def get_learning_rate(optimizer):
         return param_group['lr']
 
 
-def validate(critertion, x, y):
+def validate(critertion, x, y, epoch):
     loss = critertion(
         x,
-        y
+        y,
+        epoch
     )
     score = pipe(
         zip(
@@ -91,7 +92,7 @@ def train(model_path,
         depth=depth,
     ).to(device)
     ema_model.load_state_dict(model.state_dict())
-    ema_model.train()
+    ema_model.eval()
 
     train_loader = DataLoader(
         train_dataset,
@@ -113,8 +114,13 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = nn.CrossEntropyLoss(size_average=True)
-    consistency_criterion = softmax_mse_loss
+    class_criterion = LossSwitcher(
+        first=nn.CrossEntropyLoss(size_average=True),
+        second=lovasz_softmax,
+        rampup=consistency_rampup,
+    )
+
+    consistency_criterion = class_criterion
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
@@ -144,7 +150,8 @@ def train(model_path,
             class_loss, train_score = validate(
                 class_criterion,
                 model_out,
-                train_mask
+                train_mask,
+                epoch,
             )
             sum_train_score += train_score
 
@@ -158,7 +165,7 @@ def train(model_path,
                 # add hflop noise
                 ema_model_out = ema_model(
                     consistency_input.flip([3])
-                ).flip([3])
+                ).flip([3]).softmax(dim=1).argmax(dim=1)
 
             model_out = model(consistency_input)
 
@@ -168,8 +175,7 @@ def train(model_path,
                 rampup=consistency_rampup,
             )
 
-            consistency_loss = consistency_weight * \
-                consistency_criterion(model_out, ema_model_out)
+            consistency_loss = consistency_weight *  class_criterion(model_out, ema_model_out, epoch)
             loss = consistency_loss + class_loss
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
@@ -184,7 +190,8 @@ def train(model_path,
                 val_loss, val_score = validate(
                     class_criterion,
                     model(val_image),
-                    val_mask
+                    val_mask,
+                    epoch,
                 )
                 sum_val_loss += val_loss.item()
                 sum_val_score += val_score
@@ -229,7 +236,7 @@ def train(model_path,
 
         if max_iou_val <= mean_iou_val:
             max_iou_val = mean_iou_val
-            torch.save(ema_model, model_path)
+            torch.save(model, model_path)
 
         if max_iou_train <= mean_iou_train:
             max_iou_train = mean_iou_train
