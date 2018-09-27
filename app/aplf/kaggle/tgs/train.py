@@ -236,7 +236,7 @@ def train(model_path,
 
         if max_iou_val <= mean_iou_val:
             max_iou_val = mean_iou_val
-            torch.save(ema_model, model_path)
+            torch.save(model, model_path)
 
         if max_iou_train <= mean_iou_train:
             max_iou_train = mean_iou_train
