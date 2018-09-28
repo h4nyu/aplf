@@ -23,7 +23,6 @@ class Graph(object):
                  labeled_batch_size,
                  no_labeled_batch_size,
                  patience,
-                 reduce_lr_patience,
                  base_size,
                  parallel,
                  top_num,
@@ -32,6 +31,8 @@ class Graph(object):
                  consistency,
                  consistency_rampup,
                  depth,
+                 cyclic_period,
+                 switch_epoch,
                  ):
         params = locals()
 
@@ -49,11 +50,12 @@ class Graph(object):
 
         spliteds = pipe(
             ids,
+            enumerate,
             map(lambda x: delayed(train_test_split)(
                 dataset_df,
                 test_size=val_split_size,
                 shuffle=True,
-                random_state=x
+                random_state=x[0]
             )),
             list
         )
@@ -97,12 +99,13 @@ class Graph(object):
                 no_labeled_batch_size=no_labeled_batch_size,
                 feature_size=feature_size,
                 patience=patience,
-                reduce_lr_patience=reduce_lr_patience,
                 base_size=base_size,
                 consistency=consistency,
                 consistency_rampup=consistency_rampup,
                 ema_decay=ema_decay,
                 depth=depth,
+                cyclic_period=cyclic_period,
+                switch_epoch=switch_epoch,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list

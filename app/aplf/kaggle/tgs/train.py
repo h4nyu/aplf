@@ -1,8 +1,10 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
+from cytoolz import curry
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch
 import torch.optim as optim
+from torch.optim.lr_scheduler import LambdaLR
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
@@ -29,13 +31,6 @@ def update_ema_variables(model, ema_model, alpha):
         return ema_model
 
 
-def batch_hflip(images):
-    with torch.no_grad():
-        return pipe(
-            images,
-            map(hflip),
-            list
-        )
 
 
 def get_learning_rate(optimizer):
@@ -60,6 +55,21 @@ def validate(critertion, x, y, epoch):
     )
     return loss, score
 
+class CyclicLR(object):
+
+    def __init__(self,
+                 min_lr,
+                 max_lr,
+                 period,
+                 ):
+        self.min_lr = min_lr
+        self.max_lr = max_lr
+        self.period = period
+
+    def __call__(self, epoch):
+        return self.min_lr + (self.max_lr - self.min_lr)*(epoch % self.period)/self.period
+
+
 
 def train(model_path,
           train_dataset,
@@ -71,13 +81,14 @@ def train(model_path,
           no_labeled_batch_size,
           feature_size,
           patience,
-          reduce_lr_patience,
           base_size,
           log_dir,
           ema_decay,
           consistency,
           consistency_rampup,
           depth,
+          cyclic_period,
+          switch_epoch,
           ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -117,20 +128,29 @@ def train(model_path,
     class_criterion = LossSwitcher(
         first=nn.CrossEntropyLoss(size_average=True),
         second=lovasz_softmax,
-        rampup=consistency_rampup,
+        cond_lambda=lambda x: switch_epoch <= x,
     )
 
     consistency_criterion = class_criterion
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
         len(val_loader)
     )
+    scheduler = LambdaLR(
+        optimizer=optimizer,
+        lr_lambda=CyclicLR(
+            min_lr=0.001,
+            max_lr=0.01,
+            period=cyclic_period,
+        )
+    )
 
     el = EarlyStop(patience, base_size=base_size)
     max_iou_val = 0
     max_iou_train = 0
+    is_overfit = False
 
     for epoch in range(epochs):
         sum_class_loss = 0
@@ -140,6 +160,7 @@ def train(model_path,
         sum_val_loss = 0
         sum_val_score = 0
         for train_sample, no_labeled_sample, val_sample in zip(train_loader, no_labeled_dataloader, val_loader):
+
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(
                 device).view(-1, 101, 101).long()
@@ -187,6 +208,7 @@ def train(model_path,
 
 
             with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_loss, val_score = validate(
                     class_criterion,
                     model(val_image),
@@ -196,6 +218,7 @@ def train(model_path,
                 sum_val_loss += val_loss.item()
                 sum_val_score += val_score
 
+        scheduler.step()
         print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch
@@ -203,9 +226,6 @@ def train(model_path,
         mean_consistency_loss = sum_consistency_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
-
-        with torch.no_grad():
-            ema_model = update_ema_variables(model, ema_model, ema_decay)
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
