@@ -52,7 +52,8 @@ class Graph(object):
             map(lambda x: delayed(train_test_split)(
                 dataset_df,
                 test_size=val_split_size,
-                shuffle=True
+                shuffle=True,
+                random_state=x
             )),
             list
         )
