@@ -44,14 +44,25 @@ def predict(model_paths,
             sample_id = sample['id'][0]
             image = sample['image'].to(device)
 
-            output = pipe(
+            normal_outputs = pipe(
                 models,
                 map(lambda x: x(image)),
+                list,
+            )
+            fliped_outputs = pipe(
+                models,
+                map(lambda x: x(image.flip([3])).flip([3])),
+                list,
+            )
+            output = pipe(
+                [*normal_outputs, *fliped_outputs],
                 map(lambda x: x.softmax(dim=1)),
                 reduce(lambda x, y: x + y / 2),
                 lambda x: F.softmax(x, dim=1),
                 lambda x: x.argmax(dim=1).float()
             )
+
+
             sample_ids.append(sample_id)
             rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))
 
