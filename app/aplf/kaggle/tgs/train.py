@@ -58,16 +58,16 @@ def validate(critertion, x, y, epoch):
 class CyclicLR(object):
 
     def __init__(self,
-                 min_lr,
-                 max_lr,
+                 min_factor,
+                 max_factor,
                  period,
                  ):
-        self.min_lr = min_lr
-        self.max_lr = max_lr
+        self.min_factor = min_factor
+        self.max_factor = max_factor
         self.period = period
 
     def __call__(self, epoch):
-        return self.min_lr + (self.max_lr - self.min_lr)*(epoch % self.period)/self.period
+        return self.min_factor + (self.max_factor - self.min_factor)*(epoch % self.period)/self.period
 
 
 
@@ -141,8 +141,8 @@ def train(model_path,
     scheduler = LambdaLR(
         optimizer=optimizer,
         lr_lambda=CyclicLR(
-            min_lr=0.001,
-            max_lr=0.01,
+            min_factor=0.1,
+            max_factor=1,
             period=cyclic_period,
         )
     )

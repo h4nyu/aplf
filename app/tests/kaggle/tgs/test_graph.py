@@ -14,7 +14,7 @@ def test_graph():
         no_labeled_batch_size=32,
         model_type='UNet',
         val_split_size=0.2,
-        feature_size=8,
+        feature_size=12,
         depth=4,
         patience=20,
         base_size=10,
