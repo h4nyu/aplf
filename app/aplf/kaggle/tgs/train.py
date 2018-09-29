@@ -1,10 +1,10 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
 from cytoolz import curry
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch
 import torch.optim as optim
-from torch.optim.lr_scheduler import LambdaLR
+from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
@@ -61,13 +61,22 @@ class CyclicLR(object):
                  min_factor,
                  max_factor,
                  period,
+                 milestones,
                  ):
         self.min_factor = min_factor
         self.max_factor = max_factor
         self.period = period
+        self.milestones=milestones
 
     def __call__(self, epoch):
-        return self.min_factor + (self.max_factor - self.min_factor)*(epoch % self.period)/self.period
+        cyclic = self.min_factor + (self.max_factor - self.min_factor)*(epoch % self.period)/self.period
+        gamma = pipe(
+            self.milestones,
+            filter(lambda x: x[0] <= epoch),
+            map(lambda x: x[1]),
+            last
+        )
+        return cyclic * gamma
 
 
 
@@ -89,6 +98,7 @@ def train(model_path,
           depth,
           cyclic_period,
           switch_epoch,
+          milestones
           ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -128,22 +138,23 @@ def train(model_path,
     class_criterion = LossSwitcher(
         first=nn.CrossEntropyLoss(size_average=True),
         second=lovasz_softmax,
-        cond_lambda=lambda x: switch_epoch <= x,
+        cond_lambda=lambda x: (switch_epoch <= x) and (switch_epoch >= 0),
     )
 
     consistency_criterion = class_criterion
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.05, momentum=0.9)
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
         len(val_loader)
     )
-    scheduler = LambdaLR(
+    scheduler= LambdaLR(
         optimizer=optimizer,
         lr_lambda=CyclicLR(
             min_factor=0.1,
             max_factor=1,
             period=cyclic_period,
+            milestones=milestones,
         )
     )
 
@@ -218,7 +229,9 @@ def train(model_path,
                 sum_val_loss += val_loss.item()
                 sum_val_score += val_score
 
+        # update LR
         scheduler.step()
+
         print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch

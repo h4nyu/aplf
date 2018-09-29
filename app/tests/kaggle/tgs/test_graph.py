@@ -6,7 +6,7 @@ from datetime import datetime
 
 def test_graph():
     g = Graph(
-        id="feature-8-depth-4-unet-ema-0.99-consistency-0.2-bs-24-rampup-30-switch-100-cyclic-10",
+        id="feature-8-depth-4-unet-ema-0.99-consistency-0.2-bs-24-rampup-30-switch-100-cyclic-10-epoch-400-milestones-50-99",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         epochs=400,
@@ -23,6 +23,7 @@ def test_graph():
         consistency_rampup=100,
         cyclic_period=10,
         switch_epoch=100,
+        milestones=[(0, 0.01), (50, 0.005), (100, 0.002)],
         parallel=1,
         top_num=1,
     )

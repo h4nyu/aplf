@@ -33,6 +33,7 @@ class Graph(object):
                  depth,
                  cyclic_period,
                  switch_epoch,
+                 milestones,
                  ):
         params = locals()
 
@@ -106,6 +107,7 @@ class Graph(object):
                 depth=depth,
                 cyclic_period=cyclic_period,
                 switch_epoch=switch_epoch,
+                milestones=milestones,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list
