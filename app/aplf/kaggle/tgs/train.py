@@ -17,7 +17,7 @@ from os import path
 from .utils import AverageMeter
 from .losses import lovasz_softmax, FocalLoss, LossSwitcher
 from .ramps import sigmoid_rampup
-from .preprocess import hflip
+from .preprocess import hflip, add_noise
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
@@ -142,7 +142,7 @@ def train(model_path,
     )
 
     consistency_criterion = class_criterion
-    optimizer = optim.SGD(model.parameters(), lr=0.05, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
@@ -194,12 +194,13 @@ def train(model_path,
                     no_labeled_image
                 ])
 
-                # add hflop noise
                 ema_model_out = ema_model(
-                    consistency_input.flip([3])
-                ).flip([3]).softmax(dim=1).argmax(dim=1)
+                    consistency_input
+                ).softmax(dim=1).argmax(dim=1)
 
-            model_out = model(consistency_input)
+            # add noise
+            noised_input = add_noise(consistency_input)
+            model_out = model(noised_input)
 
             consistency_weight = get_current_consistency_weight(
                 epoch=epoch,

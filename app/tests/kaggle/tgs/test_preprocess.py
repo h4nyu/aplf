@@ -1,9 +1,11 @@
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry, merge, first
 from aplf import config
 import torch
 from torch.utils.data import DataLoader
-from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size
+from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size, add_noise
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from tensorboardX import SummaryWriter
+import torchvision.utils as vutils
 
 
 def test_dataset():
@@ -39,24 +41,28 @@ def test_add_mask_size():
     assert output.sum() == 487
 
 
-def test_batch_hflip():
+
+def test_add_noise():
     dataset_df = load_dataset_df(
         '/store/kaggle/tgs',
-        'train.csv'
+        'train.csv',
     )
+    dataset = TgsSaltDataset(dataset_df)
 
     dataloader = DataLoader(
-        no_labeled_dataset,
-        batch_size=16,
+        dataset,
+        batch_size=2,
         shuffle=True
     )
-    dataloader[0]
+    sample = pipe(
+        dataloader,
+        first
+    )['image']
+    noised = add_noise(sample)
 
     writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
     dataset_df = load_dataset_df('/store/kaggle/tgs')
     writer.add_image(
-        f"flip",
-        vutils.make_grid(
-        ),
+        f"add_noise",
+        vutils.make_grid([*sample, *noised]),
     )
-    assert output.sum() == 487

@@ -75,10 +75,6 @@ class TgsSaltDataset(Dataset):
 
             transform = compose(*reversed([
                 *transforms,
-                #  random.choice([
-                #      lambda x: x,
-                #      crop(start=start, end=end)
-                #  ]),
                 random.choice([
                     lambda x: x,
                     hflip,

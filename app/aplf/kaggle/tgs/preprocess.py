@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from skimage import io
 import torch.nn.functional as F
+import torch.nn as nn
 import scipy
 import torch
 import json
@@ -135,3 +136,14 @@ def dump_json(path, *dicts):
     with open(path, 'w') as f:
         json.dump(data, f)
     return path
+
+@curry
+def add_noise(batch_images, resize=(0.3, 0.7), dropout_p=0.3):
+    gamma = np.random.uniform(*resize)
+    x = batch_images
+    _, _, h, w = x.size()
+    with torch.no_grad():
+        x = F.interpolate(x, mode='bilinear', size=(int(h*gamma), int(w*gamma)))
+        x = nn.Dropout(p=dropout_p)(x)
+        x = F.interpolate(x, mode='bilinear', size=(h, w))
+        return x
