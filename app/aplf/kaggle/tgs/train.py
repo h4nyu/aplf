@@ -15,7 +15,7 @@ from tensorboardX import SummaryWriter
 from .metric import iou
 from os import path
 from .utils import AverageMeter
-from .losses import lovasz_softmax, FocalLoss, LossSwitcher
+from .losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
 from .ramps import linear_rampup
 from .preprocess import hflip, add_noise
 
@@ -138,11 +138,11 @@ def train(model_path,
     class_criterion = LinearLossSwitcher(
         first=nn.CrossEntropyLoss(size_average=True),
         second=lovasz_softmax,
-        cond_lambda=lambda x: (switch_epoch <= x) and (switch_epoch >= 0),
+        rampup=switch_epoch,
     )
     consistency_criterion = nn.MSELoss(size_average=True)
-    #  optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    #  optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
@@ -151,7 +151,7 @@ def train(model_path,
     scheduler= LambdaLR(
         optimizer=optimizer,
         lr_lambda=CyclicLR(
-            min_factor=0.1,
+            min_factor=0.5,
             max_factor=1,
             period=cyclic_period,
             milestones=milestones,
