@@ -6,6 +6,8 @@ lr 0.01
 
 cyclic 5 epoch 0.5 - 1.0
 
+batch_size 32
+
 SGD
 
 cross entropy
@@ -25,6 +27,8 @@ overfitted
 # 1
 ## condition
 RUNet feature 8 depth 3
+
+batch_size 32
 
 lr 0.01 
 
