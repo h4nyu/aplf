@@ -6,7 +6,7 @@ from datetime import datetime
 
 def test_graph():
     g = Graph(
-        id="test",
+        id="0",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         epochs=400,
