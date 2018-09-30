@@ -2,9 +2,9 @@
 ## condition
 UNet feature 48 depth 3
 
-lr 0.005 ~ 0.01 
+lr 0.01 
 
-cyclic 5 ephoc
+cyclic 5 epoch 0.5 - 1.0
 
 SGD
 
