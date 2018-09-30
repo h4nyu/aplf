@@ -15,7 +15,6 @@ def test_graph():
         map(lambda x: f"{output_dir}/model_{x}.pt"),
         list
     )
-    print(model_paths)
 
     g = SubmissionGraph(
         id=f"{datetime.now().isoformat()}",

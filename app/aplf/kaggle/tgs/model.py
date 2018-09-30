@@ -10,9 +10,9 @@ class CSE(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
         self.fc = nn.Sequential(
-            nn.Linear(in_ch, in_ch // r),
+            nn.Linear(in_ch, int(in_ch * r)),
             nn.ReLU(inplace=True),
-            nn.Linear(in_ch//r, in_ch),
+            nn.Linear(int(in_ch * r), in_ch),
             nn.Sigmoid()
         )
 
@@ -41,7 +41,7 @@ class SSE(nn.Module):
         return x
 
 class SCSE(nn.Module):
-    def __init__(self, in_ch, r=2):
+    def __init__(self, in_ch, r=2 / 3):
         super(SCSE, self).__init__()
 
         self.cSE = CSE(in_ch, r)
@@ -177,12 +177,9 @@ class UNet(nn.Module):
             )
         ])
 
-        self.center = nn.Sequential(
-            ResBlock(
-                in_ch=feature_size * 2 ** depth,
-                out_ch=feature_size * 2 ** depth,
-            ),
-            SCSE(feature_size * 2 ** depth),
+        self.center = DownSample(
+            feature_size * 2 ** depth,
+            feature_size * 2 ** depth,
         )
 
         self.up_layers = nn.ModuleList([
@@ -195,13 +192,17 @@ class UNet(nn.Module):
                     feature_size * (2 ** (x + 1)),
                 )),
                 list,
-            ),
-            UpSample(
+            ), UpSample(
                 feature_size,
-                2,
+                feature_size,
                 feature_size,
             ),
         ])
+        self._output = nn.Conv2d(
+            feature_size,
+            2,
+            kernel_size=3
+        )
 
     def forward(self, x):
         # down samples
@@ -211,18 +212,18 @@ class UNet(nn.Module):
             x, d_out = layer(x)
             d_outs.append(d_out)
 
-        x = self.center(x)
+        _, x = self.center(x)
 
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
-            print(x.size())
 
+        x = self._output(x)
         x = F.interpolate(x, mode='bilinear', size=(101, 101))
         return x
 
 
-class RevertUNet(UNet):
+class RUNet(nn.Module):
     def __init__(self,
                  feature_size=8,
                  depth=3,
@@ -241,17 +242,14 @@ class RevertUNet(UNet):
             )
         ])
 
-        self.center = nn.Sequential(
-            ResBlock(
-                in_ch=feature_size,
-                out_ch=feature_size,
-            ),
-            SCSE(feature_size),
+        self.center = DownSample(
+            in_ch=feature_size,
+            out_ch=feature_size,
         )
 
         self.up_layers = nn.ModuleList([
             *pipe(
-                range(depth),
+                range(depth + 1),
                 map(lambda x: UpSample(
                     feature_size * (2 ** x),
                     feature_size * (2 ** (x + 1)),
@@ -259,13 +257,31 @@ class RevertUNet(UNet):
                 )),
                 list,
             ),
-            UpSample(
-                feature_size * 2 ** depth,
-                2,
-                feature_size * 2 ** depth,
-            ),
         ])
 
+        self._ouput = nn.Conv2d(
+            feature_size * 2 ** (depth + 1),
+            2,
+            kernel_size=3
+        )
+
+    def forward(self, x):
+        # down samples
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            d_outs.append(d_out)
+
+        _, x = self.center(x)
+
+        # up samples
+        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
+            print(x.size())
+            x = layer(x, d_out)
+
+        x = self._ouput(x)
+        x = F.interpolate(x, mode='bilinear', size=(101, 101))
+        return x
 
 
 class DUNet(UNet):
@@ -286,13 +302,11 @@ class DUNet(UNet):
             )
         ])
 
-        self.center = nn.Sequential(
-            ResBlock(
-                in_ch=feature_size * 2 ** depth,
-                out_ch=feature_size * 2 ** depth,
-            ),
-            SCSE(feature_size * 2 ** depth),
+        self.center = DownSample(
+            in_ch=feature_size * 2 ** depth,
+            out_ch=feature_size * 2 ** depth,
         )
+
 
         self.up_layers = nn.ModuleList([
             *pipe(
@@ -380,12 +394,9 @@ class HUNet(nn.Module):
             )
         ])
 
-        self.center = nn.Sequential(
-            ResBlock(
-                in_ch=feature_size * 2 ** depth,
-                out_ch=feature_size * 2 ** depth,
-            ),
-            SCSE(feature_size * 2 ** depth),
+        self.center = DownSample(
+            in_ch=feature_size * 2 ** depth,
+            out_ch=feature_size * 2 ** depth,
         )
 
         self.up_layers = nn.ModuleList([
@@ -419,7 +430,6 @@ class HUNet(nn.Module):
         # up samples
         for layer, d_out in zip(self.up_layers, reversed(d_outs)):
             x = layer(x, d_out)
-            print(x.size())
 
         x = F.interpolate(x, mode='bilinear', size=(101, 101))
         return x

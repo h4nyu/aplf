@@ -18,6 +18,8 @@ services:
       - ./app:/srv
       - ./store:/store
       - ./log:/log
+    ports:
+      - ${TENSORBOARD_PORT}:6006
 
   db:
     build: 
@@ -47,6 +49,8 @@ services:
       - ./app:/srv
       - ./store:/store
       - ./log:/log
+    ports:
+      - ${DASKBOARD_PORT}:8787
 
   dask-worker:
     build:
@@ -109,7 +113,8 @@ services:
       - ./log:/log
     depends_on:
       - dask-worker
-      - web
+      - tensorboard
+      - dask-scheduler
 
 
 networks:

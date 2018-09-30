@@ -16,12 +16,12 @@ from .metric import iou
 from os import path
 from .utils import AverageMeter
 from .losses import lovasz_softmax, FocalLoss, LossSwitcher
-from .ramps import sigmoid_rampup
+from .ramps import linear_rampup
 from .preprocess import hflip, add_noise
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
-    return weight * sigmoid_rampup(epoch, rampup)
+    return weight * linear_rampup(epoch, rampup)
 
 
 def update_ema_variables(model, ema_model, alpha):
@@ -136,13 +136,13 @@ def train(model_path,
     )
 
     class_criterion = LossSwitcher(
-        first=nn.CrossEntropyLoss(size_average=True),
+        first=lovasz_softmax,
         second=lovasz_softmax,
         cond_lambda=lambda x: (switch_epoch <= x) and (switch_epoch >= 0),
     )
-
-    consistency_criterion = class_criterion
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    consistency_criterion = nn.MSELoss(size_average=True)
+    #  optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
@@ -189,18 +189,25 @@ def train(model_path,
 
             with torch.no_grad():
                 consistency_input = torch.cat([
-                    train_image,
                     val_image,
-                    no_labeled_image
                 ])
 
                 ema_model_out = ema_model(
-                    consistency_input
-                ).softmax(dim=1).argmax(dim=1)
+                    add_noise(
+                        consistency_input,
+                        resize=(0.4, 0.8),
+                        dropout_p=0.1,
+                    )
+                )
 
             # add noise
-            noised_input = add_noise(consistency_input)
-            model_out = model(noised_input)
+            model_out = model(
+                add_noise(
+                    consistency_input,
+                    resize=(0.4, 0.8),
+                    dropout_p=0.1,
+                )
+            )
 
             consistency_weight = get_current_consistency_weight(
                 epoch=epoch,
@@ -208,7 +215,10 @@ def train(model_path,
                 rampup=consistency_rampup,
             )
 
-            consistency_loss = consistency_weight *  class_criterion(model_out, ema_model_out, epoch)
+            consistency_loss = consistency_weight *  consistency_criterion(
+                model_out.softmax(dim=1),
+                ema_model_out.softmax(dim=1)
+            )
             loss = consistency_loss + class_loss
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
@@ -233,7 +243,6 @@ def train(model_path,
         # update LR
         scheduler.step()
 
-        print(f"epoch: {epoch} score : {sum_val_score / len_batch}")
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch
         mean_train_loss = sum_train_loss / len_batch
