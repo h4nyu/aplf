@@ -108,12 +108,6 @@ def train(model_path,
         depth=depth,
     ).to(device)
     model.train()
-    ema_model = Model(
-        feature_size=feature_size,
-        depth=depth,
-    ).to(device)
-    ema_model.load_state_dict(model.state_dict())
-    ema_model.eval()
 
     train_loader = DataLoader(
         train_dataset,
@@ -140,7 +134,6 @@ def train(model_path,
         second=lovasz_softmax,
         rampup=switch_epoch,
     )
-    consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     #  optimizer = optim.Adam(model.parameters())
     len_batch = min(
@@ -165,7 +158,6 @@ def train(model_path,
 
     for epoch in range(epochs):
         sum_class_loss = 0
-        sum_consistency_loss = 0
         sum_train_loss = 0
         sum_train_score = 0
         sum_val_loss = 0
@@ -187,41 +179,8 @@ def train(model_path,
             )
             sum_train_score += train_score
 
-            with torch.no_grad():
-                consistency_input = torch.cat([
-                    val_image,
-                ])
-
-                ema_model_out = ema_model(
-                    add_noise(
-                        consistency_input,
-                        resize=(0.4, 0.8),
-                        dropout_p=0.1,
-                    )
-                )
-
-            # add noise
-            model_out = model(
-                add_noise(
-                    consistency_input,
-                    resize=(0.4, 0.8),
-                    dropout_p=0.1,
-                )
-            )
-
-            consistency_weight = get_current_consistency_weight(
-                epoch=epoch,
-                weight=consistency,
-                rampup=consistency_rampup,
-            )
-
-            consistency_loss = consistency_weight *  consistency_criterion(
-                model_out.softmax(dim=1),
-                ema_model_out.softmax(dim=1)
-            )
-            loss = consistency_loss + class_loss
+            loss = class_loss
             sum_class_loss += class_loss.item()
-            sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
 
             optimizer.zero_grad()
@@ -230,7 +189,6 @@ def train(model_path,
 
 
             with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_loss, val_score = validate(
                     class_criterion,
                     model(val_image),
@@ -246,7 +204,6 @@ def train(model_path,
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch
         mean_train_loss = sum_train_loss / len_batch
-        mean_consistency_loss = sum_consistency_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
 
@@ -263,7 +220,6 @@ def train(model_path,
                 'loss',
                 {
                     'train': mean_train_loss,
-                    'consistency': mean_consistency_loss,
                     'class': mean_class_loss,
                     'val': mean_val_loss,
                 },
