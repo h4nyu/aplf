@@ -10,6 +10,7 @@ SGD
 
 cross entropy
 
+data clean
 
 
 
