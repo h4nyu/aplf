@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 import numpy as np
-from .ramps import sigmoid_rampup
+from .ramps import sigmoid_rampup, linear_rampup
 
 
 """
@@ -288,6 +288,21 @@ class SigmoidLossSwitcher(object):
 
     def __call__(self, input_logits, labels, epoch):
         alpha =  sigmoid_rampup(epoch, self.rampup)
+        return (1 - alpha) * self.first(input_logits, labels) + alpha * self.second(input_logits, labels)
+
+
+class LinearLossSwitcher(object):
+    def __init__(self,
+                 first,
+                 second,
+                 rampup,
+                 ):
+        self.first = first
+        self.second = second
+        self.rampup = rampup
+
+    def __call__(self, input_logits, labels, epoch):
+        alpha =  linear_rampup(epoch, self.rampup)
         return (1 - alpha) * self.first(input_logits, labels) + alpha * self.second(input_logits, labels)
 
 

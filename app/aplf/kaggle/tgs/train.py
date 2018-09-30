@@ -135,8 +135,8 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = LossSwitcher(
-        first=lovasz_softmax,
+    class_criterion = LinearLossSwitcher(
+        first=nn.CrossEntropyLoss(size_average=True),
         second=lovasz_softmax,
         cond_lambda=lambda x: (switch_epoch <= x) and (switch_epoch >= 0),
     )
