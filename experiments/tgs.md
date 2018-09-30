@@ -12,6 +12,13 @@ cross entropy
 
 data clean
 
+## result
+54 epoch
+val loss 0.28
+val iou 0.68
+train loss 0.022
+train iou 0.88
+
 
 
 
