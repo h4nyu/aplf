@@ -131,11 +131,10 @@ def train(model_path,
 
     class_criterion = LinearLossSwitcher(
         first=nn.CrossEntropyLoss(size_average=True),
-        second=lovasz_softmax,
+        second=nn.CrossEntropyLoss(size_average=True),
         rampup=switch_epoch,
     )
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    #  optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),

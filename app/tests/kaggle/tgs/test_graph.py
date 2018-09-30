@@ -6,7 +6,6 @@ from datetime import datetime
 
 def test_graph():
     g = Graph(
-        #  id="feature-8-depth-3-unet-ema-0.99-consistency-1-lbs-32-nlbs-12-rampup-30-cyclic-10-epoch-400-milestones-50-0.5-100-0.2-noise-0.0-crossentorpy",
         id="test",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
@@ -15,7 +14,7 @@ def test_graph():
         no_labeled_batch_size=1,
         model_type='UNet',
         val_split_size=0.2,
-        feature_size=48,
+        feature_size=32,
         depth=3,
         patience=20,
         base_size=10,
@@ -23,10 +22,10 @@ def test_graph():
         consistency=0,
         consistency_rampup=50,
         cyclic_period=5,
-        switch_epoch=70,
-        milestones=[(0, 1), (100, 0.8)],
-        parallel=1,
-        top_num=1,
+        switch_epoch=100,
+        milestones=[(0, 1)],
+        parallel=4,
+        top_num=2,
     )
 
     with Client('dask-scheduler:8786') as c:
