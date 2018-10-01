@@ -24,8 +24,8 @@ def test_graph():
         cyclic_period=5,
         switch_epoch=100,
         milestones=[(0, 1)],
-        parallel=4,
-        top_num=2,
+        parallel=1,
+        top_num=1,
     )
 
     with Client('dask-scheduler:8786') as c:
