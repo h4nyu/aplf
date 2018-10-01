@@ -79,12 +79,13 @@ data clean
 augmentation: hflip
 
 ## result
+epoch 375 (3h 55m)
 val iou 0.76
 train iou 0.83
 val loss 0.11 
 train loss 0.04
 
-# memo
+## memo
 lovasz lossはoverfitを抑制できる
 
 # 4
@@ -101,3 +102,22 @@ data clean
 augmentation: hflip
 
 ## result
+epoch 375 (3h 55m)
+val iou 0.69
+train iou 0.84
+val loss 0.11 
+train loss 0.05
+## memo
+encoderのチャネル数が多すぎるとoverfitする？
+
+# 5
+## condition
+RUNet feature 8 depth 3
+val_split:0.2
+batch_size: 64
+lr: 0.01
+cyclic: 5 epoch 0.2 - 0.8
+SGD
+lovasz
+data clean
+augmentation: hflip
