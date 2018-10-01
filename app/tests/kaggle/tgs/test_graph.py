@@ -10,7 +10,7 @@ def test_graph():
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         epochs=800,
-        labeled_batch_size=64,
+        labeled_batch_size=32,
         no_labeled_batch_size=1,
         model_type='RUNet',
         val_split_size=0.15,

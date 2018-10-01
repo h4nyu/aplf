@@ -92,7 +92,7 @@ lovasz lossはoverfitを抑制できる
 RUNet feature 16 depth 3
 epoch 800
 val_split:0.15
-batch_size: 64
+batch_size: 32
 lr: 0.01
 cyclic: 5 epoch 0.2 - 0.8
 SGD
