@@ -74,6 +74,10 @@ cross entropy
 data clean
 
 ## result
+val iou |0.77|0.74|
+train iou |0.87|0.86|
+val loss |0.027|0.025|
+train loss |0.13|0.14|
 
 # 3
 ## condition
@@ -94,3 +98,4 @@ data clean
 augmentation: hflip, Random Erasing
 
 ## result
+
