@@ -6,17 +6,17 @@ from datetime import datetime
 
 def test_graph():
     g = Graph(
-        id="3",
+        id="4",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
-        epochs=400,
+        epochs=800,
         labeled_batch_size=64,
         no_labeled_batch_size=1,
         model_type='RUNet',
-        val_split_size=0.2,
-        feature_size=8,
+        val_split_size=0.15,
+        feature_size=16,
         depth=3,
-        patience=20,
+        patience=30,
         base_size=10,
         ema_decay=0.99,
         consistency=0,

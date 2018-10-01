@@ -79,4 +79,25 @@ data clean
 augmentation: hflip
 
 ## result
+val iou 0.76
+train iou 0.83
+val loss 0.11 
+train loss 0.04
 
+# memo
+lovasz lossはoverfitを抑制できる
+
+# 4
+## condition
+RUNet feature 16 depth 3
+epoch 800
+val_split:0.15
+batch_size: 64
+lr: 0.01
+cyclic: 5 epoch 0.2 - 0.8
+SGD
+lovasz
+data clean
+augmentation: hflip
+
+## result
