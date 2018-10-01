@@ -40,3 +40,20 @@ cross entropy
 
 data clean
 
+
+# 2
+## condition
+DUNet feature 8 depth 3
+
+batch_size 32
+
+lr 0.01 
+
+cyclic 5 epoch 0.5 - 1.0
+
+SGD
+
+cross entropy
+
+data clean
+

@@ -323,10 +323,16 @@ class DUNet(UNet):
             ),
             UpSample(
                 feature_size * 2 ** depth,
-                2,
+                feature_size * (2 ** depth),
                 feature_size,
             ),
         ])
+
+        self._ouput = nn.Conv2d(
+            feature_size * 2 ** (depth + 1),
+            2,
+            kernel_size=3
+        )
 
 
 
@@ -349,12 +355,9 @@ class EUNet(UNet):
             )
         ])
 
-        self.center = nn.Sequential(
-            ResBlock(
-                in_ch=feature_size,
-                out_ch=feature_size,
-            ),
-            SCSE(feature_size),
+        self.center = DownSample(
+            in_ch=feature_size,
+            out_ch=feature_size,
         )
 
         self.up_layers = nn.ModuleList([
@@ -372,10 +375,17 @@ class EUNet(UNet):
             ),
             UpSample(
                 feature_size,
-                2,
+                feature_size,
                 feature_size * 2 ** depth,
             ),
         ])
+
+        self._ouput = nn.Conv2d(
+            feature_size,
+            2,
+            kernel_size=3
+        )
+
 
 
 
