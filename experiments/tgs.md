@@ -40,6 +40,9 @@ cross entropy
 
 data clean
 
+## result
+
+
 
 # 2
 ## condition
@@ -57,3 +60,4 @@ cross entropy
 
 data clean
 
+## result
