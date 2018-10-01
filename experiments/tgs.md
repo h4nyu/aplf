@@ -2,7 +2,7 @@
 ## condition
 UNet feature 24 depth 3
 
-lr 0.01 
+lr 0.01
 
 cyclic 5 epoch 0.5 - 1.0
 
@@ -16,23 +16,23 @@ data clean
 
 ## result
 54 epoch (1h 7m)
-val loss 0.28
 val iou 0.68
-train loss 0.022
 train iou 0.88
+val loss 0.28
+train loss 0.022
 
-## memo 
+## memo
 overfitted
 
 # 1
 ## condition
 RUNet feature 8 depth 3
 
-batch_size 32
+batch_size: 32
 
-lr 0.01 
+lr: 0.01
 
-cyclic 5 epoch 0.5 - 1.0
+cyclic: 5 epoch: 0.5 - 1.0
 
 SGD
 
@@ -40,19 +40,32 @@ cross entropy
 
 data clean
 
-## result
+augmentation: hflip
 
+## result
+400 epoch(4h 41m)
+### peak at epoch 313
+val iou 0.7897
+train iou 0.883
+val loss 0.18
+train loss 0.021
+
+### end at epoch 399
+val iou 0.763
+train iou 0.893
+val loss 0.19
+train loss 0.018
 
 
 # 2
 ## condition
 DUNet feature 8 depth 3
 
-batch_size 32
+batch_size: 32
 
-lr 0.01 
+lr: 0.01
 
-cyclic 5 epoch 0.5 - 1.0
+cyclic: 5 epoch 0.5 - 1.0
 
 SGD
 
@@ -61,3 +74,22 @@ cross entropy
 data clean
 
 ## result
+
+# 3
+## condition
+RUNet feature 8 depth 3
+
+batch_size: 32
+
+lr: 0.01
+
+cyclic: 5 epoch: 0.5 - 1.0
+
+SGD
+
+cross entropy
+
+data clean
+
+augmentation: hflip, Random Erasing
+
