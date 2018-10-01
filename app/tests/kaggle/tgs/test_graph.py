@@ -6,11 +6,11 @@ from datetime import datetime
 
 def test_graph():
     g = Graph(
-        id="2",
+        id="3",
         dataset_dir='/store/kaggle/tgs',
         output_dir='/store/kaggle/tgs/output',
         epochs=400,
-        labeled_batch_size=32,
+        labeled_batch_size=64,
         no_labeled_batch_size=1,
         model_type='RUNet',
         val_split_size=0.2,
