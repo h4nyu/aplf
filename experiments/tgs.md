@@ -77,7 +77,7 @@ data clean
 
 # 3
 ## condition
-RUNet feature 8 depth 3
+EUNet feature 8 depth 3
 
 batch_size: 32
 
@@ -93,3 +93,4 @@ data clean
 
 augmentation: hflip, Random Erasing
 
+## result
