@@ -121,3 +121,12 @@ SGD
 lovasz
 data clean
 augmentation: hflip
+
+## result
+epoch 800 (9h 1m)
+val iou 0.74
+train iou 0.86
+val loss 0.11 
+train loss 0.05
+## memo
+encoderのパラメータが多すぎるとoverfitする
