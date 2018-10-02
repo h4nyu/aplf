@@ -49,7 +49,8 @@ data clean
 + mean teacher
 + consistency_rampup: 30
 + consistency_loss: CrossEntropyLoss
-+ ema_decay: 1
++ consistency: 1
++ ema_decay: 0
 + consistency_input: [val_images]
 + consistency_noise: 
 

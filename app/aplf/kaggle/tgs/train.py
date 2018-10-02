@@ -162,6 +162,7 @@ def train(model_path,
     for epoch in range(epochs):
         sum_class_loss = 0
         sum_train_loss = 0
+        sum_consistency_loss = 0
         sum_train_score = 0
         sum_val_loss = 0
         sum_val_score = 0
@@ -197,7 +198,7 @@ def train(model_path,
                         resize=(0.4, 0.8),
                         dropout_p=0.0,
                     )
-                )
+                ).argmax(dim=1)
 
 
             model_out = model(
@@ -208,32 +209,26 @@ def train(model_path,
                 )
             )
 
-            consistency_input = torch.cat([
-                val_image,
-            ])
-
-
             consistency_weight = get_current_consistency_weight(
                 epoch=epoch,
                 weight=consistency,
                 rampup=consistency_rampup,
             )
-            consistency_loss = consistency_weight *  consistency_criterion(
+            consistency_loss = consistency_weight * consistency_criterion(
                 model_out,
-                ema_model_out.argmax(dim=1)
+                ema_model_out
             )
             loss = consistency_loss + class_loss
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
+            sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
 
             with torch.no_grad():
                 ema_model = update_ema_variables(model, ema_model, ema_decay)
@@ -254,6 +249,7 @@ def train(model_path,
         mean_train_loss = sum_train_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
+        mean_consistency_loss = sum_consistency_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -269,6 +265,7 @@ def train(model_path,
                 {
                     'train': mean_train_loss,
                     'class': mean_class_loss,
+                    'consistency': mean_consistency_loss,
                     'val': mean_val_loss,
                 },
                 epoch
