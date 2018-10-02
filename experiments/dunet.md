@@ -34,8 +34,25 @@ train iou 0.77
 val loss 0.109
 train loss 0.026
 
-
 # 8
+## object
+## condition
+DUNet feature 8 depth 3
+val_split:0.2
+batch_size: 32
+lr: 0.01
+cyclic: 5 epoch 0.2 - 1.0 -> no cyclic
+SGD -> Adam
+lovasz
+data clean
+scse -> cse
+
+
+## result
+
+
+
+# 9
 ## object
 ## condition
 DUNet feature 8 depth 3

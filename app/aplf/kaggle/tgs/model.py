@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class CSE(nn.Module):
-    def __init__(self, in_ch, r):
+    def __init__(self, in_ch, r=1):
         super(CSE, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
@@ -24,11 +24,12 @@ class CSE(nn.Module):
         y = self.fc(y).view(b, c, 1, 1)
         return x * y
 
+
 class SSE(nn.Module):
     def __init__(self, in_ch):
         super(SSE, self).__init__()
 
-        self.conv = nn.Conv2d(in_ch, in_ch, kernel_size=1, stride=1)
+        self.conv = nn.Conv2d(in_ch, 1, kernel_size=1, stride=1)
 
     def forward(self, x):
         input_x = x
@@ -39,6 +40,7 @@ class SSE(nn.Module):
         x = input_x * x
 
         return x
+
 
 class SCSE(nn.Module):
     def __init__(self, in_ch, r=2 / 3):
@@ -116,17 +118,17 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            SCSE(out_ch),
+            CSE(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            SCSE(out_ch),
+            CSE(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            SCSE(out_ch),
+            CSE(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -152,7 +154,7 @@ class UpSample(nn.Module):
                 in_ch + other_ch,
                 out_ch,
             ),
-            SCSE(out_ch),
+            CSE(out_ch),
         )
 
     def forward(self, x, other):
