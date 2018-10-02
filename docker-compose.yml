@@ -13,7 +13,7 @@ services:
         - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: tensorboard --logdir=/log runs
+    command: tensorboard --logdir=/log
     volumes:
       - ./app:/srv
       - ./store:/store
