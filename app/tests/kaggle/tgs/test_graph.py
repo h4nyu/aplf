@@ -13,11 +13,11 @@ base_param = {
 def test_graph():
     g = Graph(
         **base_param,
-        id="7",
+        id="8",
         epochs=800,
         labeled_batch_size=32,
         no_labeled_batch_size=1,
-        model_type='DUNet',
+        model_type='EUNet',
         feature_size=16,
         depth=3,
         patience=30,

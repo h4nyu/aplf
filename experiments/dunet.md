@@ -28,4 +28,8 @@ lovasz
 data clean
 
 ## result
+val iou 0.92
+train iou 0.77
+val loss 0.109
+train loss 0.026
 
