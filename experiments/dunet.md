@@ -28,7 +28,7 @@ lovasz
 data clean
 
 ## result
-epoch 400
+epoch 250
 val iou 0.92
 train iou 0.77
 val loss 0.109
