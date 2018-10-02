@@ -66,3 +66,8 @@ def test_add_noise():
         f"add_noise",
         vutils.make_grid([*sample, *noised]),
     )
+
+
+def test_divide():
+    dataset_df = load_dataset_df('/store/kaggle/tgs')
+    print(dataset_df)
