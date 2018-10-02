@@ -3,18 +3,22 @@ from aplf.kaggle.tgs.graph import Graph
 import uuid
 from datetime import datetime
 
+base_param = {
+    "dataset_dir": '/store/kaggle/tgs',
+    "output_dir": '/store/kaggle/tgs/output',
+    "val_split_size": 0.2,
+}
+
 
 def test_graph():
     g = Graph(
-        id="5",
-        dataset_dir='/store/kaggle/tgs',
-        output_dir='/store/kaggle/tgs/output',
+        **base_param,
+        id="8",
         epochs=800,
         labeled_batch_size=64,
         no_labeled_batch_size=1,
-        model_type='RUNet',
-        val_split_size=0.15,
-        feature_size=8,
+        model_type='EUNet',
+        feature_size=16,
         depth=3,
         patience=30,
         base_size=10,

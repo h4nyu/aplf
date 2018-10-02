@@ -144,7 +144,7 @@ def train(model_path,
         optimizer=optimizer,
         lr_lambda=CyclicLR(
             min_factor=0.2,
-            max_factor=0.8,
+            max_factor=1,
             period=cyclic_period,
             milestones=milestones,
         )
