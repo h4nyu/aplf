@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
+import random
 from cytoolz import curry
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -81,16 +82,15 @@ class CyclicLR(object):
 
 
 def train(model_path,
-          train_dataset,
-          val_dataset,
-          no_labeled_dataset,
+          train_dfs,
+          val_df,
+          no_labeled_df,
+          before_model_path,
           model_type,
           epochs,
           labeled_batch_size,
           no_labeled_batch_size,
           feature_size,
-          patience,
-          base_size,
           log_dir,
           ema_decay,
           consistency,
@@ -107,7 +107,10 @@ def train(model_path,
         feature_size=feature_size,
         depth=depth,
     ).to(device)
+    if before_model_path:
+        model = torch.load(before_model_path)
     model.train()
+
     ema_model = Model(
         feature_size=feature_size,
         depth=depth,
@@ -115,14 +118,21 @@ def train(model_path,
     ema_model.load_state_dict(model.state_dict())
     ema_model.eval()
 
+    train_df = pd.concat(random.sample(set(train_dfs), 2))
     train_loader = DataLoader(
-        train_dataset,
+        TgsSaltDataset(
+            train_df,
+            has_y=True
+        ),
         batch_size=labeled_batch_size,
         shuffle=True
     )
 
     no_labeled_dataloader = DataLoader(
-        no_labeled_dataset,
+        TgsSaltDataset(
+            no_labeled_df,
+            has_y=False
+        ),
         batch_size=no_labeled_batch_size,
         shuffle=True
     )
@@ -130,7 +140,10 @@ def train(model_path,
     val_batch_size = int(labeled_batch_size *
                          len(val_dataset) / len(train_dataset))
     val_loader = DataLoader(
-        val_dataset,
+        TgsSaltDataset(
+            val_df,
+            has_y=True
+        ),
         batch_size=val_batch_size,
         shuffle=True
     )
@@ -154,10 +167,8 @@ def train(model_path,
         )
     )
 
-    el = EarlyStop(patience, base_size=base_size)
     max_iou_val = 0
     max_iou_train = 0
-    is_overfit = False
 
     for epoch in range(epochs):
         sum_class_loss = 0
@@ -288,9 +299,8 @@ def train(model_path,
         if max_iou_train <= mean_iou_train:
             max_iou_train = mean_iou_train
 
-        if sum_val_score / len_batch > 0:
-            is_overfit = el(- mean_iou_val)
 
-        if is_overfit:
-            break
-    return model_path
+    return {
+        "model_path": model_path,
+        "score": max_iou_val
+    }

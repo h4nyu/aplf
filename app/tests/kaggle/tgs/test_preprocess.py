@@ -1,8 +1,9 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry, merge, first
+import pandas as pd
 from aplf import config
 import torch
 from torch.utils.data import DataLoader
-from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size, add_noise, add_mask_type
+from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size, add_noise, add_cover, divide_by_cover
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from tensorboardX import SummaryWriter
 import torchvision.utils as vutils
@@ -68,7 +69,12 @@ def test_add_noise():
     )
 
 
-def test_add_mask_type():
+def test_divide_by_cover():
     dataset_df = load_dataset_df('/store/kaggle/tgs')
-    dataset_df = add_mask_type(dataset_df)
-    assert dataset_df.iloc[0]['mask_type'] == 0
+    dataset_df = add_cover(dataset_df)
+    assert dataset_df.iloc[0]['cover'] == 0
+
+    dfs = divide_by_cover(dataset_df, 4)
+    assert len(dfs) == 4
+
+

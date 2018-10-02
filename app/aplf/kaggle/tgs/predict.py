@@ -14,12 +14,19 @@ from .metric import iou
 
 
 def predict(model_paths,
-            dataset,
+            dataset_df,
             log_dir,
             log_interval=100,
             ):
 
-    loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    loader = DataLoader(
+        TgsSaltDataset(
+            dataset_df,
+            has_y=False,
+        ),
+        batch_size=1,
+        shuffle=False
+    )
     device = torch.device('cpu')
     if torch.cuda.is_available():
         device = torch.device("cuda")

@@ -148,23 +148,36 @@ def add_noise(batch_images, resize=(0.3, 0.7), dropout_p=0.0):
         x = F.interpolate(x, mode='bilinear', size=(h, w))
         return x
 
-def get_mask_type(rle_mask, shape):
-    cover = rle_decode(rle_mask, shape).mean()
-    if cover == 0:
-        return 0 # empty
-    elif cover < 0.25:
-        return 1
-    elif cover < 0.5:
-        return 2
-    elif cover < 0.75:
-        return 3
-    else:
-        return 4
-
-def add_mask_type(df):
-    df['mask_type'] = (
+def add_cover(df):
+    df['cover'] = (
         df['rle_mask']
-        .apply(lambda x: get_mask_type(x, (101, 101)))
+        .apply(lambda x: rle_decode(x, (101, 101)).mean())
     )
     return df
 
+def qcut(df):
+    df['cover'] = (
+        df['rle_mask']
+        .apply(lambda x: rle_decode(x, (101, 101)).mean())
+    )
+    return df
+
+
+def add_cover(df):
+    df['cover'] = (
+        df['rle_mask']
+        .apply(lambda x: rle_decode(x, (101, 101)).mean())
+    )
+    return df
+
+
+
+def divide_by_cover(df, bins):
+    cutted = pd.cut(df['cover'], 4)
+    df['cover_bin']= cutted
+    dfs = pipe(
+        cutted.cat.categories,
+        map(lambda x: df[df['cover_bin'] == x]),
+        list
+    )
+    return dfs
