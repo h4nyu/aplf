@@ -47,9 +47,9 @@ SGD
 lovasz
 data clean
 + mean teacher
-+ consistency_rampup: 30
++ consistency_rampup: 50
 + consistency_loss: CrossEntropyLoss
-+ consistency: 1
++ consistency: 0.5
 + ema_decay: 0
 + consistency_input: [val_images]
 + consistency_noise: 
