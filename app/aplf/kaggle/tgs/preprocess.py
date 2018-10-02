@@ -143,7 +143,7 @@ def add_noise(batch_images, resize=(0.3, 0.7), dropout_p=0.0):
     x = batch_images
     _, _, h, w = x.size()
     with torch.no_grad():
-        x = nn.Dropout(p=dropout_p)(x)
         x = F.interpolate(x, mode='bilinear', size=(int(h*gamma), int(w*gamma)))
+        x = nn.Dropout(p=dropout_p)(x)
         x = F.interpolate(x, mode='bilinear', size=(h, w))
         return x

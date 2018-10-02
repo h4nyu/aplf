@@ -28,8 +28,31 @@ lovasz
 data clean
 
 ## result
+epoch 400
 val iou 0.92
 train iou 0.77
 val loss 0.109
 train loss 0.026
+
+
+# 8
+## object
+## condition
+DUNet feature 8 depth 3
+val_split:0.2
+batch_size: 32
+lr: 0.01
+cyclic: 5 epoch 0.2 - 1.0
+SGD
+lovasz
+data clean
++ mean teacher
++ consistency_rampup: 30
++ consistency_loss: CrossEntropyLoss
++ ema_decay: 1
++ consistency_input: [val_images]
++ consistency_noise: 
+
+
+## result
 

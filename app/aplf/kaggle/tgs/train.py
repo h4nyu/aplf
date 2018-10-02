@@ -108,6 +108,12 @@ def train(model_path,
         depth=depth,
     ).to(device)
     model.train()
+    ema_model = Model(
+        feature_size=feature_size,
+        depth=depth,
+    ).to(device)
+    ema_model.load_state_dict(model.state_dict())
+    ema_model.eval()
 
     train_loader = DataLoader(
         train_dataset,
@@ -129,11 +135,9 @@ def train(model_path,
         shuffle=True
     )
 
-    class_criterion = LinearLossSwitcher(
-        first=lovasz_softmax,
-        second=lovasz_softmax,
-        rampup=switch_epoch,
-    )
+    class_criterion = lovasz_softmax
+    consistency_criterion = nn.CrossEntropyLoss(size_average=True)
+
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     len_batch = min(
         len(train_loader),
@@ -169,16 +173,61 @@ def train(model_path,
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
             no_labeled_image = no_labeled_sample['image'].to(device)
-            model_out = model(train_image)
+            model_out = model(
+                add_noise(
+                    train_image,
+                    resize=(0.4, 0.8),
+                    dropout_p=0.0,
+                )
+            )
             class_loss, train_score = validate(
                 class_criterion,
                 model_out,
                 train_mask,
                 epoch,
             )
-            sum_train_score += train_score
+            with torch.no_grad():
+                consistency_input = torch.cat([
+                    val_image,
+                ])
 
-            loss = class_loss
+                ema_model_out = ema_model(
+                    add_noise(
+                        consistency_input,
+                        resize=(0.4, 0.8),
+                        dropout_p=0.0,
+                    )
+                )
+
+
+            model_out = model(
+                add_noise(
+                    consistency_input,
+                    resize=(0.4, 0.8),
+                    dropout_p=0.0,
+                )
+            )
+
+            consistency_input = torch.cat([
+                val_image,
+            ])
+
+
+            consistency_weight = get_current_consistency_weight(
+                epoch=epoch,
+                weight=consistency,
+                rampup=consistency_rampup,
+            )
+            consistency_loss = consistency_weight *  consistency_criterion(
+                model_out,
+                ema_model_out.argmax(dim=1)
+            )
+            loss = consistency_loss + class_loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_train_loss += loss.item()
 
@@ -186,8 +235,8 @@ def train(model_path,
             loss.backward()
             optimizer.step()
 
-
             with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_loss, val_score = validate(
                     class_criterion,
                     model(val_image),
