@@ -29,9 +29,9 @@ def test_runet(depth, feature_size):
         assert out_image.size() == (32, 2, 101, 101)
 
 @pytest.mark.parametrize("depth, feature_size", [
-    (4, 16),
+    (3, 8),
 ])
-def test_d_unet(depth, feature_size):
+def test_dunet(depth, feature_size):
     with torch.no_grad():
         model = DUNet(
             feature_size=feature_size,

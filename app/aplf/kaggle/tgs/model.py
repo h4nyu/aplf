@@ -223,7 +223,7 @@ class UNet(nn.Module):
         return x
 
 
-class RUNet(nn.Module):
+class RUNet(UNet):
     def __init__(self,
                  feature_size=8,
                  depth=3,
@@ -259,29 +259,12 @@ class RUNet(nn.Module):
             ),
         ])
 
-        self._ouput = nn.Conv2d(
+        self._output = nn.Conv2d(
             feature_size * 2 ** (depth + 1),
             2,
             kernel_size=3
         )
 
-    def forward(self, x):
-        # down samples
-        d_outs = []
-        for layer in self.down_layers:
-            x, d_out = layer(x)
-            d_outs.append(d_out)
-
-        _, x = self.center(x)
-
-        # up samples
-        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
-            print(x.size())
-            x = layer(x, d_out)
-
-        x = self._ouput(x)
-        x = F.interpolate(x, mode='bilinear', size=(101, 101))
-        return x
 
 
 class DUNet(UNet):
@@ -323,13 +306,13 @@ class DUNet(UNet):
             ),
             UpSample(
                 feature_size * 2 ** depth,
-                feature_size * (2 ** depth),
+                feature_size * 2 ** depth,
                 feature_size,
             ),
         ])
 
-        self._ouput = nn.Conv2d(
-            feature_size * 2 ** (depth + 1),
+        self._output = nn.Conv2d(
+            feature_size * 2 ** depth,
             2,
             kernel_size=3
         )
@@ -380,7 +363,7 @@ class EUNet(UNet):
             ),
         ])
 
-        self._ouput = nn.Conv2d(
+        self._output = nn.Conv2d(
             feature_size,
             2,
             kernel_size=3

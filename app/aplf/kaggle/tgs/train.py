@@ -143,8 +143,8 @@ def train(model_path,
     scheduler= LambdaLR(
         optimizer=optimizer,
         lr_lambda=CyclicLR(
-            min_factor=0.2,
-            max_factor=0.8,
+            min_factor=0.5,
+            max_factor=1,
             period=cyclic_period,
             milestones=milestones,
         )
