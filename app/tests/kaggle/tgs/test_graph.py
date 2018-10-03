@@ -13,12 +13,12 @@ base_param = {
 def test_graph():
     g = Graph(
         **base_param,
-        id="12",
-        epochs=800,
+        id="13",
+        epochs=400,
         labeled_batch_size=32,
         no_labeled_batch_size=1,
         model_type='HUNet',
-        feature_size=32,
+        feature_size=64,
         depth=3,
         patience=30,
         base_size=10,
@@ -26,11 +26,11 @@ def test_graph():
         consistency=0,
         consistency_rampup=0,
         cyclic_period=5,
-        switch_epoch=100,
+        switch_epoch=300,
         milestones=[(0, 1)],
-        parallel=1,
+        parallel=5,
         top_num=1,
-        erase_num=0,
+        erase_num=5,
     )
 
     with Client('dask-scheduler:8786') as c:
