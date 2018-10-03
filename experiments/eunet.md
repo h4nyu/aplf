@@ -8,7 +8,3 @@ cyclic: 5 epoch 0.2 - 1.0
 SGD
 lovasz
 data clean
-
-## result
-
-

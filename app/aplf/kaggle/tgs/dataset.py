@@ -72,7 +72,6 @@ class TgsSaltDataset(Dataset):
             transform = Compose([
                 ToPILImage(),
                 random.choice(self.transforms),
-                random.choice(self.transforms),
                 ToTensor()
             ])
             mask = torch.FloatTensor(

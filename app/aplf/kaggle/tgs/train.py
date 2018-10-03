@@ -31,8 +31,6 @@ def update_ema_variables(model, ema_model, alpha):
         return ema_model
 
 
-
-
 def get_learning_rate(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
@@ -55,6 +53,7 @@ def validate(critertion, x, y, epoch):
     )
     return loss, score
 
+
 class CyclicLR(object):
 
     def __init__(self,
@@ -66,10 +65,12 @@ class CyclicLR(object):
         self.min_factor = min_factor
         self.max_factor = max_factor
         self.period = period
-        self.milestones=milestones
+        self.milestones = milestones
 
     def __call__(self, epoch):
-        cyclic = self.min_factor + (self.max_factor - self.min_factor)*(epoch % self.period)/self.period
+        cyclic = self.min_factor + \
+            (self.max_factor - self.min_factor) * \
+            (epoch % self.period)/self.period
         gamma = pipe(
             self.milestones,
             filter(lambda x: x[0] <= epoch),
@@ -77,7 +78,6 @@ class CyclicLR(object):
             last
         )
         return cyclic * gamma
-
 
 
 def train(model_path,
@@ -118,7 +118,7 @@ def train(model_path,
     train_loader = DataLoader(
         train_dataset,
         batch_size=labeled_batch_size,
-        shuffle=True
+        shuffle=True,
     )
 
     no_labeled_dataloader = DataLoader(
@@ -145,7 +145,7 @@ def train(model_path,
         len(no_labeled_dataloader),
         len(val_loader)
     )
-    scheduler= LambdaLR(
+    scheduler = LambdaLR(
         optimizer=optimizer,
         lr_lambda=CyclicLR(
             min_factor=0.2,
@@ -176,11 +176,7 @@ def train(model_path,
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
             no_labeled_image = no_labeled_sample['image'].to(device)
             model_out = model(
-                add_noise(
-                    train_image,
-                    resize=(0.4, 0.8),
-                    dropout_p=0.0,
-                )
+                add_noise(train_image)
             )
             class_loss, train_score = validate(
                 class_criterion,
@@ -231,7 +227,6 @@ def train(model_path,
             #  sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
 
-
             with torch.no_grad():
                 #  ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_loss, val_score = validate(
@@ -259,6 +254,7 @@ def train(model_path,
                 {
                     'val': mean_iou_val,
                     'train': mean_iou_train,
+                    'diff': mean_iou_train - mean_iou_val,
                 },
                 epoch
             )
@@ -269,6 +265,7 @@ def train(model_path,
                     'class': mean_class_loss,
                     'consistency': mean_consistency_loss,
                     'val': mean_val_loss,
+                    'diff': mean_val_loss - mean_train_loss,
                 },
                 epoch
             )

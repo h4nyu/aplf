@@ -2,7 +2,7 @@ from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curr
 from aplf import config
 import torch
 from torch.utils.data import DataLoader
-from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size, add_noise
+from aplf.kaggle.tgs.preprocess import rl_enc, cleanup, rle_decode, add_mask_size, add_noise, RandomErasing
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from tensorboardX import SummaryWriter
 import torchvision.utils as vutils
@@ -66,3 +66,34 @@ def test_add_noise():
         f"add_noise",
         vutils.make_grid([*sample, *noised]),
     )
+
+def test_erase():
+    dataset_df = load_dataset_df(
+        '/store/kaggle/tgs',
+        'train.csv',
+    )
+    dataset = TgsSaltDataset(
+        dataset_df,
+        has_y=True
+    )
+
+    dataloader = DataLoader(
+        dataset,
+        batch_size=8,
+        shuffle=True
+    )
+    sample = pipe(
+        dataloader,
+        first
+    )['image']
+    random_erase = RandomErasing()
+
+    noised = add_noise(sample)
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
+    dataset_df = load_dataset_df('/store/kaggle/tgs')
+    writer.add_image(
+        f"random_erase",
+        vutils.make_grid([*sample, *noised]),
+    )
+
