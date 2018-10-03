@@ -77,4 +77,8 @@ data clean
 
 
 ## result
-
+epoch 799
+val iou 0.901
+train iou 0.813
+val loss 0.100
+train loss 0.024
