@@ -12,3 +12,13 @@ data clean
 augmentation: hflip 
 no random_erase: reduce_rampup 0, erase_num 0
 
+## result
+### 187(2h 3m)
+val iou 0.85
+train iou 0.812
+val loss 0.09
+train loss 0.052
+
+## memo
+RUnetよりoverfitしにくい
+
