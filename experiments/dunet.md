@@ -85,7 +85,7 @@ train loss 0.024
 adamがsgd+cyclicよりスコアがよい
 
 
-# 9
+# 10
 ## condition
 DUNet feature 16 depth 3
 val_split:0.2
