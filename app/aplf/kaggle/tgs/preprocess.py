@@ -1,4 +1,6 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry, merge
+import random
+import math
 from sklearn.metrics import jaccard_similarity_score
 import numpy as np
 import pandas as pd
@@ -115,8 +117,10 @@ def avarage_dfs(dfs):
 def hflip(image):
     return image.flip([2])
 
+
 def vflip(image):
     return image.flip([1])
+
 
 @curry
 def crop(image, start, end):
@@ -129,6 +133,7 @@ def crop(image, start, end):
     image = image.view(c, h, w)
     return image
 
+
 @curry
 def dump_json(path, *dicts):
     data = merge(*dicts)
@@ -137,13 +142,49 @@ def dump_json(path, *dicts):
         json.dump(data, f)
     return path
 
+
+class RandomErasing(object):
+
+    def __init__(self, probability=0.5, sl=0.01, sh=0.2, r1=1, mean=[0.4914, 0.4822, 0.4465]):
+        self.probability = probability
+        self.mean = mean
+        self.sl = sl
+        self.sh = sh
+        self.r1 = r1
+
+    def __call__(self, img):
+
+        if random.uniform(0, 1) > self.probability:
+            return img
+
+        for attempt in range(100):
+            area = img.size()[1] * img.size()[2]
+
+            target_area = random.uniform(self.sl, self.sh) * area
+            aspect_ratio = random.uniform(self.r1, 1/self.r1)
+
+            h = int(round(math.sqrt(target_area * aspect_ratio)))
+            w = int(round(math.sqrt(target_area / aspect_ratio)))
+            if w < img.size()[2] and h < img.size()[1]:
+                x1 = random.randint(0, img.size()[1] - h)
+                y1 = random.randint(0, img.size()[2] - w)
+                if img.size()[0] == 3:
+                    img[0, x1:x1+h, y1:y1+w] = self.mean[0]
+                    img[1, x1:x1+h, y1:y1+w] = self.mean[1]
+                    img[2, x1:x1+h, y1:y1+w] = self.mean[2]
+                else:
+                    img[0, x1:x1+h, y1:y1+w] = self.mean[0]
+                return img
+
+
+        return img
+
 @curry
-def add_noise(batch_images, resize=(0.3, 0.7), dropout_p=0.0):
-    gamma = np.random.uniform(*resize)
-    x = batch_images
-    _, _, h, w = x.size()
-    with torch.no_grad():
-        x = F.interpolate(x, mode='bilinear', size=(int(h*gamma), int(w*gamma)))
-        x = nn.Dropout(p=dropout_p)(x)
-        x = F.interpolate(x, mode='bilinear', size=(h, w))
-        return x
+def add_noise(batch_images):
+    ramdom_erase = RandomErasing()
+    return pipe(
+        batch_images,
+        map(ramdom_erase),
+        list,
+        torch.stack
+    )

@@ -13,7 +13,7 @@ base_param = {
 def test_graph():
     g = Graph(
         **base_param,
-        id="9",
+        id="10",
         epochs=800,
         labeled_batch_size=32,
         no_labeled_batch_size=1,

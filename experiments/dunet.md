@@ -84,3 +84,16 @@ train loss 0.024
 パラメータ数が多いほどスコアが高い
 adamがsgd+cyclicよりスコアがよい
 
+
+# 9
+## condition
+DUNet feature 16 depth 3
+val_split:0.2
+batch_size: 32
+lr: 0.01
+no cyclic
+Adam
+lovasz
+scse
+data clean
+augmentation: hflip -> hflip, random_erase
