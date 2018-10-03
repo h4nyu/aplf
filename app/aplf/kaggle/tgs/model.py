@@ -118,17 +118,17 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            CSE(out_ch),
+            SCSE(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            CSE(out_ch),
+            SCSE(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            CSE(out_ch),
+            SCSE(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -154,7 +154,7 @@ class UpSample(nn.Module):
                 in_ch + other_ch,
                 out_ch,
             ),
-            CSE(out_ch),
+            SCSE(out_ch),
         )
 
     def forward(self, x, other):

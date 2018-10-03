@@ -259,6 +259,7 @@ def train(model_path,
                 {
                     'val': mean_iou_val,
                     'train': mean_iou_train,
+                    'diff': mean_iou_train - mean_iou_val,
                 },
                 epoch
             )
@@ -269,6 +270,7 @@ def train(model_path,
                     'class': mean_class_loss,
                     'consistency': mean_consistency_loss,
                     'val': mean_val_loss,
+                    'diff': mean_val_loss - mean_train_loss,
                 },
                 epoch
             )

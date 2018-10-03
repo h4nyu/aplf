@@ -55,21 +55,15 @@ scse -> cse
 # 9
 ## object
 ## condition
-DUNet feature 8 depth 3
+DUNet feature 8 depth 3 -> DUNet feature 16 depth 3
 val_split:0.2
 batch_size: 32
 lr: 0.01
-cyclic: 5 epoch 0.2 - 1.0
-SGD
+no cyclic
+Adam
 lovasz
+cse -> scse
 data clean
-+ mean teacher
-+ consistency_rampup: 50
-+ consistency_loss: CrossEntropyLoss
-+ consistency: 0.5
-+ ema_decay: 0
-+ consistency_input: [val_images]
-+ consistency_noise: 
 
 
 ## result
