@@ -97,3 +97,22 @@ lovasz
 scse
 data clean
 augmentation: hflip -> hflip, random_erase
+
+## result
+
+
+# 11
+## condition
+DUNet feature 16 depth 3
+val_split:0.2
+batch_size: 32
+lr: 0.01
+no cyclic
+Adam
+lovasz
+scse
+data clean
+augmentation: hflip 
+random_erase: no weight  -> reduce rampup 50
+
+

@@ -144,24 +144,28 @@ class UpSample(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
-                 other_ch,
                  kernel_size=3,
                  padding=1,
                  ):
         super().__init__()
         self.block = nn.Sequential(
             ResBlock(
-                in_ch + other_ch,
+                in_ch,
                 out_ch,
             ),
             SCSE(out_ch),
         )
 
-    def forward(self, x, other):
-        x = F.interpolate(x, mode='bilinear', size=other.size()[2:])
-        x = torch.cat([x, other], 1)
-        x = self.block(x)
-        return x
+    def forward(self, x, others):
+        up_size = others[-1].size()[2:]
+        out = pipe(
+            [x, *others],
+            map(lambda x: F.interpolate(x, mode='bilinear', size=up_size)),
+            list
+        )
+        out = torch.cat([*out], 1)
+        out = self.block(out)
+        return out
 
 
 class UNet(nn.Module):
@@ -374,9 +378,10 @@ class EUNet(UNet):
 
 
 
-class HUNet(nn.Module):
-    def __init__(self, feature_size=8, depth=4):
+class HUNet(UNet):
+    def __init__(self, feature_size=8, depth=3):
         super().__init__()
+        self.depth = depth
         self.down_layers = nn.ModuleList([
             DownSample(1, feature_size),
             *pipe(
@@ -393,24 +398,36 @@ class HUNet(nn.Module):
             in_ch=feature_size * 2 ** depth,
             out_ch=feature_size * 2 ** depth,
         )
+        down_outs = pipe(
+            self.down_layers,
+            map(lambda x: x.out_ch),
+            list
+        )
+        down_outs = list(reversed(down_outs))
 
-        self.up_layers = nn.ModuleList([
-            *pipe(
-                range(depth),
-                reversed,
+        up_outs = down_outs[1:]
+        up_ins = pipe(
+            range(depth),
+            map(lambda x: [down_outs[:x+2][-1], *down_outs[:x+2]]),
+            map(sum),
+            list
+        )
+
+        self.up_layers = nn.ModuleList(
+            pipe(
+                zip(up_ins, up_outs),
                 map(lambda x: UpSample(
-                    feature_size * (2 ** (x + 1)),
-                    feature_size * (2 ** x),
-                    feature_size * (2 ** (x + 1)),
+                    in_ch=x[0],
+                    out_ch=x[1]
                 )),
                 list,
-            ),
-            UpSample(
-                feature_size,
-                2,
-                feature_size,
-            ),
-        ])
+            )
+        )
+        self._output = nn.Conv2d(
+            up_outs[-1],
+            2,
+            kernel_size=3
+        )
 
     def forward(self, x):
         # down samples
@@ -420,11 +437,14 @@ class HUNet(nn.Module):
             x, d_out = layer(x)
             d_outs.append(d_out)
 
-        x = self.center(x)
+        _, x = self.center(x)
+        d_outs = list(reversed(d_outs))[:self.depth]
 
         # up samples
-        for layer, d_out in zip(self.up_layers, reversed(d_outs)):
-            x = layer(x, d_out)
+        u_outs = []
+        for i, layer in enumerate(self.up_layers):
+            x = layer(x, d_outs[:i+1])
 
+        x = self._output(x)
         x = F.interpolate(x, mode='bilinear', size=(101, 101))
         return x

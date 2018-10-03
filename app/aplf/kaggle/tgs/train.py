@@ -98,7 +98,8 @@ def train(model_path,
           depth,
           cyclic_period,
           switch_epoch,
-          milestones
+          milestones,
+          erase_num,
           ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -176,8 +177,12 @@ def train(model_path,
             val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
             no_labeled_image = no_labeled_sample['image'].to(device)
             model_out = model(
-                add_noise(train_image)
+                add_noise(
+                    train_image,
+                    num=int(erase_num * (1 - linear_rampup(epoch, consistency_rampup))),
+                )
             )
+
             class_loss, train_score = validate(
                 class_criterion,
                 model_out,
