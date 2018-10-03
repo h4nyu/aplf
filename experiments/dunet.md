@@ -35,7 +35,6 @@ val loss 0.109
 train loss 0.026
 
 # 8
-## object
 ## condition
 DUNet feature 8 depth 3
 val_split:0.2
@@ -63,7 +62,6 @@ train loss 0.026
 
 
 # 9
-## object
 ## condition
 DUNet feature 8 depth 3 -> DUNet feature 16 depth 3
 val_split:0.2
@@ -82,3 +80,7 @@ val iou 0.901
 train iou 0.813
 val loss 0.100
 train loss 0.024
+## memo
+パラメータ数が多いほどスコアが高い
+adamがsgd+cyclicよりスコアがよい
+
