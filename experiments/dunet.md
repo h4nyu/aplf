@@ -49,6 +49,16 @@ scse -> cse
 
 
 ## result
+epoch 799
+val iou 0.902
+train iou 0.754
+val loss 0.110
+train loss 0.026
+## memo
+7番目とあまり変わらない結果、
+パラメータ数が少なさすぎる可能性あり
+
+
 
 
 
