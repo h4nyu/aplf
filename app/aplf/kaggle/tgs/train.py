@@ -132,7 +132,7 @@ def train(model_path,
     )
 
     class_criterion = lovasz_softmax
-    consistency_criterion = nn.CrossEntropyLoss(size_average=True)
+    consistency_criterion = nn.MSELoss(size_average=True)
 
     #  optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer = optim.Adam(model.parameters())
@@ -151,10 +151,8 @@ def train(model_path,
         )
     )
 
-    el = EarlyStop(patience, base_size=base_size)
     max_iou_val = 0
     max_iou_train = 0
-    is_overfit = False
 
     for epoch in range(epochs):
         sum_class_loss = 0
@@ -165,7 +163,6 @@ def train(model_path,
         sum_val_loss = 0
         sum_val_score = 0
         for train_sample, no_labeled_sample, val_sample in zip(train_loader, no_labeled_dataloader, val_loader):
-
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
             val_image = val_sample['image'].to(device)
@@ -191,7 +188,37 @@ def train(model_path,
                 train_center_out,
                 train_center_mask.view(-1, *train_center_out.size()[2:]).long(),
             )
-            loss = class_loss + center_loss
+            with torch.no_grad():
+                consistency_input = torch.cat([
+                    val_image,
+                    no_labeled_image,
+                ])
+                _, tea_center_out = ema_model(
+                    add_noise(
+                        consistency_input,
+                        num=erase_num,
+                    )
+                )
+
+            _, stu_center_out = model(
+                add_noise(
+                    consistency_input,
+                    num=erase_num,
+                )
+            )
+            consistency_weight = get_current_consistency_weight(
+                epoch=epoch,
+                weight=consistency,
+                rampup=consistency_rampup,
+            )
+
+            consistency_loss = consistency_weight * \
+                consistency_criterion(
+                    tea_center_out.softmax(dim=1),
+                    stu_center_out.softmax(dim=1)
+                )
+
+            loss = class_loss + center_loss + consistency_loss
 
             optimizer.zero_grad()
             loss.backward()
@@ -200,13 +227,12 @@ def train(model_path,
 
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
+            sum_consistency_loss += consistency_loss.item()
             sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
 
             with torch.no_grad():
-                #  ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_out, _ = model(val_image)
-
                 val_loss = class_criterion(
                     val_out,
                     val_mask.view(-1, *val_out.size()[2:]).long()
@@ -228,6 +254,7 @@ def train(model_path,
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
         mean_center_loss = sum_center_loss / len_batch
+        mean_consistency_loss = sum_consistency_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -245,6 +272,7 @@ def train(model_path,
                     'train': mean_train_loss,
                     'class': mean_class_loss,
                     'center': mean_center_loss,
+                    'consistency': mean_consistency_loss,
                     'val': mean_val_loss,
                     'diff': mean_val_loss - mean_class_loss,
                 },
@@ -258,16 +286,12 @@ def train(model_path,
                 epoch
             )
 
-        if max_iou_val <= mean_iou_val:
-            max_iou_val = mean_iou_val
-            torch.save(model, model_path)
+            if max_iou_val <= mean_iou_val:
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
+                max_iou_val = mean_iou_val
+                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:' , epoch)
+                torch.save(model, model_path)
 
-        if max_iou_train <= mean_iou_train:
-            max_iou_train = mean_iou_train
-
-        if sum_val_score / len_batch > 0:
-            is_overfit = el(- mean_iou_val)
-
-        if is_overfit:
-            break
+            if max_iou_train <= mean_iou_train:
+                max_iou_train = mean_iou_train
     return model_path

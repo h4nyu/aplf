@@ -43,6 +43,8 @@ val iou 0.792
 train iou 0.84
 val loss 0.103
 train loss 0.065
+## memo
+パラメータが多い方がスコアが高い
 
 
 # 14
@@ -65,6 +67,10 @@ val iou 0.89
 train iou 0.810
 val loss 0.106
 train loss 0.059
+## memo
+random_eraseはあった方よいが多すぎると悪影響
+
+
 
 ### 56649181-36f6-483d-94f1-eecb66cc8575
 epoch: 347 
@@ -89,13 +95,12 @@ data clean
 augmentation: hflip 
 random_erase: num 5, rampup 300, -> random_erase: remove rampup num 1
 center mask loss
-+ cetner maxpool
 
 ## result
 
 # 16
 ## condition
-HUNet feature 32 depth 3  -> HUNet feature 32 depth 4
+HUNet feature 32 depth 3  -> HUNet feature 8 depth 3
 val_split:0.2
 batch_size: 32
 lr: 0.01
@@ -106,5 +111,10 @@ data clean
 augmentation: hflip 
 random_erase: num 1
 center mask loss
+mean teacher
+consistency loss: mes
+consistency input: val
+ema_decay: 0.2
+best teacher
 
 ## result
