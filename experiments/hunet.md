@@ -58,7 +58,6 @@ scse
 data clean
 augmentation: hflip 
 random_erase: num 5, rampup 300
-+ center mask loss
 
 ## result
 ### 190(2h 3m)
@@ -66,9 +65,16 @@ val iou 0.89
 train iou 0.810
 val loss 0.106
 train loss 0.059
+
+### 56649181-36f6-483d-94f1-eecb66cc8575
+epoch: 347 
+time: 8h14m
+val_iou: 0.829
+train_iou 0.907
+val_loss 0.079
+train loss 0.032
 ## memo
-DUnetよりoverfitしにくい
-center mask はあまり作用しない？
+val_lossが更新
 
 # 15
 ## condition
@@ -84,5 +90,21 @@ augmentation: hflip
 random_erase: num 5, rampup 300, -> random_erase: remove rampup num 1
 center mask loss
 + cetner maxpool
+
+## result
+
+# 16
+## condition
+HUNet feature 32 depth 3  -> HUNet feature 32 depth 4
+val_split:0.2
+batch_size: 32
+lr: 0.01
+no cyclic
+Adam lovasz
+scse
+data clean
+augmentation: hflip 
+random_erase: num 1
+center mask loss
 
 ## result
