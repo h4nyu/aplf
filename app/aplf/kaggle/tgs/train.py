@@ -246,7 +246,7 @@ def train(model_path,
                     'class': mean_class_loss,
                     'center': mean_center_loss,
                     'val': mean_val_loss,
-                    'diff': mean_val_loss - mean_train_loss,
+                    'diff': mean_val_loss - mean_class_loss,
                 },
                 epoch
             )

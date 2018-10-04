@@ -54,3 +54,20 @@ augmentation: hflip
 no random_erase
 + center mask loss
 
+
+# 15
+## condition
+HUNet feature 32 depth 3
+val_split:0.2
+batch_size: 32
+lr: 0.01
+no cyclic
+Adam
+lovasz
+scse
+data clean
+augmentation: hflip 
+no random_erase
+center mask loss
++ cetner maxpool
+

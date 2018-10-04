@@ -404,10 +404,15 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** depth,
         )
 
-        self._cetner_output = nn.Conv2d(
-            feature_size * 2 ** depth,
-            2,
-            kernel_size=3
+        self._cetner_output = nn.Sequential(
+            nn.Conv2d(
+                feature_size * 2 ** depth,
+                2,
+                kernel_size=3
+            ),
+            nn.BatchNorm2d(2),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2)
         )
 
         down_outs = pipe(
@@ -449,8 +454,8 @@ class HUNet(UNet):
             x, d_out = layer(x)
             d_outs.append(d_out)
 
-        _, x = self.center(x)
-        center = self._cetner_output(x)
+        center, x = self.center(x)
+        center = self._cetner_output(center)
         d_outs = list(reversed(d_outs))[:self.depth]
 
         # up samples
