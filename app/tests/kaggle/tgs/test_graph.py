@@ -16,7 +16,7 @@ def test_graph():
         id="16",
         epochs=400,
         labeled_batch_size=32,
-        no_labeled_batch_size=24,
+        no_labeled_batch_size=16,
         model_type='HUNet',
         feature_size=16,
         depth=3,
@@ -24,13 +24,13 @@ def test_graph():
         base_size=10,
         ema_decay=0.1,
         consistency=1,
-        consistency_rampup=30,
+        consistency_rampup=50,
         cyclic_period=5,
         switch_epoch=30,
         milestones=[(0, 1)],
         parallel=2,
         top_num=2,
-        erase_num=2,
+        erase_num=3,
     )
 
     with Client('dask-scheduler:8786') as c:

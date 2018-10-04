@@ -232,6 +232,7 @@ def train(model_path,
             sum_train_loss += loss.item()
 
             with torch.no_grad():
+                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_out, _ = model(val_image)
                 val_loss = class_criterion(
                     val_out,
@@ -287,7 +288,6 @@ def train(model_path,
             )
 
             if max_iou_val <= mean_iou_val:
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 max_iou_val = mean_iou_val
                 w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:' , epoch)
                 torch.save(model, model_path)
