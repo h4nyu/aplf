@@ -132,7 +132,7 @@ def train(model_path,
     )
 
     class_criterion = lovasz_softmax
-    consistency_criterion = nn.MSELoss(size_average=True)
+    consistency_criterion = lovasz_softmax
 
     #  optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer = optim.Adam(model.parameters())
@@ -214,8 +214,8 @@ def train(model_path,
 
             consistency_loss = consistency_weight * \
                 consistency_criterion(
-                    tea_center_out.softmax(dim=1),
                     stu_center_out.softmax(dim=1)
+                    tea_center_out.argmax(dim=1),
                 )
 
             loss = class_loss + center_loss + consistency_loss
