@@ -398,6 +398,18 @@ class HUNet(UNet):
             in_ch=feature_size * 2 ** depth,
             out_ch=feature_size * 2 ** depth,
         )
+
+        self.center = DownSample(
+            in_ch=feature_size * 2 ** depth,
+            out_ch=feature_size * 2 ** depth,
+        )
+
+        self._cetner_output = nn.Conv2d(
+            feature_size * 2 ** depth,
+            2,
+            kernel_size=3
+        )
+
         down_outs = pipe(
             self.down_layers,
             map(lambda x: x.out_ch),
@@ -438,6 +450,7 @@ class HUNet(UNet):
             d_outs.append(d_out)
 
         _, x = self.center(x)
+        center = self._cetner_output(x)
         d_outs = list(reversed(d_outs))[:self.depth]
 
         # up samples
@@ -447,4 +460,4 @@ class HUNet(UNet):
 
         x = self._output(x)
         x = F.interpolate(x, mode='bilinear', size=(101, 101))
-        return x
+        return x, center

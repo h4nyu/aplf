@@ -13,12 +13,12 @@ base_param = {
 def test_graph():
     g = Graph(
         **base_param,
-        id="13",
+        id="14",
         epochs=400,
         labeled_batch_size=32,
         no_labeled_batch_size=1,
         model_type='HUNet',
-        feature_size=64,
+        feature_size=32,
         depth=3,
         patience=30,
         base_size=10,
