@@ -174,7 +174,7 @@ def train(model_path,
             train_out, train_center_out = model(
                 add_noise(
                     train_image,
-                    num=int(erase_num * (1 - linear_rampup(epoch, consistency_rampup))),
+                    num=erase_num,
                 )
             )
 

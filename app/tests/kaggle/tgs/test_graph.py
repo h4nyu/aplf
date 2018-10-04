@@ -30,7 +30,7 @@ def test_graph():
         milestones=[(0, 1)],
         parallel=5,
         top_num=1,
-        erase_num=5,
+        erase_num=1,
     )
 
     with Client('dask-scheduler:8786') as c:

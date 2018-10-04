@@ -51,9 +51,10 @@ lovasz
 scse
 data clean
 augmentation: hflip 
-no random_erase
+random_erase: num 5, rampup 300
 + center mask loss
 
+## result
 
 # 15
 ## condition
@@ -67,7 +68,8 @@ lovasz
 scse
 data clean
 augmentation: hflip 
-no random_erase
+random_erase: num 5, rampup 300, -> random_erase: remove rampup num 1
 center mask loss
 + cetner maxpool
 
+## result

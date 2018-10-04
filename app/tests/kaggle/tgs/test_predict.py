@@ -1,6 +1,6 @@
 from aplf.kaggle.tgs.predict import predict
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
-from aplf.kaggle.tgs.model import UNet
+from aplf.kaggle.tgs.model import UNet, HUNet
 from aplf import config
 from sklearn.model_selection import train_test_split
 import torch
@@ -17,7 +17,7 @@ def test_predict(csv_fn, has_y):
         csv_fn
     ).sample(10)
     dataset = TgsSaltDataset(dataset_df, has_y=has_y)
-    model = UNet()
+    model = HUNet()
     model_paths = ['/store/tmp/model.pt']
     torch.save(model, model_paths[0])
     predicted_df = predict(
