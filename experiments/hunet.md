@@ -55,6 +55,15 @@ random_erase: num 5, rampup 300
 + center mask loss
 
 ## result
+### 190(2h 3m)
+val iou 0.89
+train iou 0.810
+val loss 0.106
+train loss 0.059
+## memo
+DUnetよりoverfitしにくい
+center mask はあまり作用しない？
+
 
 # 15
 ## condition
