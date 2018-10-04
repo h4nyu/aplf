@@ -36,12 +36,7 @@ def get_learning_rate(optimizer):
         return param_group['lr']
 
 
-def validate(critertion, x, y, epoch):
-    loss = critertion(
-        x,
-        y,
-        epoch
-    )
+def validate(x, y, epoch):
     score = pipe(
         zip(
             x.argmax(dim=1).cpu().detach().numpy(),
@@ -51,7 +46,7 @@ def validate(critertion, x, y, epoch):
         list,
         np.mean
     )
-    return loss, score
+    return score
 
 
 class CyclicLR(object):
@@ -165,79 +160,60 @@ def train(model_path,
         sum_class_loss = 0
         sum_train_loss = 0
         sum_consistency_loss = 0
+        sum_center_loss = 0
         sum_train_score = 0
         sum_val_loss = 0
         sum_val_score = 0
         for train_sample, no_labeled_sample, val_sample in zip(train_loader, no_labeled_dataloader, val_loader):
 
             train_image = train_sample['image'].to(device)
-            train_mask = train_sample['mask'].to(
-                device).view(-1, 101, 101).long()
+            train_mask = train_sample['mask'].to(device)
             val_image = val_sample['image'].to(device)
-            val_mask = val_sample['mask'].to(device).view(-1, 101, 101).long()
+            val_mask = val_sample['mask'].to(device)
             no_labeled_image = no_labeled_sample['image'].to(device)
-            model_out = model(
+            train_out, train_center_out = model(
                 add_noise(
                     train_image,
-                    num=int(erase_num * (1 - linear_rampup(epoch, consistency_rampup))),
+                    num=erase_num,
                 )
             )
 
-            class_loss, train_score = validate(
-                class_criterion,
-                model_out,
-                train_mask,
+            train_score = validate(
+                train_out,
+                train_mask.view(-1, *train_out.size()[2:]).long(),
                 epoch,
             )
-            #  with torch.no_grad():
-            #      consistency_input = torch.cat([
-            #          val_image,
-            #      ])
-            #
-            #      ema_model_out = ema_model(
-            #          add_noise(
-            #              consistency_input,
-            #              resize=(0.4, 0.8),
-            #              dropout_p=0.0,
-            #          )
-            #      ).argmax(dim=1)
-            #
-            #
-            #  model_out = model(
-            #      add_noise(
-            #          consistency_input,
-            #          resize=(0.4, 0.8),
-            #          dropout_p=0.0,
-            #      )
-            #  )
-            #
-            #  consistency_weight = get_current_consistency_weight(
-            #      epoch=epoch,
-            #      weight=consistency,
-            #      rampup=consistency_rampup,
-            #  )
-            #  consistency_loss = consistency_weight * consistency_criterion(
-            #      model_out,
-            #      ema_model_out
-            #  )
-            #  loss = consistency_loss + class_loss
-            loss = class_loss
+
+            class_loss = class_criterion(train_out, train_mask)
+
+            train_center_mask = F.interpolate(train_mask, size=train_center_out.size()[2:])
+            center_loss = class_criterion(
+                train_center_out,
+                train_center_mask.view(-1, *train_center_out.size()[2:]).long(),
+            )
+            loss = class_loss + center_loss
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
-            #  sum_consistency_loss += consistency_loss.item()
+            sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
 
             with torch.no_grad():
                 #  ema_model = update_ema_variables(model, ema_model, ema_decay)
-                val_loss, val_score = validate(
-                    class_criterion,
-                    model(val_image),
-                    val_mask,
+                val_out, _ = model(val_image)
+
+                val_loss = class_criterion(
+                    val_out,
+                    val_mask.view(-1, *val_out.size()[2:]).long()
+                )
+                val_score = validate(
+                    val_out,
+                    val_mask.view(-1, *val_out.size()[2:]).long(),
                     epoch,
                 )
                 sum_val_loss += val_loss.item()
@@ -251,7 +227,7 @@ def train(model_path,
         mean_train_loss = sum_train_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
-        mean_consistency_loss = sum_consistency_loss / len_batch
+        mean_center_loss = sum_center_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -268,9 +244,9 @@ def train(model_path,
                 {
                     'train': mean_train_loss,
                     'class': mean_class_loss,
-                    'consistency': mean_consistency_loss,
+                    'center': mean_center_loss,
                     'val': mean_val_loss,
-                    'diff': mean_val_loss - mean_train_loss,
+                    'diff': mean_val_loss - mean_class_loss,
                 },
                 epoch
             )

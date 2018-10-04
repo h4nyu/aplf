@@ -46,12 +46,12 @@ def predict(model_paths,
 
             normal_outputs = pipe(
                 models,
-                map(lambda x: x(image)),
+                map(lambda x: x(image)[0]),
                 list,
             )
             fliped_outputs = pipe(
                 models,
-                map(lambda x: x(image.flip([3])).flip([3])),
+                map(lambda x: x(image.flip([3]))[0].flip([3])),
                 list,
             )
             output = pipe(
