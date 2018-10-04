@@ -13,7 +13,7 @@ base_param = {
 def test_graph():
     g = Graph(
         **base_param,
-        id="13",
+        id="14",
         epochs=400,
         labeled_batch_size=32,
         no_labeled_batch_size=1,
@@ -30,7 +30,7 @@ def test_graph():
         milestones=[(0, 1)],
         parallel=5,
         top_num=1,
-        erase_num=5,
+        erase_num=0,
     )
 
     with Client('dask-scheduler:8786') as c:
