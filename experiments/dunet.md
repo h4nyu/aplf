@@ -97,3 +97,11 @@ lovasz
 scse
 data clean
 augmentation: hflip -> hflip, random_erase
+
+## result
+epoch 659(10h 52m)
+val iou 0.909
+train iou 0.842
+val loss 0.100
+train loss 0.024
+
