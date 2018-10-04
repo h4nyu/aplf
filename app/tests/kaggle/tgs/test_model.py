@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RUNet, DUNet, EUNet
+from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RUNet, DUNet, EUNet, HUNet
 import torch
 import pytest
 
@@ -44,9 +44,22 @@ def test_dunet(depth, feature_size):
 @pytest.mark.parametrize("depth, feature_size", [
     (4, 8),
 ])
-def test_e_unet(depth, feature_size):
+def test_eunet(depth, feature_size):
     with torch.no_grad():
         model = EUNet(
+            feature_size=feature_size,
+            depth=depth
+        )
+        in_image = torch.empty(4, 1, 101, 101)
+        out_image = model(in_image)
+        assert out_image.size() == (4, 2, 101, 101)
+
+@pytest.mark.parametrize("depth, feature_size", [
+    (3, 8),
+])
+def test_hunet(depth, feature_size):
+    with torch.no_grad():
+        model = HUNet(
             feature_size=feature_size,
             depth=depth
         )

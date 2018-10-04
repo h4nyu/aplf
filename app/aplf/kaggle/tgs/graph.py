@@ -34,6 +34,7 @@ class Graph(object):
                  cyclic_period,
                  switch_epoch,
                  milestones,
+                 erase_num,
                  ):
         params = locals()
 
@@ -108,6 +109,7 @@ class Graph(object):
                 cyclic_period=cyclic_period,
                 switch_epoch=switch_epoch,
                 milestones=milestones,
+                erase_num=erase_num,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list
