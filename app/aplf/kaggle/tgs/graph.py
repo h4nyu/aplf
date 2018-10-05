@@ -2,14 +2,15 @@ from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 from sklearn.model_selection import train_test_split
 from dask import delayed
 from datetime import datetime
+from torch.utils.data import Subset
 import numpy as np
 import pandas as pd
 import uuid
 from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
-from .train import train
+from .train import base_train, fine_train
 from .predict import predict
-from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold
 
 
 class Graph(object):
@@ -17,30 +18,15 @@ class Graph(object):
                  id,
                  dataset_dir,
                  output_dir,
-                 epochs,
-                 model_type,
-                 val_split_size,
-                 labeled_batch_size,
-                 no_labeled_batch_size,
-                 patience,
-                 base_size,
-                 parallel,
+                 n_splits,
+                 base_train_config,
+                 fine_train_config,
                  top_num,
-                 feature_size,
-                 ema_decay,
-                 consistency,
-                 consistency_rampup,
-                 depth,
-                 cyclic_period,
-                 switch_epoch,
-                 milestones,
-                 erase_num,
                  ):
         params = locals()
 
         ids = pipe(
-            range(parallel),
-            map(lambda x: uuid.uuid4()),
+            range(n_splits),
             list
         )
 
@@ -49,32 +35,23 @@ class Graph(object):
             'train.csv'
         )
         dataset_df = delayed(cleanup)(dataset_df)
-
-        spliteds = pipe(
-            ids,
-            enumerate,
-            map(lambda x: delayed(train_test_split)(
-                dataset_df,
-                test_size=val_split_size,
-                shuffle=True,
-                random_state=x[0]
-            )),
-            list
-        )
-        train_datasets = pipe(
-            spliteds,
-            map(delayed(lambda x: x[0])),
-            map(lambda x: delayed(TgsSaltDataset)(
-                x,
-                has_y=True
-            )),
-            list
+        dataset = delayed(TgsSaltDataset)(
+            dataset_df,
+            has_y=True,
         )
 
-        val_datasets = pipe(
-            spliteds,
-            map(delayed(lambda x: x[1])),
-            map(lambda x: delayed(TgsSaltDataset)(x, has_y=True)),
+        kfolded = delayed(kfold)(dataset, n_splits)
+
+        train_sets = pipe(
+            range(n_splits),
+            map(lambda idx: delayed(lambda x: x[idx][0])(kfolded)),
+            map(lambda x: delayed(Subset)(dataset, x)),
+            list
+        )
+        val_sets = pipe(
+            range(n_splits),
+            map(lambda idx: delayed(lambda x: x[idx][1])(kfolded)),
+            map(lambda x: delayed(Subset)(dataset, x)),
             list
         )
 
@@ -83,40 +60,41 @@ class Graph(object):
             'sample_submission.csv'
         )
 
-        predict_dataset = delayed(TgsSaltDataset)(
+        predict_set = delayed(TgsSaltDataset)(
             predict_dataset_df,
             has_y=False
         )
 
         model_paths = pipe(
-            zip(ids, train_datasets, val_datasets),
-            map(lambda x: delayed(train)(
-                model_path=f"{output_dir}/model_{x[0]}.pt",
-                train_dataset=x[1],
-                val_dataset=x[2],
-                model_type=model_type,
-                no_labeled_dataset=predict_dataset,
-                epochs=epochs,
-                labeled_batch_size=labeled_batch_size,
-                no_labeled_batch_size=no_labeled_batch_size,
-                feature_size=feature_size,
-                patience=patience,
-                base_size=base_size,
-                consistency=consistency,
-                consistency_rampup=consistency_rampup,
-                ema_decay=ema_decay,
-                depth=depth,
-                cyclic_period=cyclic_period,
-                switch_epoch=switch_epoch,
-                milestones=milestones,
-                erase_num=erase_num,
+            zip(ids, train_sets, val_sets),
+            map(lambda x: delayed(base_train)(
+                **base_train_config,
+                model_path=f"{output_dir}/base-model-{id}-{x[0]}.pt",
+                train_set=x[1],
+                val_set=x[2],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list
         )
 
+        model_paths = pipe(
+            zip(ids, model_paths, train_sets, val_sets),
+            map(lambda x: delayed(fine_train)(
+                **fine_train_config,
+                base_mode_path=x[1],
+                model_path=f"{output_dir}/fine-model-{id}-{x[0]}.pt",
+                train_set=x[2],
+                val_set=x[3],
+                no_labeled_set=predict_set,
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
+            )),
+            list
+        )
+
+
+
         scores = pipe(
-            zip(ids, model_paths, val_datasets),
+            zip(ids, model_paths, val_sets),
             map(lambda x: delayed(predict)(
                 model_paths=[x[1]],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/val',
@@ -126,7 +104,6 @@ class Graph(object):
             map(delayed(lambda df: df['score'].mean())),
             list
         )
-
         param_files = pipe(
             zip(ids, scores),
             map(lambda x: dump_json(
@@ -140,23 +117,23 @@ class Graph(object):
             )),
             list
         )
-
+        #
         top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
-
+        #
         submission_df = delayed(predict)(
             model_paths=top_model_paths,
             log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
-            dataset=predict_dataset,
+            dataset=predict_set,
             log_interval=10,
         )
-
+        #
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
         submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(
             submission_df,
         )
 
         self.output = delayed(lambda x: x)((
-            top_model_paths,
+            model_paths,
             scores,
             submission_df,
             submission_file,
@@ -164,36 +141,3 @@ class Graph(object):
         ))
 
 
-class SubmissionGraph(object):
-    def __init__(self,
-                 id,
-                 dataset_dir,
-                 output_dir,
-                 model_paths,
-                 ):
-        predict_dataset_df = delayed(load_dataset_df)(
-            dataset_dir,
-            'sample_submission.csv'
-        )
-
-        predict_dataset = delayed(TgsSaltDataset)(
-            predict_dataset_df,
-            has_y=False
-        )
-
-        submission_df = delayed(predict)(
-            model_paths=model_paths,
-            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
-            dataset=predict_dataset,
-            log_interval=10,
-        )
-
-        submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
-        submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/submission.csv"))(
-            submission_df,
-        )
-
-        self.output = delayed(lambda x: x)((
-            submission_df,
-            submission_file,
-        ))

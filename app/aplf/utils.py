@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map
+from pathlib import Path
 import numpy as np
 from dask import delayed
 
@@ -21,3 +22,14 @@ class EarlyStop(object):
 
     def clear(self):
         self.losses = []
+
+def skip_if_exists(key):
+    def _skip(func):
+        def wrapper(*args, **kwargs):
+            if Path(kwargs[key]).exists():
+                return kwargs[key]
+            else:
+                return func(*args, **kwargs)
+        wrapper.__name__ = func.__name__
+        return wrapper
+    return _skip

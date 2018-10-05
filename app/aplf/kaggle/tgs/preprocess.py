@@ -2,6 +2,7 @@ from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curr
 import random
 import math
 from sklearn.metrics import jaccard_similarity_score
+from sklearn.model_selection import KFold
 import numpy as np
 import pandas as pd
 from skimage import io
@@ -197,3 +198,9 @@ def add_consistency_noise(batch_images, num):
         list,
         torch.stack
     )
+
+@curry
+def kfold(dataset, n_splits, random_state=0):
+    kf = KFold(n_splits, random_state=random_state)
+    return list(kf.split(dataset))
+

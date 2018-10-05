@@ -89,4 +89,7 @@ def predict(model_paths,
             df['score'] = scores
         df = df.set_index('id')
 
+        with SummaryWriter(log_dir) as w:
+            w.add_text('score', f'score: {score}, path: {paht}')
+
         return df
