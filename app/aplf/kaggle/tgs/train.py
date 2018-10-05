@@ -225,14 +225,17 @@ def base_train(model_path,
                 max_iou_train = mean_iou_train
     return model_path
 
-@skip_if_exists('model_path')
-def fine_train(model_path,
+@skip_if_exists('out_model_path')
+def fine_train(in_model_path,
+               out_model_path,
                train_set,
                val_set,
+               no_labeled_set,
                model_type,
                model_kwargs,
                epochs,
                labeled_batch_size,
+               no_labeled_batch_size,
                log_dir,
                ema_decay,
                consistency,
@@ -244,9 +247,8 @@ def fine_train(model_path,
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
-    model = Model(**model_kwargs).to(device).train()
-    ema_model = Model(**model_kwargs).to(device).eval()
-    ema_model.load_state_dict(model.state_dict())
+    model = torch.load(in_model_path).to(device).train()
+    ema_model = torch.load(in_model_path).to(device).eval()
 
     train_loader = DataLoader(
         train_set,
@@ -424,8 +426,8 @@ def fine_train(model_path,
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
                 w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:' , epoch)
-                torch.save(model, model_path)
+                torch.save(model, out_model_path)
 
             if max_iou_train <= mean_iou_train:
                 max_iou_train = mean_iou_train
-    return model_path
+    return out_model_path

@@ -81,8 +81,8 @@ class Graph(object):
             zip(ids, model_paths, train_sets, val_sets),
             map(lambda x: delayed(fine_train)(
                 **fine_train_config,
-                base_mode_path=x[1],
-                model_path=f"{output_dir}/fine-model-{id}-{x[0]}.pt",
+                in_model_path=x[1],
+                out_model_path=f"{output_dir}/fine-model-{id}-{x[0]}.pt",
                 train_set=x[2],
                 val_set=x[3],
                 no_labeled_set=predict_set,
@@ -107,7 +107,7 @@ class Graph(object):
         param_files = pipe(
             zip(ids, scores),
             map(lambda x: dump_json(
-                f"{output_dir}/{x[0]}.json",
+                f"{output_dir}/id-{id}-fold-{x[0]}.json",
                 {
                     'graph_id': id,
                     'model_id': x[0],
