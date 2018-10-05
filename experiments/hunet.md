@@ -127,6 +127,7 @@ best teacher
 
 
 # 16
+hunet-mean-teacher
 ## condition
 HUNet feature 32 depth 3  -> HUNet feature 8 depth 3
 val_split:0.2
@@ -147,4 +148,8 @@ ema_decay: 0.2
 teacher update: batch loop
 
 ## result
+
+## note
+consistencyにcross entropyやlovaszなど敏感なlossを使ってはいけない
+mseなど滑らかなlossを使うべき
 

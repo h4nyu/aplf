@@ -24,7 +24,7 @@ def test_graph():
         base_size=10,
         ema_decay=0.1,
         consistency=1,
-        consistency_rampup=20,
+        consistency_rampup=10,
         cyclic_period=5,
         switch_epoch=30,
         milestones=[(0, 1)],
