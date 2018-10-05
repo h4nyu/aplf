@@ -69,10 +69,10 @@ class Graph(object):
             zip(ids, train_sets, val_sets),
             map(lambda x: delayed(base_train)(
                 **base_train_config,
-                model_path=f"{output_dir}/{id}-{x[0]}-fine-model.pt",
+                model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
                 train_set=x[1],
                 val_set=x[2],
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
             list
         )
@@ -82,11 +82,11 @@ class Graph(object):
             map(lambda x: delayed(fine_train)(
                 **fine_train_config,
                 in_model_path=x[1],
-                out_model_path=f"{output_dir}/{id}-{x[0]}-fine-model.pt",
+                out_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
                 train_set=x[2],
                 val_set=x[3],
                 no_labeled_set=predict_set,
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
             )),
             list
         )
