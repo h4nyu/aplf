@@ -187,3 +187,13 @@ def add_noise(batch_images, num):
         list,
         torch.stack
     )
+
+@curry
+def add_consistency_noise(batch_images, num):
+    filped = batch_images.flip([3])
+    return pipe(
+        batch_images,
+        map(ramdom_erase),
+        list,
+        torch.stack
+    )

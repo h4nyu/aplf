@@ -125,3 +125,26 @@ best teacher
 
 ## result
 
+
+# 16
+## condition
+HUNet feature 32 depth 3  -> HUNet feature 8 depth 3
+val_split:0.2
+batch_size: 32
+lr: 0.01
+no cyclic
+Adam lovasz
+scse
+data clean
+augmentation: hflip 
+random_erase: num 1
+center mask loss
+mean teacher
+consistency loss: mes
+consistency input: val
++ consistency noise: val
+ema_decay: 0.2
+teacher update: batch loop
+
+## result
+

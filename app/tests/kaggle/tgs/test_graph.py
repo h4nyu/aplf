@@ -13,7 +13,7 @@ base_param = {
 def test_graph():
     g = Graph(
         **base_param,
-        id="16",
+        id="17",
         epochs=400,
         labeled_batch_size=32,
         no_labeled_batch_size=16,
@@ -24,7 +24,7 @@ def test_graph():
         base_size=10,
         ema_decay=0.1,
         consistency=1,
-        consistency_rampup=50,
+        consistency_rampup=20,
         cyclic_period=5,
         switch_epoch=30,
         milestones=[(0, 1)],

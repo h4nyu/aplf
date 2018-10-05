@@ -190,21 +190,17 @@ def train(model_path,
             )
             with torch.no_grad():
                 consistency_input = torch.cat([
+                    train_image,
                     val_image,
                     no_labeled_image,
                 ])
                 _, tea_center_out = ema_model(
-                    add_noise(
-                        consistency_input,
-                        num=erase_num,
-                    )
+                    consistency_input.flip([3]),
                 )
+                tea_center_out = tea_center_out.flip([3])
 
             _, stu_center_out = model(
-                add_noise(
-                    consistency_input,
-                    num=erase_num,
-                )
+                consistency_input,
             )
             consistency_weight = get_current_consistency_weight(
                 epoch=epoch,
@@ -214,7 +210,7 @@ def train(model_path,
 
             consistency_loss = consistency_weight * \
                 consistency_criterion(
-                    stu_center_out.softmax(dim=1)
+                    stu_center_out,
                     tea_center_out.argmax(dim=1),
                 )
 
