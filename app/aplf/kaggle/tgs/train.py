@@ -79,15 +79,15 @@ class CyclicLR(object):
 
 @skip_if_exists('model_path')
 def base_train(model_path,
-          train_set,
-          val_set,
-          model_type,
-          model_kwargs,
-          epochs,
-          batch_size,
-          log_dir,
-          erase_num,
-          ):
+               train_set,
+               val_set,
+               model_type,
+               model_kwargs,
+               epochs,
+               batch_size,
+               log_dir,
+               erase_num,
+               ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
@@ -146,7 +146,10 @@ def base_train(model_path,
                 epoch,
             )
 
-            class_loss = class_criterion(train_out, train_mask)
+            class_loss = class_criterion(
+                train_out,
+                train_mask.view(-1, *train_out.size()[2:]).long()
+            )
 
             train_center_mask = F.interpolate(train_mask, size=train_center_out.size()[2:])
             center_loss = class_criterion(
@@ -320,7 +323,10 @@ def fine_train(in_model_path,
                 epoch,
             )
 
-            class_loss = class_criterion(train_out, train_mask)
+            class_loss = class_criterion(
+                train_out,
+                train_mask.view(-1, *train_out.size()[2:]).long(),
+            )
 
             train_center_mask = F.interpolate(train_mask, size=train_center_out.size()[2:])
             center_loss = class_criterion(
