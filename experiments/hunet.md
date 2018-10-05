@@ -94,9 +94,15 @@ scse
 data clean
 augmentation: hflip 
 random_erase: num 5, rampup 300, -> random_erase: remove rampup num 1
-center mask loss
++ center mask loss
 
 ## result
+### 0a9144d0-72b6-4556-aeec-f55d4b8ac427
+epoch: 400
+val_iou: 0.839
+train_iou 0.925
+val_loss 0.085
+train loss 0.024
 
 # 16
 ## condition
@@ -118,3 +124,4 @@ ema_decay: 0.2
 best teacher
 
 ## result
+
