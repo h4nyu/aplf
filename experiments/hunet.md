@@ -124,9 +124,19 @@ ema_decay: 0.2
 best teacher
 
 ## result
+### 4dc02d82-3b20-413e-9112-c63144ae9bc9
+epoch: 319
+val_iou: 0.794
+train_iou 0.856
+val_loss 0.14
+train loss 0.052
+## note
+consistencyにcross entropyやlovaszなど敏感なlossを使ってはいけない
+mseなど滑らかなlossを使うべき
 
 
-# 16
+
+# 17
 hunet-mean-teacher
 ## condition
 HUNet feature 32 depth 3  -> HUNet feature 8 depth 3
@@ -149,7 +159,5 @@ teacher update: batch loop
 
 ## result
 
-## note
-consistencyにcross entropyやlovaszなど敏感なlossを使ってはいけない
-mseなど滑らかなlossを使うべき
+
 
