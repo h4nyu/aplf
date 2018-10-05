@@ -110,8 +110,7 @@ def base_train(model_path,
         shuffle=True
     )
 
-    class_criterion = lovasz_softmax
-    consistency_criterion = nn.MSELoss(size_average=True)
+    class_criterion = nn.CrossEntropyLoss(size_average=True)
 
     optimizer = optim.Adam(model.parameters())
     len_batch = min(

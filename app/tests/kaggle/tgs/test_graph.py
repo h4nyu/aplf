@@ -12,7 +12,7 @@ base_param = {
 def test_graph():
     id = 17
     base_train_config = {
-        'epochs': 1,
+        'epochs': 400,
         'batch_size': 32,
         'model_type': 'HUNet',
         'model_kwargs': {
@@ -23,7 +23,7 @@ def test_graph():
 
     }
     fine_train_config = {
-        'epochs': 1,
+        'epochs': 200,
         'labeled_batch_size': 32,
         'no_labeled_batch_size': 16,
         'model_type': 'HUNet',
