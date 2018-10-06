@@ -92,8 +92,6 @@ def base_train(model_path,
     Model = getattr(mdl, model_type)
 
     model = Model(**model_kwargs).to(device).train()
-    ema_model = Model(**model_kwargs).to(device).eval()
-    ema_model.load_state_dict(model.state_dict())
 
     train_loader = DataLoader(
         train_set,
@@ -231,8 +229,6 @@ def fine_train(in_model_path,
                train_set,
                val_set,
                no_labeled_set,
-               model_type,
-               model_kwargs,
                epochs,
                labeled_batch_size,
                no_labeled_batch_size,
@@ -245,8 +241,6 @@ def fine_train(in_model_path,
                erase_num,
                ):
     device = torch.device("cuda")
-    Model = getattr(mdl, model_type)
-
     model = torch.load(in_model_path).to(device).train()
     ema_model = torch.load(in_model_path).to(device).eval()
 
@@ -272,9 +266,8 @@ def fine_train(in_model_path,
     )
 
     class_criterion = lovasz_softmax
-    consistency_criterion = nn.MSELoss(size_average=True)
+    consistency_criterion = lovasz_softmax
 
-    #  optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
@@ -308,12 +301,12 @@ def fine_train(in_model_path,
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device)
             no_labeled_image = no_labeled_sample['image'].to(device)
-            train_out, train_center_out = model(
-                add_noise(
-                    train_image,
-                    num=erase_num,
-                )
+
+            train_image = add_noise(
+                train_image,
+                num=erase_num
             )
+            train_out, train_center_out = model(train_image)
 
             train_score = validate(
                 train_out,
@@ -333,28 +326,18 @@ def fine_train(in_model_path,
             )
             with torch.no_grad():
                 consistency_input = torch.cat([
-                    train_image,
                     val_image,
                     no_labeled_image,
-                ])
-                _, tea_center_out = ema_model(
-                    consistency_input.flip([3]),
-                )
-                tea_center_out = tea_center_out.flip([3])
+                ]).flip([3])
+                tea_out, _ = ema_model(consistency_input)
+                tea_out = tea_out.flip([3])
 
-            _, stu_center_out = model(
-                consistency_input,
-            )
-            consistency_weight = get_current_consistency_weight(
-                epoch=epoch,
-                weight=consistency,
-                rampup=consistency_rampup,
-            )
+            stu_out, _ = model(consistency_input)
 
-            consistency_loss = consistency_weight * \
+            consistency_loss = consistency * \
                 consistency_criterion(
-                    stu_center_out.softmax(dim=1),
-                    tea_center_out.softmax(dim=1),
+                    stu_out,
+                    tea_out.argmax(dim=1),
                 )
 
             loss = class_loss + center_loss + consistency_loss
@@ -373,6 +356,7 @@ def fine_train(in_model_path,
             with torch.no_grad():
                 ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_out, _ = model(val_image)
+
                 val_loss = class_criterion(
                     val_out,
                     val_mask.view(-1, *val_out.size()[2:]).long()
@@ -385,7 +369,7 @@ def fine_train(in_model_path,
                 sum_val_loss += val_loss.item()
                 sum_val_score += val_score
 
-        # update LR
+        #  update LR
         #  scheduler.step()
 
         mean_iou_val = sum_val_score / len_batch

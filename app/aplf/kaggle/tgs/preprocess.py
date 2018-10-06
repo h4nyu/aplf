@@ -146,7 +146,7 @@ def dump_json(path, *dicts):
 
 class RandomErasing(object):
 
-    def __init__(self, probability=0.5, sl=0.01, sh=0.05, r1=1, num=1, mean=[0, 0.4822, 0.4465]):
+    def __init__(self, probability=0.5, sl=0.01, sh=0.02, r1=1, num=1, mean=[0, 0.0, 0.0]):
         self.probability = probability
         self.mean = mean
         self.sl = sl
@@ -181,7 +181,7 @@ class RandomErasing(object):
 
 @curry
 def add_noise(batch_images, num):
-    ramdom_erase = RandomErasing()
+    ramdom_erase = RandomErasing(num=num)
     return pipe(
         batch_images,
         map(ramdom_erase),
