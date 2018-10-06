@@ -233,16 +233,13 @@ def fine_train(in_model_path,
                labeled_batch_size,
                no_labeled_batch_size,
                log_dir,
-               ema_decay,
                consistency,
-               consistency_rampup,
                cyclic_period,
                milestones,
                erase_num,
                ):
     device = torch.device("cuda")
     model = torch.load(in_model_path).to(device).train()
-    ema_model = torch.load(in_model_path).to(device).eval()
 
     train_loader = DataLoader(
         train_set,
@@ -266,7 +263,7 @@ def fine_train(in_model_path,
     )
 
     class_criterion = lovasz_softmax
-    consistency_criterion = lovasz_softmax
+    consistency_criterion = nn.MSELoss(size_average=True)
 
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
@@ -328,16 +325,25 @@ def fine_train(in_model_path,
                 consistency_input = torch.cat([
                     val_image,
                     no_labeled_image,
-                ]).flip([3])
-                tea_out, _ = ema_model(consistency_input)
-                tea_out = tea_out.flip([3])
+                ])
+                tea_out, _ = model(
+                    add_noise(
+                        consistency_input,
+                        num=erase_num
+                    )
+                )
 
-            stu_out, _ = model(consistency_input)
+            stu_out, _ = model(
+                add_noise(
+                    consistency_input,
+                    num=erase_num
+                )
+            )
 
             consistency_loss = consistency * \
                 consistency_criterion(
-                    stu_out,
-                    tea_out.argmax(dim=1),
+                    stu_out.softmax(dim=1),
+                    tea_out.softmax(dim=1),
                 )
 
             loss = class_loss + center_loss + consistency_loss
@@ -354,7 +360,6 @@ def fine_train(in_model_path,
             sum_train_loss += loss.item()
 
             with torch.no_grad():
-                ema_model = update_ema_variables(model, ema_model, ema_decay)
                 val_out, _ = model(val_image)
 
                 val_loss = class_criterion(

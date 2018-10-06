@@ -10,37 +10,29 @@ base_param = {
 
 
 def test_graph():
-    id = 17
     base_train_config = {
         'epochs': 400,
         'batch_size': 32,
         'model_type': 'HUNet',
         'model_kwargs': {
-            'feature_size': 16,
+            'feature_size': 32,
             'depth': 3,
         },
-        'erase_num': 3,
+        'erase_num': 10,
 
     }
     fine_train_config = {
         'epochs': 200,
         'labeled_batch_size': 32,
-        'no_labeled_batch_size': 16,
-        'model_type': 'HUNet',
-        'model_kwargs': {
-            'feature_size': 16,
-            'depth': 3,
-        },
-        'ema_decay': 0.1,
+        'no_labeled_batch_size': 32,
         'consistency': 1,
-        'consistency_rampup': 10,
         'cyclic_period': 5,
         'milestones': [(0, 1)],
-        'erase_num': 3,
+        'erase_num': 10,
     }
     g = Graph(
         **base_param,
-        id="17",
+        id="18",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=5,
