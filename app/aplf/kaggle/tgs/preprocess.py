@@ -146,8 +146,7 @@ def dump_json(path, *dicts):
 
 class RandomErasing(object):
 
-    def __init__(self, probability=0.5, sl=0.01, sh=0.02, r1=1, num=1, mean=[0, 0.0, 0.0]):
-        self.probability = probability
+    def __init__(self, sl=0.01, sh=0.02, r1=1, num=1, mean=[0, 0.0, 0.0]):
         self.mean = mean
         self.sl = sl
         self.sh = sh
@@ -155,10 +154,6 @@ class RandomErasing(object):
         self.num = num
 
     def __call__(self, img):
-
-        if random.uniform(0, 1) > self.probability:
-            return img
-
         for attempt in range(self.num):
             area = img.size()[1] * img.size()[2]
 

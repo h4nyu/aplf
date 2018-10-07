@@ -18,24 +18,22 @@ def test_graph():
             'feature_size': 32,
             'depth': 3,
         },
-        'erase_num': 10,
+        'erase_num': 5,
 
     }
     fine_train_config = {
         'epochs': 200,
-        'labeled_batch_size': 32,
-        'no_labeled_batch_size': 32,
+        'labeled_batch_size': 16,
+        'no_labeled_batch_size': 8,
         'consistency': 1,
-        'cyclic_period': 5,
-        'milestones': [(0, 1)],
-        'erase_num': 10,
+        'erase_num': 3,
     }
     g = Graph(
         **base_param,
         id="18",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
-        n_splits=5,
+        n_splits=4,
         top_num=2,
     )
 

@@ -133,6 +133,7 @@ train loss 0.052
 ## note
 consistencyにcross entropyやlovaszなど敏感なlossを使ってはいけない
 mseなど滑らかなlossを使うべき
+feature32が8よりスコアが良い
 
 
 

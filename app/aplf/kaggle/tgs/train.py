@@ -57,16 +57,36 @@ class CyclicLR(object):
                  max_factor,
                  period,
                  milestones,
+                 turning_point,
                  ):
         self.min_factor = min_factor
         self.max_factor = max_factor
         self.period = period
         self.milestones = milestones
+        self.turning_point = turning_point
+        self.range = self.max_factor - self.min_factor
+
+
 
     def __call__(self, epoch):
-        cyclic = self.min_factor + \
-            (self.max_factor - self.min_factor) * \
-            (epoch % self.period)/self.period
+        cyclic = 1.0
+        phase = epoch % self.period
+        turn_phase, ratio = self.turning_point
+        turn_cyclic = self.min_factor + self.range * ratio
+
+
+        if  phase <= turn_phase:
+            cyclic = (
+                self.min_factor +
+                (turn_cyclic - self.min_factor) *
+                phase/turn_phase
+            )
+
+        else:
+            cyclic = turn_cyclic + \
+                (self.max_factor - turn_cyclic) * \
+                (phase - turn_phase)/(self.period - turn_phase)
+
         gamma = pipe(
             self.milestones,
             filter(lambda x: x[0] <= epoch),
@@ -234,8 +254,6 @@ def fine_train(in_model_path,
                no_labeled_batch_size,
                log_dir,
                consistency,
-               cyclic_period,
-               milestones,
                erase_num,
                ):
     device = torch.device("cuda")
@@ -263,22 +281,14 @@ def fine_train(in_model_path,
     )
 
     class_criterion = lovasz_softmax
-    consistency_criterion = nn.MSELoss(size_average=True)
+    consistency_criterion = lovasz_softmax
 
+    #  optimizer = optim.SGD(model.parameters(), lr=lr)
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
         len(val_loader)
-    )
-    scheduler = LambdaLR(
-        optimizer=optimizer,
-        lr_lambda=CyclicLR(
-            min_factor=0.2,
-            max_factor=1,
-            period=cyclic_period,
-            milestones=milestones,
-        )
     )
 
     max_iou_val = 0
@@ -299,11 +309,12 @@ def fine_train(in_model_path,
             val_mask = val_sample['mask'].to(device)
             no_labeled_image = no_labeled_sample['image'].to(device)
 
-            train_image = add_noise(
-                train_image,
-                num=erase_num
+            train_out, train_center_out = model(
+                add_noise(
+                    train_image,
+                    num=erase_num
+                )
             )
-            train_out, train_center_out = model(train_image)
 
             train_score = validate(
                 train_out,
@@ -323,27 +334,23 @@ def fine_train(in_model_path,
             )
             with torch.no_grad():
                 consistency_input = torch.cat([
+                    train_image,
                     val_image,
                     no_labeled_image,
-                ])
-                tea_out, _ = model(
-                    add_noise(
-                        consistency_input,
-                        num=erase_num
-                    )
-                )
+                ], dim=0)
+
+                tea_out, _ = model(consistency_input)
 
             stu_out, _ = model(
                 add_noise(
-                    consistency_input,
+                    consistency_input.flip([3]),
                     num=erase_num
                 )
             )
-
             consistency_loss = consistency * \
                 consistency_criterion(
-                    stu_out.softmax(dim=1),
-                    tea_out.softmax(dim=1),
+                    stu_out.flip([3]),
+                    tea_out.argmax(dim=1).view(-1, *tea_out.size()[2:]).long(),
                 )
 
             loss = class_loss + center_loss + consistency_loss
@@ -375,7 +382,6 @@ def fine_train(in_model_path,
                 sum_val_score += val_score
 
         #  update LR
-        #  scheduler.step()
 
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch
