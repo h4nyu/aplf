@@ -255,6 +255,12 @@ def fine_train(in_model_path,
                log_dir,
                consistency,
                erase_num,
+               max_factor,
+               min_factor,
+               period,
+               milestones,
+               turning_point,
+               lr,
                ):
     device = torch.device("cuda")
     model = torch.load(in_model_path).to(device).train()
@@ -283,12 +289,21 @@ def fine_train(in_model_path,
     class_criterion = lovasz_softmax
     consistency_criterion = lovasz_softmax
 
-    #  optimizer = optim.SGD(model.parameters(), lr=lr)
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.SGD(model.parameters(), lr=lr)
     len_batch = min(
         len(train_loader),
         len(no_labeled_dataloader),
         len(val_loader)
+    )
+    scheduler = LambdaLR(
+        optimizer=optimizer,
+        lr_lambda=CyclicLR(
+            max_factor=max_factor,
+            min_factor=min_factor,
+            period=period,
+            milestones=milestones,
+            turning_point=turning_point,
+        )
     )
 
     max_iou_val = 0
@@ -326,12 +341,6 @@ def fine_train(in_model_path,
                 train_out,
                 train_mask.view(-1, *train_out.size()[2:]).long(),
             )
-
-            train_center_mask = F.interpolate(train_mask, size=train_center_out.size()[2:])
-            center_loss = class_criterion(
-                train_center_out,
-                train_center_mask.view(-1, *train_center_out.size()[2:]).long(),
-            )
             with torch.no_grad():
                 consistency_input = torch.cat([
                     train_image,
@@ -353,7 +362,7 @@ def fine_train(in_model_path,
                     tea_out.argmax(dim=1).view(-1, *tea_out.size()[2:]).long(),
                 )
 
-            loss = class_loss + center_loss + consistency_loss
+            loss = class_loss +  consistency_loss
 
             optimizer.zero_grad()
             loss.backward()
@@ -363,7 +372,6 @@ def fine_train(in_model_path,
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
-            sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
 
             with torch.no_grad():
@@ -382,6 +390,7 @@ def fine_train(in_model_path,
                 sum_val_score += val_score
 
         #  update LR
+        scheduler.step()
 
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch

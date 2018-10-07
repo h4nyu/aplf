@@ -22,11 +22,17 @@ def test_graph():
 
     }
     fine_train_config = {
-        'epochs': 200,
+        'epochs': 400,
         'labeled_batch_size': 32,
         'no_labeled_batch_size': 4,
-        'consistency': 1,
+        'consistency': 0.5,
         'erase_num': 3,
+        'max_factor': 1.0,
+        'min_factor': 0.1,
+        'period': 5,
+        'milestones': [(0, 1)],
+        'turning_point': (3, 0.5),
+        'lr':0.1,
     }
     g = Graph(
         **base_param,
