@@ -23,8 +23,8 @@ def test_graph():
     }
     fine_train_config = {
         'epochs': 200,
-        'labeled_batch_size': 16,
-        'no_labeled_batch_size': 8,
+        'labeled_batch_size': 32,
+        'no_labeled_batch_size': 4,
         'consistency': 1,
         'erase_num': 3,
     }
