@@ -41,7 +41,7 @@ def test_graph():
         id="19",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
-        n_splits=4,
+        n_splits=8,
         top_num=2,
     )
 
