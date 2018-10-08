@@ -64,7 +64,7 @@ def test_hunet(depth, feature_size):
             depth=depth
         )
         in_image = torch.empty(4, 1, 101, 101)
-        out_image = model(in_image)
+        out_image, _ = model(in_image)
         assert out_image.size() == (4, 2, 101, 101)
 
 

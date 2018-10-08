@@ -154,6 +154,11 @@ class UpSample(nn.Module):
                 out_ch,
             ),
             SCSE(out_ch),
+            ResBlock(
+                out_ch,
+                out_ch,
+            ),
+            SCSE(out_ch),
         )
 
     def forward(self, x, others):
@@ -442,10 +447,13 @@ class HUNet(UNet):
             2,
             kernel_size=3
         )
+        self.pad = nn.ReflectionPad2d((128 - 101 + 1)//2)
 
     def forward(self, x):
         # down samples
-        x = F.interpolate(x, mode='bilinear', size=(128, 128))
+        #  x = F.interpolate(x, mode='bilinear', size=(128, 128))
+        x = self.pad(x)
+        print(x.size())
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)

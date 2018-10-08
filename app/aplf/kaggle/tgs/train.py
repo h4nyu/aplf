@@ -107,6 +107,7 @@ def base_train(model_path,
                batch_size,
                log_dir,
                erase_num,
+               erase_p,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -150,7 +151,11 @@ def base_train(model_path,
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device)
             train_out, train_center_out = model(
-                train_image,
+                add_noise(
+                    train_image,
+                    erase_num=erase_num,
+                    erase_p=erase_p,
+                )
             )
 
             train_score = validate(
