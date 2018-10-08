@@ -14,8 +14,8 @@ def test_graph():
         'epochs': 400,
         'batch_size': 32,
         'model_type': 'HUNet',
-        'erase_num': 5,
-        'erase_p': 0.5,
+        'erase_num': 0,
+        'erase_p': 0,
         'model_kwargs': {
             'feature_size': 32,
         },
