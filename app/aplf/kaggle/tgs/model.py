@@ -391,12 +391,6 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self.center = DownSample(
-            in_ch=feature_size * 2 ** 3,
-            out_ch=feature_size * 2 ** 3,
-        )
-
-
         self._cetner_output = nn.Sequential(
             nn.Conv2d(feature_size * 2 ** 3, 2, kernel_size=1, stride=1),
             nn.AdaptiveAvgPool2d(1),
@@ -443,6 +437,6 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        x = self._output(x)
+        x = self._output(x) * center
         x = F.interpolate(x, mode='bilinear', size=(101, 101))
         return x, center
