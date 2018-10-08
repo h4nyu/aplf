@@ -63,8 +63,8 @@ random_erase: num 5, rampup 300
 
 ## result
 ### 190(2h 3m)
-val iou 0.89
-train iou 0.810
+val iou 0.810
+train iou 0.89
 val loss 0.106
 train loss 0.059
 ## memo

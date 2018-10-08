@@ -88,7 +88,7 @@ def test_erase():
     )['image']
     random_erase = RandomErasing()
 
-    noised = add_noise(sample, num=10)
+    noised = add_noise(sample, num=3)
 
     writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
     dataset_df = load_dataset_df('/store/kaggle/tgs')

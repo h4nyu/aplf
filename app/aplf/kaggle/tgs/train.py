@@ -150,10 +150,7 @@ def base_train(model_path,
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device)
             train_out, train_center_out = model(
-                add_noise(
-                    train_image,
-                    num=erase_num,
-                )
+                train_image,
             )
 
             train_score = validate(
@@ -255,6 +252,7 @@ def fine_train(in_model_path,
                log_dir,
                consistency,
                erase_num,
+               erase_p,
                max_factor,
                min_factor,
                period,
@@ -327,7 +325,8 @@ def fine_train(in_model_path,
             train_out, train_center_out = model(
                 add_noise(
                     train_image,
-                    num=erase_num
+                    erase_num=erase_num,
+                    erase_p=erase_p,
                 )
             )
 
@@ -343,7 +342,6 @@ def fine_train(in_model_path,
             )
             with torch.no_grad():
                 consistency_input = torch.cat([
-                    train_image,
                     val_image,
                     no_labeled_image,
                 ], dim=0)
@@ -353,7 +351,8 @@ def fine_train(in_model_path,
             stu_out, _ = model(
                 add_noise(
                     consistency_input.flip([3]),
-                    num=erase_num
+                    erase_num=erase_num,
+                    erase_p=erase_p,
                 )
             )
             consistency_loss = consistency * \

@@ -146,14 +146,17 @@ def dump_json(path, *dicts):
 
 class RandomErasing(object):
 
-    def __init__(self, sl=0.01, sh=0.02, r1=1, num=1, mean=[0, 0.0, 0.0]):
+    def __init__(self, p=0.5,  sl=0.01, sh=0.01, r1=1, num=1, mean=[0, 0.0, 0.0]):
         self.mean = mean
         self.sl = sl
         self.sh = sh
         self.r1 = r1
         self.num = num
+        self.p = p
 
     def __call__(self, img):
+        if random.uniform(0, 1) > self.p:
+            return img
         for attempt in range(self.num):
             area = img.size()[1] * img.size()[2]
 
@@ -175,8 +178,10 @@ class RandomErasing(object):
         return img
 
 @curry
-def add_noise(batch_images, num):
-    ramdom_erase = RandomErasing(num=num)
+def add_noise(batch_images, erase_num, erase_p):
+    ramdom_erase = RandomErasing(
+        num=erase_num
+    )
     return pipe(
         batch_images,
         map(ramdom_erase),
@@ -185,7 +190,7 @@ def add_noise(batch_images, num):
     )
 
 @curry
-def add_consistency_noise(batch_images, num):
+def add_consistency_noise(batch_images, ):
     filped = batch_images.flip([3])
     return pipe(
         batch_images,
