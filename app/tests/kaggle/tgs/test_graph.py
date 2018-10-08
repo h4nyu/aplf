@@ -18,7 +18,6 @@ def test_graph():
         'erase_p': 0.5,
         'model_kwargs': {
             'feature_size': 32,
-            'depth': 3,
         },
 
     }

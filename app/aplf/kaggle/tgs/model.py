@@ -137,8 +137,6 @@ class DownSample(nn.Module):
         conv = out
         down = self.pool(conv)
         return down, conv
-
-
 class UpSample(nn.Module):
 
     def __init__(self,
@@ -151,11 +149,6 @@ class UpSample(nn.Module):
         self.block = nn.Sequential(
             ResBlock(
                 in_ch,
-                out_ch,
-            ),
-            SCSE(out_ch),
-            ResBlock(
-                out_ch,
                 out_ch,
             ),
             SCSE(out_ch),
@@ -384,76 +377,59 @@ class EUNet(UNet):
 
 
 class HUNet(UNet):
-    def __init__(self, feature_size=8, depth=3):
+    def __init__(self, feature_size=8):
         super().__init__()
-        self.depth = depth
         self.down_layers = nn.ModuleList([
             DownSample(1, feature_size),
-            *pipe(
-                range(depth),
-                map(lambda x: DownSample(
-                    feature_size * (2 ** x),
-                    feature_size * (2 ** (x + 1)),
-                )),
-                list,
-            )
+            DownSample(feature_size, feature_size * 2 ** 1),
+            DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
+            DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
         ])
 
         self.center = DownSample(
-            in_ch=feature_size * 2 ** depth,
-            out_ch=feature_size * 2 ** depth,
+            in_ch=feature_size * 2 ** 3,
+            out_ch=feature_size * 2 ** 3,
         )
 
         self.center = DownSample(
-            in_ch=feature_size * 2 ** depth,
-            out_ch=feature_size * 2 ** depth,
+            in_ch=feature_size * 2 ** 3,
+            out_ch=feature_size * 2 ** 3,
         )
+
 
         self._cetner_output = nn.Sequential(
-            nn.Conv2d(
-                feature_size * 2 ** depth,
-                2,
-                kernel_size=1
+            nn.Conv2d(feature_size * 2 ** 3, 2, kernel_size=1, stride=1),
+            nn.AdaptiveAvgPool2d(1),
+        )
+
+
+        self.up_layers = nn.ModuleList([
+            UpSample(
+                in_ch=feature_size * 2 ** 4,
+                out_ch=feature_size * 2 ** 2
             ),
-        )
-
-        down_outs = pipe(
-            self.down_layers,
-            map(lambda x: x.out_ch),
-            list
-        )
-        down_outs = list(reversed(down_outs))
-
-        up_outs = down_outs[1:]
-        up_ins = pipe(
-            range(depth),
-            map(lambda x: [down_outs[:x+2][-1], *down_outs[:x+2]]),
-            map(sum),
-            list
-        )
-
-        self.up_layers = nn.ModuleList(
-            pipe(
-                zip(up_ins, up_outs),
-                map(lambda x: UpSample(
-                    in_ch=x[0],
-                    out_ch=x[1]
-                )),
-                list,
-            )
-        )
+            UpSample(
+                in_ch=feature_size * 2 ** 3 + feature_size * 2 ** 3 ,
+                out_ch=feature_size * 2 ** 1
+            ),
+            UpSample(
+                in_ch=feature_size * 2 ** 2 + feature_size * 2 ** 2 + feature_size * 2 ** 3 ,
+                out_ch=feature_size
+            ),
+            UpSample(
+                in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3,
+                out_ch=feature_size
+            ),
+        ])
         self._output = nn.Conv2d(
-            up_outs[-1],
+            feature_size,
             2,
             kernel_size=3
         )
         self.pad = nn.ReflectionPad2d((128 - 101 + 1)//2)
 
     def forward(self, x):
-        # down samples
-        #  x = F.interpolate(x, mode='bilinear', size=(128, 128))
         x = self.pad(x)
-        print(x.size())
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
@@ -461,8 +437,7 @@ class HUNet(UNet):
 
         _, x = self.center(x)
         center = self._cetner_output(x)
-        d_outs = list(reversed(d_outs))[:self.depth]
-
+        d_outs = list(reversed(d_outs))
         # up samples
         u_outs = []
         for i, layer in enumerate(self.up_layers):
