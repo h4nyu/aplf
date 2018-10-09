@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RUNet, DUNet, EUNet, HUNet
+from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RUNet, DUNet, EUNet, HUNet, SEBlock
 import torch
 import pytest
 
@@ -74,11 +74,18 @@ def test_scse():
     assert output.size() == (32, 32, 101, 101)
 
 
+
 def test_res_block():
     model = ResBlock(32, 16)
     in_image = torch.empty(32, 32, 101, 101)
     output = model(in_image)
     assert output.size() == (32, 16, 101, 101)
+
+def test_se_block():
+    model = SEBlock(32, 16)
+    in_image = torch.empty(32, 32, 101, 101)
+    output = model(in_image)
+    assert output.size() == (32, 16, 1, 1)
 
 
 def test_downsample():
