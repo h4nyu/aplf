@@ -445,5 +445,6 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        x = self._output(x) * center
+        x = self._output(x)
+        x = x * center + x
         return x, center

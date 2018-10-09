@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, curry, merge, first
+import torch.nn.functional as F
 from aplf import config
 import torch
 from torch.utils.data import DataLoader
@@ -97,3 +98,38 @@ def test_erase():
         vutils.make_grid([*sample, *noised]),
     )
 
+
+def test_pool():
+    dataset_df = load_dataset_df(
+        '/store/kaggle/tgs',
+        'train.csv',
+    )
+    dataset = TgsSaltDataset(
+        dataset_df,
+        has_y=True
+    )
+
+    dataloader = DataLoader(
+        dataset,
+        batch_size=8,
+        shuffle=True
+    )
+    sample = pipe(
+        dataloader,
+        first
+    )['mask']
+    interpolated = F.max_pool2d(sample, kernel_size=101)
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
+    dataset_df = load_dataset_df('/store/kaggle/tgs')
+    writer.add_image(
+        f"mask",
+        vutils.make_grid([*sample]),
+        0 
+    )
+
+    writer.add_image(
+        f"pooled",
+        vutils.make_grid([*interpolated]),
+        0
+    )

@@ -170,7 +170,7 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
-            train_center_mask = F.interpolate(train_mask, size=train_center_out.size()[2:])
+            train_center_mask = F.max_pool2d(train_mask, kernel_size=101)
             center_loss = center_criterion(
                 train_center_out,
                 train_center_mask.view(-1, *train_center_out.size()[2:]).long(),
