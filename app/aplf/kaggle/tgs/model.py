@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 class CSE(nn.Module):
     def __init__(self, in_ch, r=1):
-        super(CSE, self).__init__()
+        super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
         self.fc = nn.Sequential(
@@ -20,14 +20,13 @@ class CSE(nn.Module):
     def forward(self, x):
         b, c, _, _ = x.size()
         y = self.avg_pool(x).view(b, c)
-        y = self.fc(y)
         y = self.fc(y).view(b, c, 1, 1)
         return x * y
 
 
 class SSE(nn.Module):
     def __init__(self, in_ch):
-        super(SSE, self).__init__()
+        super().__init__()
 
         self.conv = nn.Conv2d(in_ch, 1, kernel_size=1, stride=1)
 
@@ -375,6 +374,25 @@ class EUNet(UNet):
 
 
 
+class SEBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, r=1):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_ch, int(in_ch * r)),
+            nn.ReLU(inplace=True),
+            nn.Linear(int(in_ch * r), out_ch),
+            nn.Sigmoid()
+        )
+        self.out_ch = out_ch
+
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, self.out_ch, 1, 1)
+        return y
+
 
 class HUNet(UNet):
     def __init__(self, feature_size=8):
@@ -391,9 +409,10 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self._cetner_output = nn.Sequential(
-            nn.Conv2d(feature_size * 2 ** 3, 2, kernel_size=1, stride=1),
-            nn.AdaptiveAvgPool2d(1),
+        self._cetner_output = SEBlock(
+            in_ch = feature_size * 2 ** 3,
+            out_ch = 2,
+            r = 1/2
         )
 
 
