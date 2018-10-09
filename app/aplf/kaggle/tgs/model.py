@@ -430,7 +430,7 @@ class HUNet(UNet):
             2,
             kernel_size=3
         )
-        self.pad = nn.ReflectionPad2d((128 - 101 + 1)//2)
+        self.pad = nn.ZeroPad2d((128 - 101 + 1)//2)
 
     def forward(self, x):
         x = self.pad(x)
