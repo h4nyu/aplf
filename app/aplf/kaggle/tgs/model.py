@@ -3,24 +3,33 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
-
-class CSE(nn.Module):
-    def __init__(self, in_ch, r=1):
+class SEBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, r=1):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-
         self.fc = nn.Sequential(
             nn.Linear(in_ch, int(in_ch * r)),
             nn.ReLU(inplace=True),
-            nn.Linear(int(in_ch * r), in_ch),
+            nn.Linear(int(in_ch * r), out_ch),
             nn.Sigmoid()
         )
+        self.out_ch = out_ch
 
 
     def forward(self, x):
         b, c, _, _ = x.size()
         y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
+        y = self.fc(y).view(b, self.out_ch, 1, 1)
+        return y
+
+
+class CSE(nn.Module):
+    def __init__(self, in_ch, r=1):
+        super().__init__()
+        self.se = SEBlock(in_ch, in_ch, r=r)
+
+    def forward(self, x):
+        y = self.se(x)
         return x * y
 
 
@@ -374,24 +383,6 @@ class EUNet(UNet):
 
 
 
-class SEBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, r=1):
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(in_ch, int(in_ch * r)),
-            nn.ReLU(inplace=True),
-            nn.Linear(int(in_ch * r), out_ch),
-            nn.Sigmoid()
-        )
-        self.out_ch = out_ch
-
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, self.out_ch, 1, 1)
-        return y
 
 
 class HUNet(UNet):

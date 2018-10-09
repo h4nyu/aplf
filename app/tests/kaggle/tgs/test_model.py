@@ -73,11 +73,6 @@ def test_scse():
     output = model(in_image)
     assert output.size() == (32, 32, 101, 101)
 
-def test_scse():
-    model = SCSE(32, 2)
-    in_image = torch.empty(32, 32, 101, 101)
-    output = model(in_image)
-    assert output.size() == (32, 32, 101, 101)
 
 
 def test_res_block():
