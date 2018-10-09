@@ -254,9 +254,10 @@ class RUNet(UNet):
             )
         ])
 
-        self.center = DownSample(
+        self.center = SEBlock(
             in_ch=feature_size,
             out_ch=feature_size,
+            r= 1/2
         )
 
         self.up_layers = nn.ModuleList([
@@ -400,9 +401,10 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self._cetner_output = nn.Sequential(
-            nn.Conv2d(feature_size * 2 ** 3, 2, kernel_size=3),
-            nn.AdaptiveAvgPool2d(1),
+        self._cetner_output = SEBlock(
+            feature_size * 2 ** 3,
+            2,
+            r = 1/2
         )
 
         self.up_layers = nn.ModuleList([
@@ -444,6 +446,7 @@ class HUNet(UNet):
         u_outs = []
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
+
 
         x = self._output(x)
         x = x * center + x
