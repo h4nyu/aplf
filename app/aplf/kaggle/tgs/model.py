@@ -400,12 +400,10 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self._cetner_output = SEBlock(
-            in_ch = feature_size * 2 ** 3,
-            out_ch = 2,
-            r = 1/2
+        self._cetner_output = nn.Sequential(
+            nn.Conv2d(feature_size * 2 ** 3, 2, kernel_size=3),
+            nn.AdaptiveAvgPool2d(1),
         )
-
 
         self.up_layers = nn.ModuleList([
             UpSample(
