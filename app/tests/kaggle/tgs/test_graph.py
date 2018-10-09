@@ -14,8 +14,8 @@ def test_graph():
         'epochs': 400,
         'batch_size': 32,
         'model_type': 'HUNet',
-        'erase_num': 0,
-        'erase_p': 0,
+        'erase_num': 5,
+        'erase_p': 0.5,
         'model_kwargs': {
             'feature_size': 32,
         },
@@ -37,7 +37,7 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="20",
+        id="19",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=8,

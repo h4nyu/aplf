@@ -428,7 +428,7 @@ class HUNet(UNet):
             2,
             kernel_size=3
         )
-        self.pad = nn.ZeroPad2d((128 - 101 + 1)//2)
+        self.pad = nn.ReflectionPad2d(1)
 
     def forward(self, x):
         x = self.pad(x)
@@ -446,5 +446,4 @@ class HUNet(UNet):
             x = layer(x, d_outs[:i+1])
 
         x = self._output(x) * center
-        x = F.interpolate(x, mode='bilinear', size=(101, 101))
         return x, center

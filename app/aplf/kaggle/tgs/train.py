@@ -128,7 +128,8 @@ def base_train(model_path,
         batch_size=val_batch_size,
         shuffle=True
     )
-    class_criterion = nn.CrossEntropyLoss(size_average=True)
+    class_criterion = lovasz_softmax
+    center_criterion = nn.CrossEntropyLoss(size_average=True)
     optimizer = optim.Adam(model.parameters())
     len_batch = min(
         len(train_loader),
@@ -170,7 +171,7 @@ def base_train(model_path,
             )
 
             train_center_mask = F.interpolate(train_mask, size=train_center_out.size()[2:])
-            center_loss = class_criterion(
+            center_loss = center_criterion(
                 train_center_out,
                 train_center_mask.view(-1, *train_center_out.size()[2:]).long(),
             )
