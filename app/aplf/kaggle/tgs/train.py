@@ -19,6 +19,7 @@ from .losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
 from .ramps import linear_rampup
 from .preprocess import hflip, add_noise
 from aplf.utils import skip_if_exists
+from aplf.optimizers import Eve
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
@@ -130,7 +131,7 @@ def base_train(model_path,
     )
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     center_criterion = nn.CrossEntropyLoss(size_average=True)
-    optimizer = optim.Adam(model.parameters())
+    optimizer = Eve(model.parameters())
     len_batch = min(
         len(train_loader),
         len(val_loader)
@@ -170,11 +171,15 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
+
             loss = class_loss
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            def closure():
+                optimizer.zero_grad()
+                loss = class_loss
+                loss.backward()
+                return loss
+            optimizer.step(closure)
 
 
             sum_train_score += train_score
