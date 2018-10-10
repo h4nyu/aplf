@@ -195,12 +195,11 @@ def base_train(model_path,
 
             stu_out, _ = model(
                 add_noise(
-                    consistency_input.flip([3]),
+                    consistency_input,
                     erase_num=erase_num,
                     erase_p=erase_p,
                 )
             )
-            stu_out = stu_out.flip([3])
 
             consistency_weight = get_current_consistency_weight(
                 epoch,

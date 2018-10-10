@@ -13,14 +13,14 @@ def test_graph():
     base_train_config = {
         'epochs': 400,
         'model_type': 'HUNet',
-        'labeled_batch_size': 12,
-        'no_labeled_batch_size': 8,
+        'labeled_batch_size': 16,
+        'no_labeled_batch_size': 16,
         'erase_num': 10,
         'consistency': 1,
-        'consistency_rampup': 20,
+        'consistency_rampup': 50,
         'erase_p': 1,
         'model_kwargs': {
-            'feature_size': 32,
+            'feature_size': 48,
         },
 
     }
