@@ -66,16 +66,13 @@ class CyclicLR(object):
         self.turning_point = turning_point
         self.range = self.max_factor - self.min_factor
 
-
-
     def __call__(self, epoch):
         cyclic = 1.0
         phase = epoch % self.period
         turn_phase, ratio = self.turning_point
         turn_cyclic = self.min_factor + self.range * ratio
 
-
-        if  phase <= turn_phase:
+        if phase <= turn_phase:
             cyclic = (
                 self.min_factor +
                 (turn_cyclic - self.min_factor) *
@@ -96,7 +93,6 @@ class CyclicLR(object):
         return cyclic * gamma
 
 
-
 @skip_if_exists('model_path')
 def base_train(model_path,
                train_set,
@@ -107,6 +103,7 @@ def base_train(model_path,
                epochs,
                log_dir,
                erase_num,
+               consistency_rampup,
                consistency,
                erase_p,
                labeled_batch_size,
@@ -137,7 +134,6 @@ def base_train(model_path,
         batch_size=no_labeled_batch_size,
         shuffle=True
     )
-
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = nn.MSELoss(size_average=True)
@@ -206,18 +202,22 @@ def base_train(model_path,
             )
             stu_out = stu_out.flip([3])
 
-            consistency_loss = consistency * \
+            consistency_weight = get_current_consistency_weight(
+                epoch,
+                consistency,
+                consistency_rampup
+            )
+            consistency_loss = consistency_weight * \
                 consistency_criterion(
                     stu_out.softmax(dim=1),
                     tea_out.softmax(dim=1),
                 )
 
-            loss = class_loss +  consistency_loss
+            loss = class_loss + consistency_loss
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
 
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
@@ -280,12 +280,13 @@ def base_train(model_path,
 
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
-                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:' , epoch)
+                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:', epoch)
                 torch.save(model, model_path)
 
             if max_iou_train <= mean_iou_train:
                 max_iou_train = mean_iou_train
     return model_path
+
 
 @skip_if_exists('out_model_path')
 def fine_train(in_model_path,
@@ -416,12 +417,11 @@ def fine_train(in_model_path,
                     tea_out.softmax(dim=1),
                 )
 
-            loss = class_loss +  consistency_loss
+            loss = class_loss + consistency_loss
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
 
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
@@ -486,7 +486,7 @@ def fine_train(in_model_path,
 
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
-                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:' , epoch)
+                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:', epoch)
                 torch.save(model, out_model_path)
 
             if max_iou_train <= mean_iou_train:
