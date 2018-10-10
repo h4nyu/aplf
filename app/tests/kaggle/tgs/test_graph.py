@@ -12,15 +12,14 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 400,
-        'batch_size': 40,
         'model_type': 'HUNet',
         'labeled_batch_size': 12,
-        'no_labeled_batch_size': 8,
+        'no_labeled_batch_size': 12,
         'erase_num': 10,
         'consistency': 1,
         'erase_p': 1,
         'model_kwargs': {
-            'feature_size': 32,
+            'feature_size': 64,
         },
 
     }

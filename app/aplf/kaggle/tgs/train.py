@@ -105,7 +105,6 @@ def base_train(model_path,
                model_type,
                model_kwargs,
                epochs,
-               batch_size,
                log_dir,
                erase_num,
                consistency,
@@ -120,11 +119,11 @@ def base_train(model_path,
 
     train_loader = DataLoader(
         train_set,
-        batch_size=batch_size,
+        batch_size=labeled_batch_size,
         shuffle=True,
     )
 
-    val_batch_size = int(batch_size *
+    val_batch_size = int(labeled_batch_size *
                          len(val_set.indices) / len(train_set.indices))
 
     val_loader = DataLoader(
