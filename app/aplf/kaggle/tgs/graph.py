@@ -72,6 +72,7 @@ class Graph(object):
                 model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
                 train_set=x[1],
                 val_set=x[2],
+                no_labeled_set=predict_set,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
             list

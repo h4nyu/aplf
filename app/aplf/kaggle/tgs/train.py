@@ -101,13 +101,17 @@ class CyclicLR(object):
 def base_train(model_path,
                train_set,
                val_set,
+               no_labeled_set,
                model_type,
                model_kwargs,
                epochs,
                batch_size,
                log_dir,
                erase_num,
+               consistency,
                erase_p,
+               labeled_batch_size,
+               no_labeled_batch_size,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -128,6 +132,14 @@ def base_train(model_path,
         batch_size=val_batch_size,
         shuffle=True
     )
+
+    no_labeled_dataloader = DataLoader(
+        no_labeled_set,
+        batch_size=no_labeled_batch_size,
+        shuffle=True
+    )
+
+
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters())
@@ -142,15 +154,17 @@ def base_train(model_path,
     for epoch in range(epochs):
         sum_class_loss = 0
         sum_train_loss = 0
-        sum_center_loss = 0
         sum_train_score = 0
+        sum_consistency_loss = 0
         sum_val_loss = 0
         sum_val_score = 0
-        for train_sample, val_sample in zip(train_loader, val_loader):
+        for train_sample, no_labeled_sample, val_sample in zip(train_loader, no_labeled_dataloader, val_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device)
+            no_labeled_image = no_labeled_sample['image'].to(device)
+
             train_out, train_center_out = model(
                 add_noise(
                     train_image,
