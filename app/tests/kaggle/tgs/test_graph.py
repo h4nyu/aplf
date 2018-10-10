@@ -12,7 +12,7 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 400,
-        'batch_size': 32,
+        'batch_size': 64,
         'model_type': 'HUNet',
         'erase_num': 10,
         'erase_p': 1,
