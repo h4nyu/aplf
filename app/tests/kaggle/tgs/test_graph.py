@@ -20,7 +20,7 @@ def test_graph():
         'consistency_rampup': 20,
         'erase_p': 1,
         'model_kwargs': {
-            'feature_size': 64,
+            'feature_size': 32,
         },
 
     }
