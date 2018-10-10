@@ -42,7 +42,6 @@ def test_add_mask_size():
     assert output.sum() == 487
 
 
-
 def test_add_noise():
     dataset_df = load_dataset_df(
         '/store/kaggle/tgs',
@@ -68,6 +67,7 @@ def test_add_noise():
         vutils.make_grid([*sample, *noised]),
     )
 
+
 def test_erase():
     dataset_df = load_dataset_df(
         '/store/kaggle/tgs',
@@ -89,13 +89,17 @@ def test_erase():
     )['image']
     random_erase = RandomErasing()
 
-    noised = add_noise(sample, num=3)
+    noised = add_noise(sample,
+                       erase_num=10,
+                       erase_p=1
+                       )
 
     writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
     dataset_df = load_dataset_df('/store/kaggle/tgs')
     writer.add_image(
         f"random_erase",
         vutils.make_grid([*sample, *noised]),
+        0
     )
 
 
@@ -125,7 +129,7 @@ def test_pool():
     writer.add_image(
         f"mask",
         vutils.make_grid([*sample]),
-        0 
+        0
     )
 
     writer.add_image(
