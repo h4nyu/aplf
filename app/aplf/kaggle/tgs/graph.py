@@ -77,50 +77,24 @@ class Graph(object):
             list
         )
 
-        model_paths = pipe(
-            zip(ids, model_paths, train_sets, val_sets),
-            map(lambda x: delayed(fine_train)(
-                **fine_train_config,
-                in_model_path=x[1],
-                out_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
-                train_set=x[2],
-                val_set=x[3],
-                no_labeled_set=predict_set,
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
-            )),
-            list
-        )
+        #  model_paths = pipe(
+        #      zip(ids, model_paths, train_sets, val_sets),
+        #      map(lambda x: delayed(fine_train)(
+        #          **fine_train_config,
+        #          in_model_path=x[1],
+        #          out_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
+        #          train_set=x[2],
+        #          val_set=x[3],
+        #          no_labeled_set=predict_set,
+        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
+        #      )),
+        #      list
+        #  )
 
 
 
-        scores = pipe(
-            zip(ids, model_paths, val_sets),
-            map(lambda x: delayed(predict)(
-                model_paths=[x[1]],
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/val',
-                dataset=x[2],
-                log_interval=1,
-            )),
-            list
-        )
-        param_files = pipe(
-            zip(ids, scores),
-            map(lambda x: dump_json(
-                f"{output_dir}/id-{id}-fold-{x[0]}.json",
-                {
-                    'graph_id': id,
-                    'model_id': x[0],
-                    'score': x[1],
-                    'params': params
-                },
-            )),
-            list
-        )
-        #
-        top_model_paths = delayed(take_topk)(scores, model_paths, top_num)
-        #
         submission_df = delayed(predict)(
-            model_paths=top_model_paths,
+            model_paths=model_paths,
             log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
             dataset=predict_set,
             log_interval=10,
@@ -133,10 +107,8 @@ class Graph(object):
 
         self.output = delayed(lambda x: x)((
             model_paths,
-            scores,
             submission_df,
             submission_file,
-            param_files,
         ))
 
 

@@ -132,7 +132,7 @@ def base_train(model_path,
     )
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = nn.MSELoss(size_average=True)
-    optimizer = Eve(model.parameters())
+    optimizer = optim.Adam(model.parameters(), amsgrad=True)
     len_batch = min(
         len(train_loader),
         len(val_loader)
@@ -200,13 +200,11 @@ def base_train(model_path,
                     tea_out,
                 )
 
-            loss = class_loss +  consistency_loss
 
-            def closure():
-                optimizer.zero_grad()
-                loss.backward()
-                return loss
-            optimizer.step(closure)
+            loss = class_loss + consistency_loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
 
             sum_train_score += train_score

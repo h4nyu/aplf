@@ -87,10 +87,8 @@ def predict(model_paths,
         df['rle_mask'] = rle_masks
         if len(scores) > 0:
             df['score'] = scores
+            score = df['score'].mean()
+            with SummaryWriter(log_dir) as w:
+                w.add_text('score', f'score: {score}')
         df = df.set_index('id')
-
-        score = df['score'].mean()
-        with SummaryWriter(log_dir) as w:
-            w.add_text('score', f'score: {score}')
-
-        return score
+        return df
