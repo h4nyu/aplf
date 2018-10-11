@@ -148,6 +148,7 @@ def base_train(model_path,
         sum_train_score = 0
         sum_val_loss = 0
         sum_val_score = 0
+        sum_consistency_loss = 0
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
@@ -174,10 +175,17 @@ def base_train(model_path,
 
             with torch.no_grad():
                 consistency_input = torch.cat([
+                    train_image[0:val_batch_size],
                     val_image,
                 ], dim=0)
 
-                _, tea_out = model(consistency_input)
+                _, tea_out = model(
+                    add_noise(
+                        consistency_input,
+                        erase_num=erase_num,
+                        erase_p=erase_p,
+                    )
+                )
 
             _, stu_out = model(
                 add_noise(
@@ -243,12 +251,14 @@ def base_train(model_path,
                     'train': mean_train_loss,
                     'val': mean_val_loss,
                 },
+                epoch
             )
             w.add_scalar('iou/diff', mean_iou_train - mean_iou_val, epoch)
-            w.add_scalar('consistency', mean_consistency_loss, epoch)
-            w.add_scalar('class', mean_class_loss, epoch)
-            w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
             w.add_scalar('lr', get_learning_rate(optimizer), epoch)
+            w.add_scalar('loss/consistency', mean_consistency_loss, epoch)
+            w.add_scalar('loss/class', mean_class_loss, epoch)
+            w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
+
 
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
