@@ -425,18 +425,12 @@ class HUNet(UNet):
             ),
             UpSample(
                 in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3,
-                out_ch=feature_size
+                out_ch=2
             ),
         ])
-        self._output = nn.Conv2d(
-            feature_size,
-            2,
-            kernel_size=3
-        )
         self.pad = nn.ReflectionPad2d(1)
 
     def forward(self, x):
-        x = F.interpolate(x, size=(128, 128))
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
@@ -450,7 +444,5 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        x = self._output(x)
         x = x * center + x
-        x = F.interpolate(x, size=(101, 101))
         return x, center
