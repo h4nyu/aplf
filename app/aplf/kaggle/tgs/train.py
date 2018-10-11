@@ -204,7 +204,6 @@ def base_train(model_path,
 
             def closure():
                 optimizer.zero_grad()
-                loss = class_loss
                 loss.backward()
                 return loss
             optimizer.step(closure)

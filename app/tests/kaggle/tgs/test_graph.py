@@ -38,7 +38,7 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="20",
+        id="center-pi-model",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=8,
