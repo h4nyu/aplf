@@ -19,6 +19,7 @@ def test_graph():
         'model_kwargs': {
             'feature_size': 56,
         },
+        'consistency': 1,
 
     }
     fine_train_config = {

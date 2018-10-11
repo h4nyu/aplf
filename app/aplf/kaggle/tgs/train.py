@@ -109,6 +109,7 @@ def base_train(model_path,
                log_dir,
                erase_num,
                erase_p,
+               consistency,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -130,7 +131,7 @@ def base_train(model_path,
         shuffle=True
     )
     class_criterion = nn.CrossEntropyLoss(size_average=True)
-    center_criterion = nn.CrossEntropyLoss(size_average=True)
+    consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = Eve(model.parameters())
     len_batch = min(
         len(train_loader),
@@ -171,8 +172,27 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
+            with torch.no_grad():
+                consistency_input = torch.cat([
+                    val_image,
+                ], dim=0)
 
-            loss = class_loss
+                _, tea_out = model(consistency_input)
+
+            _, stu_out = model(
+                add_noise(
+                    consistency_input,
+                    erase_num=erase_num,
+                    erase_p=erase_p,
+                )
+            )
+            consistency_loss = consistency * \
+                consistency_criterion(
+                    stu_out,
+                    tea_out,
+                )
+
+            loss = class_loss +  consistency_loss
 
             def closure():
                 optimizer.zero_grad()
@@ -184,6 +204,7 @@ def base_train(model_path,
 
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
+            sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
 
             with torch.no_grad():
@@ -205,7 +226,7 @@ def base_train(model_path,
         mean_train_loss = sum_train_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
-        mean_center_loss = sum_center_loss / len_batch
+        mean_consistency_loss = sum_consistency_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -213,7 +234,6 @@ def base_train(model_path,
                 {
                     'val': mean_iou_val,
                     'train': mean_iou_train,
-                    'diff': mean_iou_train - mean_iou_val,
                 },
                 epoch
             )
@@ -221,20 +241,14 @@ def base_train(model_path,
                 'loss',
                 {
                     'train': mean_train_loss,
-                    'class': mean_class_loss,
-                    'center': mean_center_loss,
                     'val': mean_val_loss,
-                    'diff': mean_val_loss - mean_class_loss,
                 },
-                epoch
             )
-            w.add_scalars(
-                'lr',
-                {
-                    'lr': get_learning_rate(optimizer),
-                },
-                epoch
-            )
+            w.add_scalar('iou/diff', mean_iou_train - mean_iou_val, epoch)
+            w.add_scalar('consistency', mean_consistency_loss, epoch)
+            w.add_scalar('class', mean_class_loss, epoch)
+            w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
+            w.add_scalar('lr', get_learning_rate(optimizer), epoch)
 
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
