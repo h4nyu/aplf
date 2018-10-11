@@ -110,6 +110,7 @@ def base_train(model_path,
                erase_num,
                erase_p,
                consistency,
+               consistency_rampup,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -152,7 +153,7 @@ def base_train(model_path,
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
-            train_out, _ = model(
+            train_out, train_center_out = model(
                 add_noise(
                     train_image,
                     erase_num=erase_num,
@@ -170,7 +171,6 @@ def base_train(model_path,
                 train_out,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
-
 
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device)

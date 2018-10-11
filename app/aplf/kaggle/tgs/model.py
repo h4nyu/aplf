@@ -401,10 +401,13 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self._cetner_output = SEBlock(
-            feature_size * 2 ** 3,
-            2,
-            r = 1/2
+        self._cetner_output = nn.Sequential(
+            ResBlock(
+                in_ch = feature_size * 2 ** 3,
+                out_ch = 2,
+            ),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Sigmoid(),
         )
 
         self.up_layers = nn.ModuleList([
@@ -433,7 +436,7 @@ class HUNet(UNet):
         self.pad = nn.ReflectionPad2d(1)
 
     def forward(self, x):
-        x = self.pad(x)
+        x = F.interpolate(x, size=(128, 128))
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
@@ -447,7 +450,7 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-
         x = self._output(x)
         x = x * center + x
+        x = F.interpolate(x, size=(101, 101))
         return x, center

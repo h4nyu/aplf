@@ -39,7 +39,7 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="sub",
+        id="center-loss",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=3,
