@@ -152,9 +152,7 @@ def base_train(model_path,
         for train_sample, val_sample in zip(train_loader, val_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
-            val_image = val_sample['image'].to(device)
-            val_mask = val_sample['mask'].to(device)
-            train_out, train_center_out = model(
+            train_out, _ = model(
                 add_noise(
                     train_image,
                     erase_num=erase_num,
@@ -173,6 +171,9 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
+
+            val_image = val_sample['image'].to(device)
+            val_mask = val_sample['mask'].to(device)
             with torch.no_grad():
                 consistency_input = torch.cat([
                     train_image[0:val_batch_size],
@@ -194,7 +195,12 @@ def base_train(model_path,
                     erase_p=erase_p,
                 )
             )
-            consistency_loss = consistency * \
+            consistency_wight = get_current_consistency_weight(
+                epoch,
+                consistency,
+                consistency_rampup,
+            )
+            consistency_loss = consistency_wight * \
                 consistency_criterion(
                     stu_out,
                     tea_out,

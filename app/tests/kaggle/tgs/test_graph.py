@@ -11,7 +11,7 @@ base_param = {
 
 def test_graph():
     base_train_config = {
-        'epochs': 400,
+        'epochs': 500,
         'batch_size': 32,
         'model_type': 'HUNet',
         'erase_num': 5,
@@ -20,6 +20,7 @@ def test_graph():
             'feature_size': 56,
         },
         'consistency': 1,
+        'consistency_rampup': 10,
 
     }
     fine_train_config = {
