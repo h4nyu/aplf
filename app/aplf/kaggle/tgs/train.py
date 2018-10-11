@@ -171,6 +171,10 @@ def base_train(model_path,
                 train_out,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
+            center_loss = consistency_criterion(
+                train_center_out,
+                F.avg_pool2d(train_mask, kernel_size=101)
+            )
 
             val_image = val_sample['image'].to(device)
             val_mask = val_sample['mask'].to(device)
@@ -207,7 +211,7 @@ def base_train(model_path,
                 )
 
 
-            loss = class_loss + consistency_loss
+            loss = class_loss + consistency_loss + center_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -216,6 +220,7 @@ def base_train(model_path,
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
+            sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
 
             with torch.no_grad():
@@ -238,6 +243,7 @@ def base_train(model_path,
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
         mean_consistency_loss = sum_consistency_loss / len_batch
+        mean_center_loss = sum_center_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -259,6 +265,7 @@ def base_train(model_path,
             w.add_scalar('iou/diff', mean_iou_train - mean_iou_val, epoch)
             w.add_scalar('lr', get_learning_rate(optimizer), epoch)
             w.add_scalar('loss/consistency', mean_consistency_loss, epoch)
+            w.add_scalar('loss/center', mean_center_loss, epoch)
             w.add_scalar('loss/class', mean_class_loss, epoch)
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 

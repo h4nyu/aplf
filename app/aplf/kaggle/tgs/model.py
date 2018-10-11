@@ -402,9 +402,10 @@ class HUNet(UNet):
         )
 
         self._cetner_output = nn.Sequential(
-            ResBlock(
-                in_ch = feature_size * 2 ** 3,
-                out_ch = 2,
+            nn.Conv2d(
+                feature_size * 2 ** 3,
+                1,
+                kernel_size=1
             ),
             nn.AdaptiveAvgPool2d(1),
             nn.Sigmoid(),
@@ -420,15 +421,15 @@ class HUNet(UNet):
                 out_ch=feature_size * 2 ** 1
             ),
             UpSample(
-                in_ch=feature_size * 2 ** 2 + feature_size * 2 ** 2 + feature_size * 2 ** 3 ,
+                in_ch=feature_size * 2 ** 2 + feature_size * 2 ** 2 + feature_size * 2 ** 3  ,
                 out_ch=feature_size
             ),
-            UpSample(
-                in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3,
-                out_ch=2
-            ),
+
         ])
-        self.pad = nn.ReflectionPad2d(1)
+        self.output = UpSample(
+            in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3 + 1,
+            out_ch=2
+        )
 
     def forward(self, x):
         d_outs = []
@@ -444,5 +445,8 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        x = x * center + x
+        x = self.output(
+            x,
+            [center, *d_outs[:4]]
+        )
         return x, center
