@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
 
 MAINTAINER Xinyaun Yao <yao.xinyuan@gmail.com>
 
@@ -15,7 +15,7 @@ RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-la
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
     /opt/conda/bin/conda install -y python=3.6  && \
-    /opt/conda/bin/conda install -c pytorch magma-cuda90 && \
+    /opt/conda/bin/conda install pytorch torchvision cuda92 -c pytorch && \
     /opt/conda/bin/conda clean -ya
 
 
