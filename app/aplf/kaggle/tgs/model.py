@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
+
 class SEBlock(nn.Module):
     def __init__(self, in_ch, out_ch, r=1):
         super().__init__()
@@ -14,7 +15,6 @@ class SEBlock(nn.Module):
             nn.Sigmoid()
         )
         self.out_ch = out_ch
-
 
     def forward(self, x):
         b, c, _, _ = x.size()
@@ -108,7 +108,6 @@ class ResBlock(nn.Module):
         return out
 
 
-
 class DownSample(nn.Module):
 
     def __init__(self,
@@ -145,6 +144,8 @@ class DownSample(nn.Module):
         conv = out
         down = self.pool(conv)
         return down, conv
+
+
 class UpSample(nn.Module):
 
     def __init__(self,
@@ -166,7 +167,11 @@ class UpSample(nn.Module):
         up_size = others[-1].size()[2:]
         out = pipe(
             [x, *others],
-            map(lambda x: F.interpolate(x, mode='bilinear', size=up_size)),
+            map(lambda x: F.interpolate(x,
+                                        mode='bilinear',
+                                        size=up_size,
+                                        align_corners=False
+                                        )),
             list
         )
         out = torch.cat([*out], 1)
@@ -257,7 +262,7 @@ class RUNet(UNet):
         self.center = SEBlock(
             in_ch=feature_size,
             out_ch=feature_size,
-            r= 1/2
+            r=1/2
         )
 
         self.up_layers = nn.ModuleList([
@@ -277,7 +282,6 @@ class RUNet(UNet):
             2,
             kernel_size=3
         )
-
 
 
 class DUNet(UNet):
@@ -302,7 +306,6 @@ class DUNet(UNet):
             in_ch=feature_size * 2 ** depth,
             out_ch=feature_size * 2 ** depth,
         )
-
 
         self.up_layers = nn.ModuleList([
             *pipe(
@@ -329,7 +332,6 @@ class DUNet(UNet):
             2,
             kernel_size=3
         )
-
 
 
 class EUNet(UNet):
@@ -383,9 +385,6 @@ class EUNet(UNet):
         )
 
 
-
-
-
 class HUNet(UNet):
     def __init__(self, feature_size=8):
         super().__init__()
@@ -401,33 +400,27 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self._cetner_output = nn.Sequential(
-            nn.Conv2d(
-                feature_size * 2 ** 3,
-                1,
-                kernel_size=1
-            ),
-            nn.AdaptiveAvgPool2d(1),
-            nn.Sigmoid(),
+        self.center_bypass = SEBlock(
+            in_ch=feature_size * 2 ** 3,
+            out_ch=2,
         )
 
         self.up_layers = nn.ModuleList([
             UpSample(
                 in_ch=feature_size * 2 ** 4,
-                out_ch=feature_size * 2 ** 2
+                out_ch=feature_size
             ),
             UpSample(
-                in_ch=feature_size * 2 ** 3 + feature_size * 2 ** 3 ,
+                in_ch=feature_size + feature_size * 2 ** 2 + feature_size * 2 ** 3,
                 out_ch=feature_size * 2 ** 1
             ),
             UpSample(
-                in_ch=feature_size * 2 ** 2 + feature_size * 2 ** 2 + feature_size * 2 ** 3  ,
+                in_ch=feature_size * 2 ** 4,
                 out_ch=feature_size
             ),
-
         ])
         self.output = UpSample(
-            in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3 + 1,
+            in_ch=feature_size * 2 ** 4 + 2,
             out_ch=2
         )
 
@@ -438,7 +431,7 @@ class HUNet(UNet):
             d_outs.append(d_out)
 
         _, x = self.center(x)
-        center = self._cetner_output(x)
+        center_bypass = self.center_bypass(x)
         d_outs = list(reversed(d_outs))
         # up samples
         u_outs = []
@@ -447,6 +440,6 @@ class HUNet(UNet):
 
         x = self.output(
             x,
-            [center, *d_outs[:4]]
+            [center_bypass, *d_outs[:4]]
         )
         return x, center

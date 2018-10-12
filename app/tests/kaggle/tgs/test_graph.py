@@ -19,7 +19,8 @@ def test_graph():
         'model_kwargs': {
             'feature_size': 56,
         },
-        'consistency': 1,
+        'consistency': 0.5,
+        'center_loss_wight': 0.05,
         'consistency_rampup': 10,
 
     }
@@ -42,8 +43,8 @@ def test_graph():
         id="center-loss",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
-        n_splits=3,
-        top_num=3,
+        n_splits=8,
+        top_num=8,
     )
 
     with Client('dask-scheduler:8786') as c:

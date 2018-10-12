@@ -8,7 +8,7 @@ import pandas as pd
 import uuid
 from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
-from .train import base_train, fine_train
+from .train import base_train
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold
 
