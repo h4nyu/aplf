@@ -110,6 +110,7 @@ def base_train(model_path,
                erase_num,
                erase_p,
                consistency,
+               center_loss_weight,
                consistency_rampup,
                ):
     device = torch.device("cuda")
@@ -168,8 +169,13 @@ def base_train(model_path,
             )
 
             class_loss = class_criterion(
+                train_out,
+                train_mask.view(-1, *train_out.size()[2:]).long()
+            )
+
+            center_loss = center_loss_weight * class_criterion(
                 train_center_out,
-                F.max_pool2d(train_mask, kernel_size=101).long()
+                F.max_pool2d(train_mask, kernel_size=101)
             )
 
             with torch.no_grad():
@@ -207,7 +213,7 @@ def base_train(model_path,
                 )
 
 
-            loss = class_loss + consistency_loss
+            loss = class_loss + consistency_loss + center_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -217,6 +223,7 @@ def base_train(model_path,
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
+            sum_center_loss += center_loss.item()
 
             with torch.no_grad():
                 val_out, _ = model(val_image)
@@ -263,7 +270,6 @@ def base_train(model_path,
             w.add_scalar('loss/center', mean_center_loss, epoch)
             w.add_scalar('loss/class', mean_class_loss, epoch)
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
-
 
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
