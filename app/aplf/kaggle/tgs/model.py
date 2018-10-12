@@ -69,6 +69,7 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 groups=2
                  ):
         super().__init__()
         if in_ch == out_ch:
@@ -92,7 +93,8 @@ class ResBlock(nn.Module):
                 out_ch,
                 out_ch,
                 kernel_size=3,
-                padding=1
+                padding=1,
+                groups=2,
             ),
             nn.BatchNorm2d(out_ch),
         )
@@ -412,19 +414,25 @@ class HUNet(UNet):
             ),
             UpSample(
                 in_ch=feature_size + feature_size * 2 ** 2 + feature_size * 2 ** 3,
-                out_ch=feature_size * 2 ** 1
+                out_ch=feature_size
+            ),
+            UpSample(
+                in_ch=feature_size * 2 ** 3 + feature_size * 2 ** 2 + feature_size * 2 + feature_size,
+                out_ch=feature_size
             ),
             UpSample(
                 in_ch=feature_size * 2 ** 4,
-                out_ch=feature_size
-            ),
+                out_ch=2
+            )
         ])
-        self.output = UpSample(
-            in_ch=feature_size * 2 ** 4 + 2,
-            out_ch=2
+        self.output = nn.Conv2d(
+            in_channels=4,
+            out_channels=2,
+            kernel_size=3,
         )
-
+        self.pad = nn.ReflectionPad2d(1)
     def forward(self, x):
+        x = self.pad(x)
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
@@ -432,14 +440,16 @@ class HUNet(UNet):
 
         _, x = self.center(x)
         center = self.center_bypass(x)
+
         d_outs = list(reversed(d_outs))
-        # up samples
         u_outs = []
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        x = self.output(
+        print(x.size())
+        x = torch.cat([
             x,
-            [center, *d_outs[:4]]
-        )
+            F.interpolate(center, size=(103,103))
+        ], dim=1)
+        x = self.output(x)
         return x, center
