@@ -20,7 +20,7 @@ def test_graph():
             'feature_size': 56,
         },
         'consistency': 0.5,
-        'center_loss_wight': 0.05,
+        'center_loss_weight': 0.05,
         'consistency_rampup': 10,
 
     }

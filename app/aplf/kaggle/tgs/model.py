@@ -431,7 +431,7 @@ class HUNet(UNet):
             d_outs.append(d_out)
 
         _, x = self.center(x)
-        center_bypass = self.center_bypass(x)
+        center = self.center_bypass(x)
         d_outs = list(reversed(d_outs))
         # up samples
         u_outs = []
@@ -440,6 +440,6 @@ class HUNet(UNet):
 
         x = self.output(
             x,
-            [center_bypass, *d_outs[:4]]
+            [center, *d_outs[:4]]
         )
         return x, center

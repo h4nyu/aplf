@@ -175,7 +175,7 @@ def base_train(model_path,
 
             center_loss = center_loss_weight * class_criterion(
                 train_center_out,
-                F.max_pool2d(train_mask, kernel_size=101)
+                F.max_pool2d(train_mask, kernel_size=101).view(-1, *train_center_out.size()[2:]).long()
             )
 
             with torch.no_grad():
