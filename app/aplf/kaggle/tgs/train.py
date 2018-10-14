@@ -140,6 +140,7 @@ def base_train(model_path,
         shuffle=True
     )
 
+    #  class_criterion = nn.CrossEntropyLoss(size_average=True)
     class_criterion = lovasz_softmax
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
@@ -164,7 +165,7 @@ def base_train(model_path,
                 train_image = train_sample['image'].to(device)
                 train_mask = train_sample['mask'].to(device)
 
-            train_out, train_center_out = model(
+            train_out, train_center_out, _ = model(
                 add_noise(
                     train_image,
                     erase_num=erase_num,
@@ -184,9 +185,9 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
-            center_loss = center_loss_weight * class_criterion(
+            center_loss = center_loss_weight * consistency_criterion(
                 train_center_out,
-                F.max_pool2d(train_mask, kernel_size=101).view(-1, *train_center_out.size()[2:]).long()
+                F.avg_pool2d(train_mask, kernel_size=101)
             )
 
             with torch.no_grad():
@@ -206,20 +207,12 @@ def base_train(model_path,
                     no_label_image,
                 ], dim=0)
 
-                tea_out, _ = model(
-                    add_noise(
-                        consistency_input,
-                        erase_num=erase_num,
-                        erase_p=erase_p,
-                    )
+                _, tea_out, _ = model(
+                    consistency_input,
                 )
 
-            stu_out, _ = model(
-                add_noise(
-                    consistency_input,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
-                )
+            _, stu_out, _ = model(
+                consistency_input.flip([3]),
             )
 
             consistency_loss = consistency_wight * \
@@ -242,7 +235,7 @@ def base_train(model_path,
             sum_center_loss += center_loss.item()
 
             with torch.no_grad():
-                val_out, _ = model(val_image)
+                val_out, _, _ = model(val_image)
                 val_loss = class_criterion(
                     val_out,
                     val_mask.view(-1, *val_out.size()[2:]).long()

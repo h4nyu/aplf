@@ -13,16 +13,16 @@ def test_graph():
     base_train_config = {
         'epochs': 500,
         'labeled_batch_size': 32,
-        'no_labeled_batch_size': 4,
+        'no_labeled_batch_size': 8,
         'model_type': 'HUNet',
-        'erase_num': 5,
-        'erase_p': 1,
+        'erase_num': 0,
+        'erase_p': 0,
         'model_kwargs': {
-            'feature_size': 56,
+            'feature_size': 32,
         },
-        'consistency': 0.5,
-        'center_loss_weight': 0.05,
-        'consistency_rampup': 20,
+        'consistency': 0.1,
+        'center_loss_weight': 0.1,
+        'consistency_rampup': 0,
 
     }
     fine_train_config = {

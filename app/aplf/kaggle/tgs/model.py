@@ -402,9 +402,13 @@ class HUNet(UNet):
             out_ch=feature_size * 2 ** 3,
         )
 
-        self.center_bypass = SEBlock(
-            in_ch=feature_size * 2 ** 3,
-            out_ch=2,
+        self.center_bypass = nn.Sequential(
+            nn.Conv2d(
+                in_channels=feature_size * 2 ** 3,
+                out_channels=1,
+                kernel_size=3,
+            ),
+            nn.AdaptiveAvgPool2d(1),
         )
 
         self.up_layers = nn.ModuleList([
@@ -426,11 +430,12 @@ class HUNet(UNet):
             )
         ])
         self.output = nn.Conv2d(
-            in_channels=4,
+            in_channels=3,
             out_channels=2,
             kernel_size=3,
         )
         self.pad = nn.ReflectionPad2d(1)
+
     def forward(self, x):
         x = self.pad(x)
         d_outs = []
@@ -446,10 +451,10 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        print(x.size())
+        segment_only = x
         x = torch.cat([
-            x,
+            segment_only,
             F.interpolate(center, size=(103,103))
         ], dim=1)
-        x = self.output(x)
-        return x, center
+        segment_all = self.output(x)
+        return segment_all, center, segment_only,
