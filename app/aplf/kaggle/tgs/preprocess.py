@@ -99,6 +99,11 @@ def add_mask_size(df, shape=(101, 101)):
         .apply(lambda x: rle_decode(x, shape).sum())
     return df
 
+def add_is_empty(df, shape=(101, 101)):
+    df['is_empty'] = df['rle_mask']\
+        .apply(lambda x: rle_decode(x, shape).sum() == 0)
+    return df
+
 
 def cut_bin(df, colunm_name, size):
     df[f'{colunm_name}_bin'] = pd.cut(df[colunm_name], size)

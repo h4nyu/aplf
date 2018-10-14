@@ -1,5 +1,6 @@
 from aplf.kaggle.tgs.dataset import TgsSaltDataset, load_dataset_df
 from cytoolz.curried import keymap, filter, pipe, merge, map, concat
+from torch.utils.data import Subset
 from torchvision.transforms import (
     RandomRotation,
     ToPILImage,
@@ -18,6 +19,7 @@ import numpy as np
 import torchvision.utils as vutils
 
 from aplf import config
+from aplf.kaggle.tgs.dataset import get_segment_indices
 
 
 def test_dataset():
@@ -42,3 +44,10 @@ def test_flip():
                  list)
         ),
     )
+
+def test_segment_set():
+    dataset_df = load_dataset_df('/store/kaggle/tgs')
+    dataset = TgsSaltDataset(dataset_df)
+    segment_indices = get_segment_indices(dataset, range(10, 15))
+    assert segment_indices == [10, 12, 14]
+    print(segment_indices)

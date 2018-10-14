@@ -100,7 +100,9 @@ class CyclicLR(object):
 @skip_if_exists('model_path')
 def base_train(model_path,
                train_set,
+               seg_set,
                val_set,
+               seg_set,
                no_labeled_set,
                model_type,
                model_kwargs,
@@ -121,6 +123,15 @@ def base_train(model_path,
 
     train_loader = DataLoader(
         train_set,
+        batch_size=labeled_batch_size,
+        shuffle=True,
+    )
+
+    seg_batch_size = int(labeled_batch_size *
+                         len(seg_set.indices) / len(train_set.indices))
+
+    seg_loader = DataLoader(
+        seg_set,
         batch_size=labeled_batch_size,
         shuffle=True,
     )

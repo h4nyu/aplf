@@ -22,6 +22,7 @@ import glob
 import random
 import torch.nn.functional as F
 from torchvision.transforms.functional import hflip, vflip, rotate
+from .preprocess import add_is_empty
 
 
 def load_dataset_df(dataset_dir, csv_fn='train.csv'):
@@ -43,7 +44,18 @@ def load_dataset_df(dataset_dir, csv_fn='train.csv'):
         lambda x: os.path.join(mask_dir, f"{x}.png")
     )
     df = pd.concat([df, depth_df], join='inner', axis=1)
+    df = add_is_empty(df)
     return df
+
+def get_segment_indices(dataset, filter_indcies):
+    df = dataset.df
+    filtered = df.iloc[filter_indcies]
+    return pipe(
+        filtered[filtered['is_empty'] == False].index,
+        map(df.index.get_loc),
+        list
+    )
+
 
 
 class TgsSaltDataset(Dataset):
