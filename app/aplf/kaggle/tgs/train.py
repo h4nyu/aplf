@@ -103,6 +103,7 @@ def base_train(model_path,
                train_set,
                seg_set,
                val_set,
+               no_lable_set,
                model_type,
                model_kwargs,
                epochs,
@@ -110,7 +111,8 @@ def base_train(model_path,
                log_dir,
                erase_num,
                erase_p,
-               consistency,
+               consistency_loss_wight,
+               center_loss_weight,
                seg_loss_weight,
                ):
     device = torch.device("cuda")
@@ -141,6 +143,12 @@ def base_train(model_path,
         batch_size=val_batch_size,
         shuffle=True
     )
+    no_label_loader = DataLoader(
+        no_lable_set,
+        batch_size=val_batch_size,
+        shuffle=True
+    )
+
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
@@ -161,11 +169,9 @@ def base_train(model_path,
         sum_val_score = 0
         sum_consistency_loss = 0
         sum_seg_loss = 0
-        for train_sample, seg_sample, val_sample in zip(train_loader, seg_loader, val_loader):
+        for train_sample, seg_sample, val_sample, no_label_sample in zip(train_loader, seg_loader, val_loader, no_label_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
-            val_image = val_sample['image'].to(device)
-            val_mask = val_sample['mask'].to(device)
             train_out, train_center_out = model(
                 add_noise(
                     train_image,
@@ -185,10 +191,19 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
+            center_loss = center_loss_weight * class_criterion(
+                train_center_out,
+                F.max_pool2d(train_mask, kernel_size=101).view(-1, 1, 1).long()
+            )
+
             with torch.no_grad():
+                val_image = val_sample['image'].to(device)
+                val_mask = val_sample['mask'].to(device)
+                no_label_image = no_label_sample['image'].to(device)
                 consistency_input = torch.cat([
                     train_image[0:val_batch_size],
                     val_image,
+                    no_label_image,
                 ], dim=0)
 
                 _, tea_out = model(
@@ -206,7 +221,7 @@ def base_train(model_path,
                     erase_p=erase_p,
                 )
             )
-            consistency_loss = consistency * \
+            consistency_loss = consistency_loss_wight * \
                 consistency_criterion(
                     stu_out,
                     tea_out,
@@ -227,7 +242,7 @@ def base_train(model_path,
             )
 
 
-            loss = class_loss + consistency_loss + seg_loss
+            loss = class_loss + consistency_loss + seg_loss + center_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -236,6 +251,7 @@ def base_train(model_path,
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
+            sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
             sum_seg_loss += seg_loss.item()
 

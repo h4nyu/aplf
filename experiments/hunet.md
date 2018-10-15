@@ -179,8 +179,31 @@ train_iou: 0.941
 train_loss: 0.018
 train_loss: 0.0123
 val_loss: 0.0863
+## memo
+outputがx = x + x*centerなのでcenterの影響を多く受けてしまう
+conv2dで受ける
 
 
+# seg-set-1
+hunet
+## condition
+HUNet feature 32 depht 3
+scse
+fold: 7
+optimizer: adam + amsgrad
+class_criterion: cross entorpy
+data clean
+augmentation: hflip 
+random_erase: num 5, p 1
+seg_loss
+seg_loss_weight: 0.5
++ consistency_loss: center
++ consistency_input: val, no label
++ consistency_loss_weight: 0.1
++ center_loss
++ center_loss_weight: 0.1
++ output: conv2d
 
-
+## result
+## memo
 

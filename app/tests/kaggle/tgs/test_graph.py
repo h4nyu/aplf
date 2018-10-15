@@ -19,7 +19,8 @@ def test_graph():
         'model_kwargs': {
             'feature_size': 32,
         },
-        'consistency': 1,
+        'consistency_loss_wight': 0.1,
+        'center_loss_weight': 0.1,
         'seg_loss_weight': 0.5,
 
     }
@@ -39,7 +40,7 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="seg-set",
+        id="seg-set-1",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=8,

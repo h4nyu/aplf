@@ -84,6 +84,7 @@ class Graph(object):
                 train_set=x[1],
                 seg_set=x[2],
                 val_set=x[3],
+                no_lable_set=predict_set,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
             list

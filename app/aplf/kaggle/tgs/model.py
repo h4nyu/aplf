@@ -426,7 +426,7 @@ class HUNet(UNet):
             ),
         ])
         self._output = nn.Conv2d(
-            feature_size,
+            feature_size + 2,
             2,
             kernel_size=3
         )
@@ -447,7 +447,12 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-
+        x = torch.cat(
+            [
+                x,
+                F.interpolate(center, size=(103, 103))
+            ],
+            dim=1
+        )
         x = self._output(x)
-        x = x * center + x
         return x, center
