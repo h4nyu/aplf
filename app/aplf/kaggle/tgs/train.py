@@ -101,6 +101,7 @@ class CyclicLR(object):
 @skip_if_exists('model_path')
 def base_train(model_path,
                train_set,
+               seg_set,
                val_set,
                model_type,
                model_kwargs,
@@ -110,6 +111,7 @@ def base_train(model_path,
                erase_num,
                erase_p,
                consistency,
+               seg_loss_weight,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -119,6 +121,15 @@ def base_train(model_path,
     train_loader = DataLoader(
         train_set,
         batch_size=batch_size,
+        shuffle=True,
+    )
+
+
+    seg_batch_size = int(batch_size *
+                         len(seg_set.indices) / len(train_set.indices))
+    seg_loader = DataLoader(
+        seg_set,
+        batch_size=seg_batch_size,
         shuffle=True,
     )
 
@@ -149,7 +160,8 @@ def base_train(model_path,
         sum_val_loss = 0
         sum_val_score = 0
         sum_consistency_loss = 0
-        for train_sample, val_sample in zip(train_loader, val_loader):
+        sum_seg_loss = 0
+        for train_sample, seg_sample, val_sample in zip(train_loader, seg_loader, val_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
             val_image = val_sample['image'].to(device)
@@ -200,8 +212,22 @@ def base_train(model_path,
                     tea_out,
                 )
 
+            seg_image = seg_sample['image'].to(device)
+            seg_out, _  = model(
+                add_noise(
+                    seg_image,
+                    erase_num=erase_num,
+                    erase_p=erase_p,
+                )
+            )
+            seg_mask = seg_sample['mask'].to(device)
+            seg_loss = seg_loss_weight * class_criterion(
+                seg_out,
+                seg_mask.view(-1, *seg_out.size()[2:]).long()
+            )
 
-            loss = class_loss + consistency_loss
+
+            loss = class_loss + consistency_loss + seg_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -211,6 +237,7 @@ def base_train(model_path,
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
             sum_train_loss += loss.item()
+            sum_seg_loss += seg_loss.item()
 
             with torch.no_grad():
                 val_out, _ = model(val_image)
@@ -232,6 +259,7 @@ def base_train(model_path,
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
         mean_consistency_loss = sum_consistency_loss / len_batch
+        mean_seg_loss = sum_seg_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -254,6 +282,7 @@ def base_train(model_path,
             w.add_scalar('lr', get_learning_rate(optimizer), epoch)
             w.add_scalar('loss/consistency', mean_consistency_loss, epoch)
             w.add_scalar('loss/class', mean_class_loss, epoch)
+            w.add_scalar('loss/seg', mean_seg_loss, epoch)
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 
 

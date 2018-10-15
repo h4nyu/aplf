@@ -20,6 +20,7 @@ def test_graph():
             'feature_size': 32,
         },
         'consistency': 1,
+        'seg_loss_weight': 0.5,
 
     }
     fine_train_config = {

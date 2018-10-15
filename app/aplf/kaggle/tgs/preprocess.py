@@ -99,6 +99,11 @@ def add_mask_size(df, shape=(101, 101)):
         .apply(lambda x: rle_decode(x, shape).sum())
     return df
 
+def add_is_empty(df, shape=(101, 101)):
+    df['is_empty'] = df['rle_mask']\
+        .apply(lambda x: rle_decode(x, shape).sum() == 0)
+    return df
+
 
 def cut_bin(df, colunm_name, size):
     df[f'{colunm_name}_bin'] = pd.cut(df[colunm_name], size)
@@ -204,3 +209,11 @@ def kfold(dataset, n_splits, random_state=0):
     kf = KFold(n_splits, random_state=random_state)
     return list(kf.split(dataset))
 
+def get_segment_indices(dataset, filter_indcies):
+    df = dataset.df
+    filtered = df.iloc[filter_indcies]
+    return pipe(
+        filtered[filtered['is_empty'] == False].index,
+        map(df.index.get_loc),
+        list
+    )

@@ -160,5 +160,18 @@ teacher update: batch loop
 
 ## result
 
+# seg-set-0
+hunet
+## condition
+HUNet feature 32 depht 3
+scse
+fold: 7
+class_criterion: cross entorpy
+data clean
+augmentation: hflip 
+random_erase: num 5
++ seg_loss
++ seg_loss_weight: 0.5
+
 
 

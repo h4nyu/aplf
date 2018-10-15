@@ -10,7 +10,7 @@ from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import base_train
 from .predict import predict
-from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
 
 
 class Graph(object):
@@ -49,6 +49,15 @@ class Graph(object):
             map(lambda x: delayed(Subset)(dataset, x)),
             list
         )
+
+        seg_sets = pipe(
+            train_sets,
+            map(delayed(lambda x: x.indices)),
+            map(lambda x: delayed(get_segment_indices)(dataset, x)),
+            map(lambda x: delayed(Subset)(dataset, x)),
+            list
+        )
+
         val_sets = pipe(
             range(n_splits),
             map(lambda idx: delayed(lambda x: x[idx][1])(kfolded)),
@@ -67,13 +76,14 @@ class Graph(object):
         )
 
         model_paths = pipe(
-            zip(ids, train_sets, val_sets),
+            zip(ids, train_sets, seg_sets, val_sets),
             filter(lambda x: x[0] in folds),
             map(lambda x: delayed(base_train)(
                 **base_train_config,
                 model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
                 train_set=x[1],
-                val_set=x[2],
+                seg_set=x[2],
+                val_set=x[3],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
             list
