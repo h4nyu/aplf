@@ -197,12 +197,42 @@ augmentation: hflip
 random_erase: num 5, p 1
 seg_loss
 seg_loss_weight: 0.5
-+ consistency_loss: center
-+ consistency_input: val, no label
++ consistency_loss: seg
++ consistency_input: val, no_label
 + consistency_loss_weight: 0.1
 + center_loss
 + center_loss_weight: 0.1
 + output: conv2d
+
+## result
+epoch:394(10h08m)
+val_iou: 0.860
+train_iou: 0.973
+train_loss: 0.00633
+val_loss: 0.0138
+## memo
+consistency_lossが効いている
+
+
+# seg-set-2
+hunet
+## condition
+HUNet feature 32 depht 3
+scse
+fold: 0
+optimizer: adam + amsgrad
+class_criterion: cross entorpy
+data clean
+augmentation: hflip 
+random_erase: num 5, p 1
+seg_loss
+seg_loss_weight: 0.5
+consistency_input: train, val, no_label
++ consistency_loss: center, seg
++ consistency_loss_weight: 0.2
+center_loss
+center_loss_weight: 0.2
+output: conv2d
 
 ## result
 epoch:394(10h08m)
