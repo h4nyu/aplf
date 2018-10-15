@@ -205,5 +205,10 @@ seg_loss_weight: 0.5
 + output: conv2d
 
 ## result
+epoch:394(10h08m)
+val_iou: 0.860
+train_iou: 0.973
+train_loss: 0.00633
+val_loss: 0.0138
 ## memo
 
