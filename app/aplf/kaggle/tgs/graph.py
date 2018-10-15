@@ -22,6 +22,7 @@ class Graph(object):
                  base_train_config,
                  fine_train_config,
                  top_num,
+                 folds,
                  ):
         params = locals()
 
@@ -67,6 +68,7 @@ class Graph(object):
 
         model_paths = pipe(
             zip(ids, train_sets, val_sets),
+            filter(lambda x: x[0] in folds),
             map(lambda x: delayed(base_train)(
                 **base_train_config,
                 model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
