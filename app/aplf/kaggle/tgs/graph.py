@@ -8,7 +8,7 @@ import pandas as pd
 import uuid
 from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
-from .train import base_train, fine_train
+from .train import base_train
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold
 
@@ -78,22 +78,6 @@ class Graph(object):
             )),
             list
         )
-
-        #  model_paths = pipe(
-        #      zip(ids, model_paths, train_sets, val_sets),
-        #      map(lambda x: delayed(fine_train)(
-        #          **fine_train_config,
-        #          in_model_path=x[1],
-        #          out_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
-        #          train_set=x[2],
-        #          val_set=x[3],
-        #          no_labeled_set=predict_set,
-        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
-        #      )),
-        #      list
-        #  )
-
-
 
         submission_df = delayed(predict)(
             model_paths=model_paths,
