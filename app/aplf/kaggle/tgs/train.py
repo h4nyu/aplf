@@ -1,3 +1,4 @@
+from pathlib import Path
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
 from cytoolz import curry
 import torch.nn as nn
@@ -97,10 +98,8 @@ class CyclicLR(object):
         return cyclic * gamma
 
 
-@skip_if_exists('model_path')
 def base_train(model_path,
                train_set,
-               seg_set,
                val_set,
                seg_set,
                no_labeled_set,
@@ -112,14 +111,20 @@ def base_train(model_path,
                log_dir,
                erase_num,
                erase_p,
-               consistency,
                center_loss_weight,
-               consistency_rampup,
+               consistency_loss_wight,
+               seg_loss_weight,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
-    model = Model(**model_kwargs).to(device).train()
+    model = Model(**model_kwargs)
+
+    if Path(model_path).exists():
+        model = torch.load(model_path)
+
+    model =  model.to(device).train()
+
 
     train_loader = DataLoader(
         train_set,
@@ -148,12 +153,13 @@ def base_train(model_path,
     no_labeled_loader =DataLoader(
         no_labeled_set,
         batch_size=no_labeled_batch_size,
-        shuffle=True
     )
 
-    #  class_criterion = nn.CrossEntropyLoss(size_average=True)
-    class_criterion = lovasz_softmax
+    class_criterion = nn.CrossEntropyLoss(size_average=True)
+
+    #  class_criterion = lovasz_softmax
     consistency_criterion = nn.MSELoss(size_average=True)
+
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
     len_batch = min(
         len(train_loader),
@@ -171,12 +177,13 @@ def base_train(model_path,
         sum_val_loss = 0
         sum_val_score = 0
         sum_consistency_loss = 0
-        for train_sample, val_sample, no_label_sample in zip(train_loader, val_loader, no_labeled_loader):
+        sum_seg_loss = 0
+        for train_sample, val_sample, no_label_sample, seg_sample in zip(train_loader, val_loader, no_labeled_loader, seg_loader):
             with torch.no_grad():
                 train_image = train_sample['image'].to(device)
                 train_mask = train_sample['mask'].to(device)
 
-            train_out, train_center_out, _ = model(
+            train_out, train_center_out = model(
                 add_noise(
                     train_image,
                     erase_num=erase_num,
@@ -196,44 +203,52 @@ def base_train(model_path,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
 
-            center_loss = center_loss_weight * consistency_criterion(
+            center_loss = center_loss_weight * class_criterion(
                 train_center_out,
-                F.avg_pool2d(train_mask, kernel_size=101)
+                F.max_pool2d(train_mask, kernel_size=101).view(-1, 1, 1).long()
             )
+
+            seg_image = seg_sample['image'].to(device)
+            seg_out, _  = model(
+                add_noise(
+                    seg_image,
+                    erase_num=erase_num,
+                    erase_p=erase_p,
+                )
+            )
+            seg_mask = seg_sample['mask'].to(device)
+            seg_loss = seg_loss_weight * class_criterion(
+                seg_out,
+                seg_mask.view(-1, *seg_out.size()[2:]).long()
+            )
+
 
             with torch.no_grad():
                 val_image = val_sample['image'].to(device)
                 val_mask = val_sample['mask'].to(device)
                 no_label_image = no_label_sample['image'].to(device)
 
-                consistency_wight = get_current_consistency_weight(
-                    epoch,
-                    consistency,
-                    consistency_rampup,
-                )
-
                 consistency_input = torch.cat([
-                    train_image[0:no_labeled_batch_size],
-                    val_image,
+                    #  val_image,
                     no_label_image,
                 ], dim=0)
 
-                _, tea_out, _ = model(
+                _, tea_out = model(
                     consistency_input,
                 )
 
-            _, stu_out, _ = model(
+            _, stu_out = model(
                 consistency_input.flip([3]),
             )
 
-            consistency_loss = consistency_wight * \
+            consistency_loss = consistency_loss_wight * \
                 consistency_criterion(
                     stu_out,
                     tea_out,
                 )
 
 
-            loss = class_loss + consistency_loss + center_loss
+            loss = class_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -242,11 +257,12 @@ def base_train(model_path,
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
+            sum_seg_loss += seg_loss.item()
             sum_train_loss += loss.item()
             sum_center_loss += center_loss.item()
 
             with torch.no_grad():
-                val_out, _, _ = model(val_image)
+                val_out, _ = model(val_image)
                 val_loss = class_criterion(
                     val_out,
                     val_mask.view(-1, *val_out.size()[2:]).long()
@@ -266,6 +282,7 @@ def base_train(model_path,
         mean_class_loss = sum_class_loss / len_batch
         mean_consistency_loss = sum_consistency_loss / len_batch
         mean_center_loss = sum_center_loss / len_batch
+        mean_seg_loss = sum_seg_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -289,6 +306,7 @@ def base_train(model_path,
             w.add_scalar('loss/consistency', mean_consistency_loss, epoch)
             w.add_scalar('loss/center', mean_center_loss, epoch)
             w.add_scalar('loss/class', mean_class_loss, epoch)
+            w.add_scalar('loss/seg', mean_seg_loss, epoch)
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 
             if max_iou_val <= mean_iou_val:

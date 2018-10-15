@@ -63,8 +63,9 @@ def test_hunet(feature_size):
             feature_size=feature_size,
         )
         in_image = torch.empty(4, 1, 101, 101)
-        out_image, center = model(in_image)
-        assert out_image.size() == (4, 2, 101, 101)
+        all_out, center, seg_out = model(in_image)
+        assert all_out.size() == (4, 2, 101, 101)
+        assert seg_out.size() == (4, 2, 101, 101)
 
 
 def test_scse():

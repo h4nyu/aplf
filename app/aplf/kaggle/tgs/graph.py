@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import uuid
 from aplf import config
-from .dataset import TgsSaltDataset, load_dataset_df
+from .dataset import TgsSaltDataset, load_dataset_df, get_segment_indices
 from .train import base_train
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold
@@ -22,6 +22,7 @@ class Graph(object):
                  base_train_config,
                  fine_train_config,
                  top_num,
+                 folds,
                  ):
         params = locals()
 
@@ -53,6 +54,7 @@ class Graph(object):
             train_sets,
             map(delayed(lambda x: x.indices)),
             map(lambda x: delayed(get_segment_indices)(dataset, x)),
+            map(lambda x: delayed(Subset)(dataset, x)),
             list
         )
 
@@ -75,6 +77,7 @@ class Graph(object):
 
         model_paths = pipe(
             zip(ids, train_sets, segment_sets, val_sets),
+            filter(lambda x: x[0] in folds),
             map(lambda x: delayed(base_train)(
                 **base_train_config,
                 model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
@@ -84,24 +87,8 @@ class Graph(object):
                 no_labeled_set=predict_set,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
-            list
+            list,
         )
-
-        #  model_paths = pipe(
-        #      zip(ids, model_paths, train_sets, val_sets),
-        #      map(lambda x: delayed(fine_train)(
-        #          **fine_train_config,
-        #          in_model_path=x[1],
-        #          out_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
-        #          train_set=x[2],
-        #          val_set=x[3],
-        #          no_labeled_set=predict_set,
-        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
-        #      )),
-        #      list
-        #  )
-
-
 
         submission_df = delayed(predict)(
             model_paths=model_paths,

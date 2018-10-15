@@ -13,17 +13,16 @@ def test_graph():
     base_train_config = {
         'epochs': 500,
         'labeled_batch_size': 32,
-        'no_labeled_batch_size': 8,
+        'no_labeled_batch_size': 1,
         'model_type': 'HUNet',
         'erase_num': 0,
         'erase_p': 0,
         'model_kwargs': {
-            'feature_size': 32,
+            'feature_size': 8,
         },
-        'consistency': 0.1,
-        'center_loss_weight': 0.1,
-        'consistency_rampup': 0,
-
+        'consistency_loss_wight': 0.00,
+        'center_loss_weight': 0.0,
+        'seg_loss_weight': 0.0,
     }
     fine_train_config = {
         'epochs': 400,
@@ -41,11 +40,12 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="center-loss",
+        id="seg-set",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=8,
         top_num=8,
+        folds=[7],
     )
 
     with Client('dask-scheduler:8786') as c:

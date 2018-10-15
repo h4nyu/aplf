@@ -405,7 +405,7 @@ class HUNet(UNet):
         self.center_bypass = nn.Sequential(
             nn.Conv2d(
                 in_channels=feature_size * 2 ** 3,
-                out_channels=1,
+                out_channels=2,
                 kernel_size=3,
             ),
             nn.AdaptiveAvgPool2d(1),
@@ -426,11 +426,12 @@ class HUNet(UNet):
             ),
             UpSample(
                 in_ch=feature_size * 2 ** 4,
-                out_ch=2
+                out_ch=2,
             )
         ])
+
         self.output = nn.Conv2d(
-            in_channels=3,
+            in_channels=2 + 2,
             out_channels=2,
             kernel_size=3,
         )
@@ -451,10 +452,9 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1])
 
-        segment_only = x
         x = torch.cat([
-            segment_only,
+            x,
             F.interpolate(center, size=(103,103))
         ], dim=1)
         segment_all = self.output(x)
-        return segment_all, center, segment_only,
+        return segment_all, center
