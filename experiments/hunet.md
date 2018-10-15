@@ -173,5 +173,14 @@ random_erase: num 5
 + seg_loss
 + seg_loss_weight: 0.5
 
+## result
+val_iou: 0.839
+train_iou: 0.941
+train_loss: 0.018
+train_loss: 0.0123
+val_loss: 0.0863
+
+
+
 
 
