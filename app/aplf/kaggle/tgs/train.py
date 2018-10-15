@@ -274,6 +274,7 @@ def base_train(model_path,
         mean_train_loss = sum_train_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
         mean_class_loss = sum_class_loss / len_batch
+        mean_center_loss = sum_center_loss / len_batch
         mean_consistency_loss = sum_consistency_loss / len_batch
         mean_seg_loss = sum_seg_loss / len_batch
 
@@ -298,6 +299,7 @@ def base_train(model_path,
             w.add_scalar('lr', get_learning_rate(optimizer), epoch)
             w.add_scalar('loss/consistency', mean_consistency_loss, epoch)
             w.add_scalar('loss/class', mean_class_loss, epoch)
+            w.add_scalar('loss/center', mean_center_loss, epoch)
             w.add_scalar('loss/seg', mean_seg_loss, epoch)
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 
