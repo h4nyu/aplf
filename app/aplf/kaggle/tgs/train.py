@@ -208,7 +208,7 @@ def base_train(model_path,
 
                 tea_out, tea_center_out = model(
                     add_noise(
-                        consistency_input,
+                        consistency_input.flip([3]),
                         erase_num=erase_num,
                         erase_p=erase_p,
                     )
@@ -223,8 +223,8 @@ def base_train(model_path,
             )
             consistency_loss = (
                 consistency_loss_wight *
-                consistency_criterion(stu_out, tea_out) +
-                consistency_criterion(stu_center_out, tea_center_out)
+                consistency_criterion(stu_out, tea_out.flip([3])) +
+                consistency_criterion(stu_center_out, tea_center_out.flip([3]))
             )
 
             seg_image = seg_sample['image'].to(device)
