@@ -270,5 +270,37 @@ output: conv2d
 + padding: zeropad 10
 
 ## result
+epoch: 207(7h03m)
+val_iou: 0.845
+train_iou: 0.928
+train_loss: 0.0077
+val_loss: 0.010
+## memo
+paddingで端に境界が直された
 
 
+# seg-set-4
+hunet
+## condition
+HUNet feature 32 depht 3
+scse
+fold: 0
+optimizer: adam + amsgrad
+class_criterion: cross entorpy
+seg_criterion: cross entorpy
+data clean
+augmentation: hflip 
+random_erase: num 5, p 1
+seg_loss
+seg_loss_weight: 0.5
+consistency_input: train, val, no_label
+consistency_loss: center, seg
++ consistency_loss_weight: 0.3
+consistency_criterion: mse
+center_loss
+center_loss_weight: 0.2
+output: conv2d
++ padding: zeropad 1
+
+## result
+## memo

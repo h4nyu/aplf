@@ -40,7 +40,7 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="seg-set-3",
+        id="seg-set-4",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=8,
