@@ -150,6 +150,7 @@ def base_train(model_path,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
+    seg_criterion = lovasz_softmax
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
     len_batch = min(
@@ -186,7 +187,7 @@ def base_train(model_path,
                 epoch,
             )
 
-            class_loss = class_criterion(
+            class_loss = seg_criterion(
                 train_out,
                 train_mask.view(-1, *train_out.size()[2:]).long()
             )
@@ -236,7 +237,7 @@ def base_train(model_path,
                 )
             )
             seg_mask = seg_sample['mask'].to(device)
-            seg_loss = seg_loss_weight * class_criterion(
+            seg_loss = seg_loss_weight * seg_criterion(
                 seg_out,
                 seg_mask.view(-1, *seg_out.size()[2:]).long()
             )

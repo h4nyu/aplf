@@ -219,7 +219,7 @@ hunet
 ## condition
 HUNet feature 32 depht 3
 scse
-fold: 0
+fold: 3
 optimizer: adam + amsgrad
 class_criterion: cross entorpy
 data clean
@@ -235,10 +235,12 @@ center_loss_weight: 0.2
 output: conv2d
 
 ## result
-epoch:394(10h08m)
-val_iou: 0.860
-train_iou: 0.973
-train_loss: 0.00633
-val_loss: 0.0138
+epoch: 202(5h35m)
+val_iou: 0.859
+train_iou: 0.922
+train_loss: 0.0074
+val_loss: 0.013
 ## memo
+consistency_lossのweightが多い方がoverfitしにくい
+
 
