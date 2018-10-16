@@ -242,5 +242,31 @@ train_loss: 0.0074
 val_loss: 0.013
 ## memo
 consistency_lossのweightが多い方がoverfitしにくい
+協会が端ギリギリのサンプルを見落としてる
+
+
+
+# seg-set-3
+hunet
+## condition
+HUNet feature 32 depht 3
+scse
+fold: 0
+optimizer: adam + amsgrad
+class_criterion: cross entorpy
+data clean
+augmentation: hflip 
+random_erase: num 5, p 1
+seg_loss
+seg_loss_weight: 0.5
+consistency_input: train, val, no_label
+consistency_loss: center, seg
+consistency_loss_weight: 0.2
+center_loss
+center_loss_weight: 0.2
+output: conv2d
++ padding: zeropad 10
+
+## result
 
 

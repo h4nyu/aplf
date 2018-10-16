@@ -430,7 +430,7 @@ class HUNet(UNet):
             2,
             kernel_size=3
         )
-        self.pad = nn.ReflectionPad2d(1)
+        self.pad = nn.ZeroPad2d(10)
 
     def forward(self, x):
         x = self.pad(x)
@@ -450,9 +450,10 @@ class HUNet(UNet):
         x = torch.cat(
             [
                 x,
-                F.interpolate(center, size=(103, 103))
+                F.interpolate(center, size=(121, 121))
             ],
             dim=1
         )
         x = self._output(x)
+        x = F.interpolate(x, mode='bilinear', size=(101, 101))
         return x, center
