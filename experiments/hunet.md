@@ -295,7 +295,7 @@ seg_loss
 seg_loss_weight: 0.5
 consistency_input: train, val, no_label
 consistency_loss: center, seg
-+ consistency_loss_weight: 0.3
+consistency_loss_weight: 0.2
 consistency_criterion: mse
 center_loss
 center_loss_weight: 0.2
