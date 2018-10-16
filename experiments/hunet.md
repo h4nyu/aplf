@@ -254,6 +254,7 @@ scse
 fold: 0
 optimizer: adam + amsgrad
 class_criterion: cross entorpy
+seg_criterion: cross entorpy
 data clean
 augmentation: hflip 
 random_erase: num 5, p 1
@@ -262,6 +263,7 @@ seg_loss_weight: 0.5
 consistency_input: train, val, no_label
 consistency_loss: center, seg
 consistency_loss_weight: 0.2
+consistency_criterion: mse
 center_loss
 center_loss_weight: 0.2
 output: conv2d
