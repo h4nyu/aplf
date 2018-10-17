@@ -75,10 +75,15 @@ class Graph(object):
             predict_dataset_df,
             has_y=False
         )
-
-        model_paths = pipe(
+        trains = pipe(
             zip(ids, train_sets, seg_sets, val_sets),
             filter(lambda x: x[0] in folds),
+            list
+        )
+
+
+        model_paths = pipe(
+            trains,
             map(lambda x: delayed(base_train)(
                 **base_train_config,
                 model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
@@ -92,15 +97,14 @@ class Graph(object):
         )
 
         model_paths = pipe(
-            zip(ids, train_sets, seg_sets, val_sets),
-            filter(lambda x: x[0] in folds),
+            zip(trains, model_paths),
             map(lambda x: delayed(fine_train)(
                 **fine_train_config,
                 base_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
-                model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
-                train_set=x[1],
-                seg_set=x[2],
-                val_set=x[3],
+                model_path=x[1],
+                train_set=x[0][1],
+                seg_set=x[0][2],
+                val_set=x[0][3],
                 no_lable_set=predict_set,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
             )),
