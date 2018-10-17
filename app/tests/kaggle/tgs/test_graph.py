@@ -26,17 +26,19 @@ def test_graph():
     }
     fine_train_config = {
         'epochs': 400,
-        'labeled_batch_size': 32,
-        'no_labeled_batch_size': 4,
-        'consistency': 0.1,
-        'erase_num': 0,
+        'batch_size': 32,
+        'no_label_batch_size': 2,
+        'erase_num': 5,
         'erase_p': 0.5,
-        'max_factor': 1.0,
-        'min_factor': 0.1,
-        'period': 5,
-        'milestones': [(0, 1)],
-        'turning_point': (3, 0.5),
-        'lr':0.05,
+        'consistency_loss_wight': 0.1,
+        'center_loss_weight': 0.1,
+        'seg_loss_weight': 0.5,
+        'scheduler_config':{
+            'max_factor': 2.0,
+            'min_factor': 0.5,
+            'period': 5,
+            'milestones':[(0, 1.0)]
+        }
     }
     g = Graph(
         **base_param,

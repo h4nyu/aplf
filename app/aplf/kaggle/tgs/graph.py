@@ -9,6 +9,7 @@ import uuid
 from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import base_train
+from .fine_tune import fine_train
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
 
@@ -86,6 +87,22 @@ class Graph(object):
                 val_set=x[3],
                 no_lable_set=predict_set,
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
+            )),
+            list
+        )
+
+        model_paths = pipe(
+            zip(ids, train_sets, seg_sets, val_sets),
+            filter(lambda x: x[0] in folds),
+            map(lambda x: delayed(fine_train)(
+                **fine_train_config,
+                base_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
+                model_path=f"{output_dir}/id-{id}-fold-{x[0]}-fine-model.pt",
+                train_set=x[1],
+                seg_set=x[2],
+                val_set=x[3],
+                no_lable_set=predict_set,
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
             )),
             list
         )

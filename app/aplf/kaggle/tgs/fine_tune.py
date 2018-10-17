@@ -19,24 +19,11 @@ from .utils import AverageMeter
 from .losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
 from .ramps import linear_rampup
 from .preprocess import hflip, add_noise
+from .train import get_learning_rate
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
 
 
-def get_current_consistency_weight(epoch, weight, rampup):
-    return weight * linear_rampup(epoch, rampup)
-
-
-def update_ema_variables(model, ema_model, alpha):
-    with torch.no_grad():
-        for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-            ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
-        return ema_model
-
-
-def get_learning_rate(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group['lr']
 
 
 def validate(x, y, epoch):
@@ -59,35 +46,26 @@ class CyclicLR(object):
                  max_factor,
                  period,
                  milestones,
-                 turning_point,
                  ):
         self.min_factor = min_factor
         self.max_factor = max_factor
         self.period = period
         self.milestones = milestones
-        self.turning_point = turning_point
         self.range = self.max_factor - self.min_factor
 
 
 
     def __call__(self, epoch):
-        cyclic = 1.0
         phase = epoch % self.period
-        turn_phase, ratio = self.turning_point
-        turn_cyclic = self.min_factor + self.range * ratio
+        turn_cyclic = self.min_factor + self.range
 
 
-        if  phase <= turn_phase:
-            cyclic = (
-                self.min_factor +
-                (turn_cyclic - self.min_factor) *
-                phase/turn_phase
-            )
+        cyclic = (
+            self.min_factor +
+            (turn_cyclic - self.min_factor) *
+            phase
+        )
 
-        else:
-            cyclic = turn_cyclic + \
-                (self.max_factor - turn_cyclic) * \
-                (phase - turn_phase)/(self.period - turn_phase)
 
         gamma = pipe(
             self.milestones,
@@ -100,30 +78,25 @@ class CyclicLR(object):
 
 
 @skip_if_exists('model_path')
-def base_train(model_path,
+def fine_train(base_model_path,
+               model_path,
                train_set,
                seg_set,
                val_set,
                no_lable_set,
-               model_type,
-               model_kwargs,
                epochs,
                batch_size,
+               no_label_batch_size,
                log_dir,
                erase_num,
                erase_p,
                consistency_loss_wight,
                center_loss_weight,
                seg_loss_weight,
+               scheduler_config,
                ):
     device = torch.device("cuda")
-    Model = getattr(mdl, model_type)
-
-    model = Model(**model_kwargs)
-    if Path(model_path).exists():
-        model = torch.load(model_path)
-
-    model = model.to(device).train()
+    model = torch.load(base_model_path).to(device).train()
 
     train_loader = DataLoader(
         train_set,
@@ -150,14 +123,21 @@ def base_train(model_path,
     )
     no_label_loader = DataLoader(
         no_lable_set,
-        batch_size=val_batch_size,
+        batch_size=no_label_batch_size,
         shuffle=True
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     seg_criterion = nn.CrossEntropyLoss(size_average=True)
     consistency_criterion = nn.MSELoss(size_average=True)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True)
+    optimizer = optim.Adam(model.parameters())
+    #  scheduler = LambdaLR(
+    #      optimizer=optimizer,
+    #      lr_lambda=CyclicLR(
+    #          **scheduler_config
+    #      )
+    #  )
+
     len_batch = min(
         len(train_loader),
         len(val_loader)
@@ -212,11 +192,7 @@ def base_train(model_path,
                 ], dim=0)
 
                 tea_out, tea_center_out = model(
-                    add_noise(
-                        consistency_input.flip([3]),
-                        erase_num=erase_num,
-                        erase_p=erase_p,
-                    )
+                    consistency_input.flip([3]),
                 )
 
             stu_out, stu_center_out = model(
@@ -227,8 +203,14 @@ def base_train(model_path,
                 )
             )
             consistency_loss = consistency_loss_wight * (
-                consistency_criterion(stu_out, tea_out.flip([3])) +
-                class_criterion(stu_center_out, tea_center_out.argmax(dim=1))
+                consistency_criterion(
+                    stu_out,
+                    tea_out.flip([3])
+                ) +
+                class_criterion(
+                    stu_center_out,
+                    tea_center_out.argmax(dim=1)
+                )
             )
 
             seg_image = seg_sample['image'].to(device)
@@ -249,7 +231,7 @@ def base_train(model_path,
             loss = class_loss + consistency_loss + seg_loss + center_loss
             optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            #  optimizer.step()
 
 
             sum_train_score += train_score
@@ -273,6 +255,7 @@ def base_train(model_path,
                 sum_val_loss += val_loss.item()
                 sum_val_score += val_score
 
+        #  scheduler.step(epoch)
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch
         mean_train_loss = sum_train_loss / len_batch
