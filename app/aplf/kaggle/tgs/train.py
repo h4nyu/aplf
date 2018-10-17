@@ -119,11 +119,7 @@ def base_train(model_path,
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
-    model = Model(**model_kwargs)
-    if Path(model_path).exists():
-        model = torch.load(model_path)
-
-    model = model.to(device).train()
+    model = Model(**model_kwargs).to(device).train()
 
     train_loader = DataLoader(
         train_set,
@@ -188,13 +184,13 @@ def base_train(model_path,
 
             train_score = validate(
                 train_out,
-                train_mask.view(-1, *train_out.size()[2:]).long(),
+                train_mask.view(-1, 101, 101).long(),
                 epoch,
             )
 
             class_loss = seg_criterion(
                 train_out,
-                train_mask.view(-1, *train_out.size()[2:]).long()
+                train_mask.view(-1, 101, 101).long()
             )
 
             center_loss = center_loss_weight * class_criterion(
@@ -212,11 +208,7 @@ def base_train(model_path,
                 ], dim=0)
 
                 tea_out, tea_center_out = model(
-                    add_noise(
-                        consistency_input.flip([3]),
-                        erase_num=erase_num,
-                        erase_p=erase_p,
-                    )
+                    consistency_input.flip([3]),
                 )
 
             stu_out, stu_center_out = model(
@@ -228,7 +220,7 @@ def base_train(model_path,
             )
             consistency_loss = consistency_loss_wight * (
                 consistency_criterion(stu_out, tea_out.flip([3])) +
-                class_criterion(stu_center_out, tea_center_out.argmax(dim=1))
+                consistency_criterion(stu_center_out, tea_center_out)
             )
 
             seg_image = seg_sample['image'].to(device)

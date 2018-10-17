@@ -15,11 +15,11 @@ def test_graph():
         'batch_size': 32,
         'model_type': 'HUNet',
         'erase_num': 5,
-        'erase_p': 1,
+        'erase_p': 0.5,
         'model_kwargs': {
             'feature_size': 32,
         },
-        'consistency_loss_wight': 0.05,
+        'consistency_loss_wight': 0.1,
         'center_loss_weight': 0.1,
         'seg_loss_weight': 0.5,
 
@@ -27,7 +27,7 @@ def test_graph():
     fine_train_config = {
         'epochs': 400,
         'batch_size': 32,
-        'no_label_batch_size': 2,
+        'no_label_batch_size': 4,
         'erase_num': 5,
         'erase_p': 0.5,
         'consistency_loss_wight': 0.1,
