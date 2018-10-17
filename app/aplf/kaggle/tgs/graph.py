@@ -36,7 +36,7 @@ class Graph(object):
             dataset_dir,
             'train.csv'
         )
-        dataset_df = delayed(cleanup)(dataset_df)
+        #  dataset_df = delayed(cleanup)(dataset_df)
         dataset = delayed(TgsSaltDataset)(
             dataset_df,
             has_y=True,

@@ -219,8 +219,14 @@ def base_train(model_path,
                 )
             )
             consistency_loss = consistency_loss_wight * (
-                consistency_criterion(stu_out, tea_out.flip([3])) +
-                consistency_criterion(stu_center_out, tea_center_out)
+                consistency_criterion(
+                    stu_out.softmax(dim=1),
+                    tea_out.flip([3]).softmax(dim=1)
+                ) +
+                consistency_criterion(
+                    stu_center_out.softmax(dim=1),
+                    tea_center_out.softmax(dim=1)
+                )
             )
 
             seg_image = seg_sample['image'].to(device)
