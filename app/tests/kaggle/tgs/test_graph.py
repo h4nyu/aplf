@@ -19,8 +19,8 @@ def test_graph():
         'model_kwargs': {
             'feature_size': 32,
         },
-        'consistency_loss_wight': 0.2,
-        'center_loss_weight': 0.2,
+        'consistency_loss_wight': 0.05,
+        'center_loss_weight': 0.1,
         'seg_loss_weight': 0.5,
 
     }
@@ -45,7 +45,8 @@ def test_graph():
         fine_train_config=fine_train_config,
         n_splits=8,
         top_num=8,
-        folds=[0, 1, 2, 4, 5],
+        #  folds=[0, 2, 3, 7],
+        folds=[1],
     )
 
     with Client('dask-scheduler:8786') as c:

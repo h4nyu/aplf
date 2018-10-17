@@ -288,7 +288,7 @@ fold: 0
 optimizer: adam + amsgrad
 class_criterion: cross entorpy
 seg_criterion: cross entorpy
-data clean
+- data clean
 augmentation: hflip 
 random_erase: num 5, p 1
 seg_loss

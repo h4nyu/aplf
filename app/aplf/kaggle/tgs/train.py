@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
+from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -118,7 +119,11 @@ def base_train(model_path,
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
-    model = Model(**model_kwargs).to(device).train()
+    model = Model(**model_kwargs)
+    if Path(model_path).exists():
+        model = torch.load(model_path)
+
+    model = model.to(device).train()
 
     train_loader = DataLoader(
         train_set,
@@ -202,7 +207,6 @@ def base_train(model_path,
                 val_mask = val_sample['mask'].to(device)
                 no_label_image = no_label_sample['image'].to(device)
                 consistency_input = torch.cat([
-                    train_image[0:val_batch_size],
                     val_image,
                     no_label_image,
                 ], dim=0)
@@ -222,8 +226,7 @@ def base_train(model_path,
                     erase_p=erase_p,
                 )
             )
-            consistency_loss = (
-                consistency_loss_wight *
+            consistency_loss = consistency_loss_wight * (
                 consistency_criterion(stu_out, tea_out.flip([3])) +
                 consistency_criterion(stu_center_out, tea_center_out.flip([3]))
             )
