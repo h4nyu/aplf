@@ -151,7 +151,7 @@ def base_train(model_path,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
-    seg_criterion = nn.CrossEntropyLoss(size_average=True)
+    seg_criterion = lovasz_softmax
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
     len_batch = min(
@@ -161,6 +161,7 @@ def base_train(model_path,
 
     max_iou_val = 0
     max_iou_train = 0
+    min_val_loss = 0
 
     for epoch in range(epochs):
         sum_class_loss = 0
@@ -203,6 +204,7 @@ def base_train(model_path,
                 val_mask = val_sample['mask'].to(device)
                 no_label_image = no_label_sample['image'].to(device)
                 consistency_input = torch.cat([
+                    train_image[0:val_batch_size],
                     val_image,
                     no_label_image,
                 ], dim=0)
@@ -306,9 +308,9 @@ def base_train(model_path,
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 
 
-            if max_iou_val <= mean_iou_val:
+            if max_iou_val >= mean_iou_val:
                 max_iou_val = mean_iou_val
-                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}:' , epoch)
+                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}' , epoch)
                 torch.save(model, model_path)
 
             if max_iou_train <= mean_iou_train:

@@ -14,7 +14,7 @@ from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
 
 
-class Graph(object):
+class Graph(object): 
     def __init__(self,
                  id,
                  dataset_dir,
@@ -36,7 +36,6 @@ class Graph(object):
             dataset_dir,
             'train.csv'
         )
-        #  dataset_df = delayed(cleanup)(dataset_df)
         dataset = delayed(TgsSaltDataset)(
             dataset_df,
             has_y=True,
@@ -100,13 +99,13 @@ class Graph(object):
         #      zip(trains, model_paths),
         #      map(lambda x: delayed(fine_train)(
         #          **fine_train_config,
-        #          base_model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
-        #          model_path=x[1],
+        #          base_model_path=x[1],
+        #          model_path=f"{output_dir}/id-{id}-fold-{x[0][0]}-fine-model.pt",
         #          train_set=x[0][1],
         #          seg_set=x[0][2],
         #          val_set=x[0][3],
         #          no_lable_set=predict_set,
-        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/fine',
+        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0][0]}/fine',
         #      )),
         #      list
         #  )

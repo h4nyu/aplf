@@ -128,7 +128,7 @@ def fine_train(base_model_path,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
-    seg_criterion = nn.CrossEntropyLoss(size_average=True)
+    seg_criterion = lovasz_softmax
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters())
     #  scheduler = LambdaLR(
@@ -187,6 +187,7 @@ def fine_train(base_model_path,
                 val_mask = val_sample['mask'].to(device)
                 no_label_image = no_label_sample['image'].to(device)
                 consistency_input = torch.cat([
+                    train_image[0:int(val_batch_size/2)],
                     val_image,
                     no_label_image,
                 ], dim=0)
@@ -204,12 +205,12 @@ def fine_train(base_model_path,
             )
             consistency_loss = consistency_loss_wight * (
                 consistency_criterion(
-                    stu_out,
-                    tea_out.flip([3])
+                    stu_out.softmax(dim=1),
+                    tea_out.flip([3]).softmax(dim=1)
                 ) +
-                class_criterion(
-                    stu_center_out,
-                    tea_center_out.argmax(dim=1)
+                consistency_criterion(
+                    stu_center_out.softmax(dim=1),
+                    tea_center_out.softmax(dim=1)
                 )
             )
 
