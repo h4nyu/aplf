@@ -9,11 +9,12 @@ import uuid
 from aplf import config
 from .dataset import TgsSaltDataset, load_dataset_df
 from .train import base_train
+from .fine_tune import fine_train
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
 
 
-class Graph(object):
+class Graph(object): 
     def __init__(self,
                  id,
                  dataset_dir,
@@ -35,7 +36,6 @@ class Graph(object):
             dataset_dir,
             'train.csv'
         )
-        #  dataset_df = delayed(cleanup)(dataset_df)
         dataset = delayed(TgsSaltDataset)(
             dataset_df,
             has_y=True,
@@ -74,10 +74,15 @@ class Graph(object):
             predict_dataset_df,
             has_y=False
         )
-
-        model_paths = pipe(
+        trains = pipe(
             zip(ids, train_sets, seg_sets, val_sets),
             filter(lambda x: x[0] in folds),
+            list
+        )
+
+
+        model_paths = pipe(
+            trains,
             map(lambda x: delayed(base_train)(
                 **base_train_config,
                 model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
@@ -89,6 +94,21 @@ class Graph(object):
             )),
             list
         )
+
+        #  model_paths = pipe(
+        #      zip(trains, model_paths),
+        #      map(lambda x: delayed(fine_train)(
+        #          **fine_train_config,
+        #          base_model_path=x[1],
+        #          model_path=f"{output_dir}/id-{id}-fold-{x[0][0]}-fine-model.pt",
+        #          train_set=x[0][1],
+        #          seg_set=x[0][2],
+        #          val_set=x[0][3],
+        #          no_lable_set=predict_set,
+        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0][0]}/fine',
+        #      )),
+        #      list
+        #  )
 
         submission_df = delayed(predict)(
             model_paths=model_paths,
