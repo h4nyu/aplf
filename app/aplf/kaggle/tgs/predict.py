@@ -58,7 +58,7 @@ def predict(model_paths,
                 list,
             )
             images.append(
-                normal_outputs[0][0, 1, :, :]
+                normal_outputs[0].softmax(dim=1)[0, 1, :, :]
             )
 
             fliped_outputs = pipe(
