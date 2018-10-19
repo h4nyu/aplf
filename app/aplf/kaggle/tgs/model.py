@@ -457,13 +457,34 @@ class HUNet(UNet):
         for i, layer in enumerate(self.up_layers):
             x = layer(x, d_outs[:i+1][-2:])
 
-        x = torch.cat(
+        before_out = torch.cat(
             [
                 x,
                 F.interpolate(center, size=x.size()[2:])
             ],
             dim=1
         )
-        x = self._output(x)
+        x = self._output(before_out)
         x = F.interpolate(x, size=(101, 101), mode='bilinear')
-        return x, center
+        return x, center, before_out
+
+class StackingFCN(nn.Module):
+    def __init__(self, in_ch, num_classes=2, filter_nr=32):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, filter_nr, kernel_size=(3, 3)),
+            nn.BatchNorm2d(filter_nr),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(filter_nr, num_classes, kernel_size=1, padding=0)
+        )
+
+    def forward(self, base, base_out):
+        before_out = torch.cat(
+            [
+                base,
+                F.interpolate(base_out, size=x.size()[2:])
+            ],
+            dim=1
+        )
+        out = self.conv(x)
+        return x, before_out

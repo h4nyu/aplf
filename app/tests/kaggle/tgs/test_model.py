@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RUNet, DUNet, EUNet, HUNet, SEBlock
+from aplf.kaggle.tgs.model import UNet, SCSE, DownSample, UpSample, ResBlock, RUNet, DUNet, EUNet, HUNet, SEBlock, StackingFCN
 import torch
 import pytest
 
@@ -66,6 +66,21 @@ def test_hunet(feature_size):
         out_image, center = model(in_image)
         assert out_image.size() == (4, 2, 101, 101)
 
+
+@pytest.mark.parametrize("feature_size", [
+    64,
+])
+def test_stack(feature_size):
+    with torch.no_grad():
+        model = HUNet(
+            feature_size=feature_size,
+        )
+        in_image = torch.empty(4, 1, 101, 101)
+        out_image, center, _ = model(in_image)
+        stack_model = StackingFCN(64, 2, 32)
+        out_image = StackingFCN()
+
+        assert out_image.size() == (4, 2, 101, 101)
 
 def test_scse():
     model = SCSE(32, 2)
