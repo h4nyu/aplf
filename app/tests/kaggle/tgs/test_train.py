@@ -14,8 +14,8 @@ def test_train():
         'batch_size': 16,
         'no_label_batch_size': 4,
         'model_type': 'SHUNet',
-        'erase_num': 3,
-        'erase_p': 0.5,
+        'size_diff': (-10, 10),
+        "resize":(118, 118),
         'model_kwargs': {
             'feature_size': 64,
         },

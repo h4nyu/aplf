@@ -111,12 +111,11 @@ def base_train(model_path,
                epochs,
                batch_size,
                log_dir,
-               erase_num,
-               erase_p,
                consistency_loss_wight,
                center_loss_weight,
                seg_loss_weight,
-               resize=(118, 118),
+               resize,
+               size_diff,
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -181,6 +180,7 @@ def base_train(model_path,
                 add_noise(
                     F.interpolate(train_image, mode='bilinear', size=resize),
                     size=resize,
+                    diff=size_diff,
                 )
             )
             train_out = F.interpolate(train_out, mode='bilinear', size=(101, 101))
@@ -220,6 +220,7 @@ def base_train(model_path,
                 add_noise(
                     consistency_input,
                     size=resize,
+                    diff=size_diff,
                 )
             )[1]
             consistency_loss = consistency_loss_wight * (
@@ -234,6 +235,7 @@ def base_train(model_path,
                 add_noise(
                     seg_image,
                     size=resize,
+                    diff=size_diff,
                 )
             )[0]
             seg_mask = seg_sample['mask'].to(device)
