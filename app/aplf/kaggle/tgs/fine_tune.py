@@ -93,7 +93,6 @@ def fine_train(base_model_path,
                consistency_loss_wight,
                center_loss_weight,
                seg_loss_weight,
-               scheduler_config,
                ):
     device = torch.device("cuda")
     model = torch.load(base_model_path).to(device).train()
@@ -131,12 +130,6 @@ def fine_train(base_model_path,
     seg_criterion = lovasz_softmax
     consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters())
-    #  scheduler = LambdaLR(
-    #      optimizer=optimizer,
-    #      lr_lambda=CyclicLR(
-    #          **scheduler_config
-    #      )
-    #  )
 
     len_batch = min(
         len(train_loader),
@@ -159,11 +152,7 @@ def fine_train(base_model_path,
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
             train_out, train_center_out = model(
-                add_noise(
-                    train_image,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
-                )
+                train_image,
             )
 
             train_score = validate(

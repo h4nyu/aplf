@@ -105,6 +105,7 @@ def base_train(model_path,
                seg_set,
                val_set,
                no_lable_set,
+               no_label_batch_size,
                model_type,
                model_kwargs,
                epochs,
@@ -146,7 +147,7 @@ def base_train(model_path,
     )
     no_label_loader = DataLoader(
         no_lable_set,
-        batch_size=val_batch_size,
+        batch_size=no_label_batch_size,
         shuffle=True
     )
 
@@ -176,11 +177,7 @@ def base_train(model_path,
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
             train_out, train_center_out = model(
-                add_noise(
-                    train_image,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
-                )
+                train_image,
             )
 
             train_score = validate(
@@ -194,17 +191,12 @@ def base_train(model_path,
                 train_mask.view(-1, 101, 101).long()
             )
 
-            center_loss = center_loss_weight * class_criterion(
-                train_center_out,
-                F.max_pool2d(train_mask, kernel_size=101).view(-1, 1, 1).long()
-            )
-
             with torch.no_grad():
                 val_image = val_sample['image'].to(device)
                 val_mask = val_sample['mask'].to(device)
                 no_label_image = no_label_sample['image'].to(device)
                 consistency_input = torch.cat([
-                    train_image[0:val_batch_size],
+                    train_image[0:val_batch_size//2],
                     val_image,
                     no_label_image,
                 ], dim=0)
@@ -224,10 +216,6 @@ def base_train(model_path,
                 consistency_criterion(
                     stu_out.softmax(dim=1),
                     tea_out.flip([3]).softmax(dim=1)
-                ) +
-                consistency_criterion(
-                    stu_center_out.softmax(dim=1),
-                    tea_center_out.softmax(dim=1)
                 )
             )
 
@@ -246,7 +234,7 @@ def base_train(model_path,
             )
 
 
-            loss = class_loss + consistency_loss + seg_loss + center_loss
+            loss = class_loss + consistency_loss + seg_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -255,7 +243,6 @@ def base_train(model_path,
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
-            sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
             sum_seg_loss += seg_loss.item()
 
@@ -308,7 +295,7 @@ def base_train(model_path,
             w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 
 
-            if max_iou_val >= mean_iou_val:
+            if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
                 w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}' , epoch)
                 torch.save(model, model_path)

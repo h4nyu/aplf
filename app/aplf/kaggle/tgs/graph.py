@@ -109,7 +109,7 @@ class Graph(object):
         #      )),
         #      list
         #  )
-
+        #
         submission_df = delayed(predict)(
             model_paths=model_paths,
             log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',

@@ -430,10 +430,13 @@ class HUNet(UNet):
             2,
             kernel_size=3
         )
-        self.pad = nn.ZeroPad2d(1)
+        self.pad = nn.ZeroPad2d(5)
 
     def forward(self, x):
+        x = F.interpolate(x, mode='bilinear', size=(118, 118))
         x = self.pad(x)
+        print(x.size())
+
         d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
@@ -450,9 +453,10 @@ class HUNet(UNet):
         x = torch.cat(
             [
                 x,
-                F.interpolate(center, size=(103, 103))
+                F.interpolate(center, size=x.size()[2:])
             ],
             dim=1
         )
         x = self._output(x)
+        x = F.interpolate(x, size=(101, 101), mode='bilinear')
         return x, center
