@@ -14,7 +14,7 @@ from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
 
 
-class Graph(object): 
+class Graph(object):
     def __init__(self,
                  id,
                  dataset_dir,

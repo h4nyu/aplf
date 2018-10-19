@@ -55,7 +55,7 @@ def test_eunet(depth, feature_size):
         assert out_image.size() == (4, 2, 101, 101)
 
 @pytest.mark.parametrize("feature_size", [
-    8,
+    64,
 ])
 def test_hunet(feature_size):
     with torch.no_grad():

@@ -18,7 +18,7 @@ def test_graph():
         'erase_num': 10,
         'erase_p': 0.5,
         'model_kwargs': {
-            'feature_size': 32,
+            'feature_size': 64,
         },
         'consistency_loss_wight': 10,
         'center_loss_weight': 0.3,
@@ -48,7 +48,7 @@ def test_graph():
         fine_train_config=fine_train_config,
         n_splits=8,
         top_num=8,
-        folds=[3],
+        folds=[4],
     )
 
     with Client('dask-scheduler:8786') as c:

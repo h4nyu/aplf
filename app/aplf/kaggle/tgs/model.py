@@ -84,7 +84,8 @@ class ResBlock(nn.Module):
                 in_ch,
                 out_ch,
                 kernel_size=3,
-                padding=1
+                padding=1,
+                stride=1,
             ),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
@@ -92,7 +93,18 @@ class ResBlock(nn.Module):
                 out_ch,
                 out_ch,
                 kernel_size=3,
-                padding=1
+                padding=1,
+                stride=1,
+                groups=2,
+            ),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(
+                out_ch,
+                out_ch,
+                kernel_size=3,
+                padding=1,
+                stride=1,
             ),
             nn.BatchNorm2d(out_ch),
         )
@@ -127,16 +139,6 @@ class DownSample(nn.Module):
                 out_ch=out_ch,
             ),
             SCSE(out_ch),
-            ResBlock(
-                in_ch=out_ch,
-                out_ch=out_ch,
-            ),
-            SCSE(out_ch),
-            ResBlock(
-                in_ch=out_ch,
-                out_ch=out_ch,
-            ),
-            SCSE(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -145,6 +147,7 @@ class DownSample(nn.Module):
         conv = out
         down = self.pool(conv)
         return down, conv
+
 class UpSample(nn.Module):
 
     def __init__(self,
@@ -238,7 +241,7 @@ class UNet(nn.Module):
 class RUNet(UNet):
     def __init__(self,
                  feature_size=8,
-                 depth=3,
+                 depth=4,
                  ):
         super().__init__()
         self.down_layers = nn.ModuleList([
@@ -387,13 +390,14 @@ class EUNet(UNet):
 
 
 class HUNet(UNet):
-    def __init__(self, feature_size=8):
+    def __init__(self, feature_size=64):
         super().__init__()
         self.down_layers = nn.ModuleList([
             DownSample(1, feature_size),
             DownSample(feature_size, feature_size * 2 ** 1),
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
             DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
+            DownSample(feature_size * 2 ** 3, feature_size * 2 ** 3),
         ])
 
         self.center = DownSample(
@@ -410,18 +414,22 @@ class HUNet(UNet):
         self.up_layers = nn.ModuleList([
             UpSample(
                 in_ch=feature_size * 2 ** 4,
-                out_ch=feature_size * 2 ** 2
+                out_ch=feature_size,
             ),
             UpSample(
-                in_ch=feature_size * 2 ** 3 + feature_size * 2 ** 3 ,
-                out_ch=feature_size * 2 ** 1
+                in_ch=feature_size * 2 ** 4 + 1 * feature_size,
+                out_ch=feature_size,
             ),
             UpSample(
-                in_ch=feature_size * 2 ** 2 + feature_size * 2 ** 2 + feature_size * 2 ** 3 ,
+                in_ch=feature_size * 2 ** 3 + 5 * feature_size,
                 out_ch=feature_size
             ),
             UpSample(
-                in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3,
+                in_ch=feature_size * 2 ** 2 + 3 * feature_size,
+                out_ch=feature_size
+            ),
+            UpSample(
+                in_ch=feature_size * 2 ** 2,
                 out_ch=feature_size
             ),
         ])
@@ -435,7 +443,6 @@ class HUNet(UNet):
     def forward(self, x):
         x = F.interpolate(x, mode='bilinear', size=(118, 118))
         x = self.pad(x)
-        print(x.size())
 
         d_outs = []
         for layer in self.down_layers:
@@ -448,7 +455,7 @@ class HUNet(UNet):
         # up samples
         u_outs = []
         for i, layer in enumerate(self.up_layers):
-            x = layer(x, d_outs[:i+1])
+            x = layer(x, d_outs[:i+1][-2:])
 
         x = torch.cat(
             [
