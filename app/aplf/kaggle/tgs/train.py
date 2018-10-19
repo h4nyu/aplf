@@ -116,6 +116,7 @@ def base_train(model_path,
                consistency_loss_wight,
                center_loss_weight,
                seg_loss_weight,
+               resize=(118, 118),
                ):
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -176,14 +177,23 @@ def base_train(model_path,
         for train_sample, seg_sample, val_sample, no_label_sample in zip(train_loader, seg_loader, val_loader, no_label_loader):
             train_image = train_sample['image'].to(device)
             train_mask = train_sample['mask'].to(device)
-            train_out, train_center_out = model(
-                train_image,
+            train_out, train_center_out, _ = model(
+                add_noise(
+                    F.interpolate(train_image, mode='bilinear', size=resize),
+                    size=resize,
+                )
             )
+            train_out = F.interpolate(train_out, mode='bilinear', size=(101, 101))
 
             train_score = validate(
-                train_out,
+                F.interpolate(train_out, mode='bilinear', size=(101, 101)),
                 train_mask.view(-1, 101, 101).long(),
                 epoch,
+            )
+
+            center_loss = center_loss_weight * class_criterion(
+                train_center_out,
+                F.max_pool2d(train_mask, kernel_size=101).view(-1, 1, 1).long()
             )
 
             class_loss = seg_criterion(
@@ -200,37 +210,36 @@ def base_train(model_path,
                     val_image,
                     no_label_image,
                 ], dim=0)
+                consistency_input=F.interpolate(consistency_input, mode='bilinear', size=resize)
 
-                tea_out, tea_center_out = model(
+                tea_out = model(
                     consistency_input.flip([3]),
-                )
+                )[1]
 
-            stu_out, stu_center_out = model(
+            stu_out = model(
                 add_noise(
                     consistency_input,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
+                    size=resize,
                 )
-            )
+            )[1]
             consistency_loss = consistency_loss_wight * (
                 consistency_criterion(
                     stu_out.softmax(dim=1),
-                    tea_out.flip([3]).softmax(dim=1)
+                    tea_out.softmax(dim=1),
                 )
             )
 
             seg_image = seg_sample['image'].to(device)
-            seg_out, _  = model(
+            seg_out  = model(
                 add_noise(
                     seg_image,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
+                    size=resize,
                 )
-            )
+            )[0]
             seg_mask = seg_sample['mask'].to(device)
             seg_loss = seg_loss_weight * seg_criterion(
-                seg_out,
-                seg_mask.view(-1, *seg_out.size()[2:]).long()
+                F.interpolate(seg_out, mode='bilinear', size=(101, 101)),
+                seg_mask.view(-1, 101, 101).long()
             )
 
 
@@ -243,18 +252,24 @@ def base_train(model_path,
             sum_train_score += train_score
             sum_class_loss += class_loss.item()
             sum_consistency_loss += consistency_loss.item()
+            sum_center_loss += center_loss.item()
             sum_train_loss += loss.item()
             sum_seg_loss += seg_loss.item()
 
             with torch.no_grad():
-                val_out, _ = model(val_image)
+                val_out = model(val_image)[0]
+                val_out = F.interpolate(
+                    val_out,
+                    mode='bilinear',
+                    size=(101, 101)
+                )
                 val_loss = class_criterion(
                     val_out,
-                    val_mask.view(-1, *val_out.size()[2:]).long()
+                    val_mask.view(-1, 101, 101).long()
                 )
                 val_score = validate(
                     val_out,
-                    val_mask.view(-1, *val_out.size()[2:]).long(),
+                    val_mask.view(-1, 101, 101).long(),
                     epoch,
                 )
                 sum_val_loss += val_loss.item()

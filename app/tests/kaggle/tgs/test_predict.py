@@ -27,5 +27,4 @@ def test_predict(csv_fn, has_y):
         dataset=dataset,
         log_interval=1
     )
-    print(predicted_df)
     assert len(predicted_df) == len(dataset_df)

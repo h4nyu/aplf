@@ -183,15 +183,14 @@ class RandomErasing(object):
         return img
 
 @curry
-def add_noise(batch_images, erase_num, erase_p):
-    ramdom_erase = RandomErasing(
-        num=erase_num
-    )
-    return pipe(
+def add_noise(batch_images, size=(101, 101), diff=(-10, 10)):
+    h, w = size
+    new_h = h + random.randint(*diff)
+    new_w = w + random.randint(*diff)
+    return F.interpolate(
         batch_images,
-        map(ramdom_erase),
-        list,
-        torch.stack
+        mode='bilinear',
+        size=(new_h, new_w),
     )
 
 @curry

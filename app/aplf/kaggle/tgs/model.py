@@ -387,9 +387,80 @@ class EUNet(UNet):
 
 
 
-
-
 class HUNet(UNet):
+    def __init__(self, feature_size=8):
+        super().__init__()
+        self.down_layers = nn.ModuleList([
+            DownSample(1, feature_size),
+            DownSample(feature_size, feature_size * 2 ** 1),
+            DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
+            DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
+        ])
+
+        self.center = DownSample(
+            in_ch=feature_size * 2 ** 3,
+            out_ch=feature_size * 2 ** 3,
+        )
+
+        self._cetner_output = SEBlock(
+            feature_size * 2 ** 3,
+            2,
+            r = 1/2
+        )
+
+        self.up_layers = nn.ModuleList([
+            UpSample(
+                in_ch=feature_size * 2 ** 4,
+                out_ch=feature_size * 2 ** 2
+            ),
+            UpSample(
+                in_ch=feature_size * 2 ** 3 + feature_size * 2 ** 3 ,
+                out_ch=feature_size * 2 ** 1
+            ),
+            UpSample(
+                in_ch=feature_size * 2 ** 2 + feature_size * 2 ** 2 + feature_size * 2 ** 3 ,
+                out_ch=feature_size
+            ),
+            UpSample(
+                in_ch=feature_size * 2 + feature_size * 2  + feature_size * 2 ** 2 + feature_size * 2 ** 3,
+                out_ch=feature_size
+            ),
+        ])
+        self._output = nn.Conv2d(
+            feature_size + 2,
+            2,
+            kernel_size=3
+        )
+        self.pad = nn.ZeroPad2d(1)
+
+    def forward(self, x):
+        x = self.pad(x)
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            d_outs.append(d_out)
+
+        _, x = self.center(x)
+        center = self._cetner_output(x)
+        d_outs = list(reversed(d_outs))
+        # up samples
+        u_outs = []
+        for i, layer in enumerate(self.up_layers):
+            x = layer(x, d_outs[:i+1])
+
+        x = torch.cat(
+            [
+                x,
+                F.interpolate(center, size=(103, 103))
+            ],
+            dim=1
+        )
+        x = self._output(x)
+        return x, center
+
+
+
+class SHUNet(UNet):
     def __init__(self, feature_size=64):
         super().__init__()
         self.down_layers = nn.ModuleList([
@@ -436,12 +507,11 @@ class HUNet(UNet):
         self._output = nn.Conv2d(
             feature_size + 2,
             2,
-            kernel_size=3
+            kernel_size=1
         )
         self.pad = nn.ZeroPad2d(5)
 
     def forward(self, x):
-        x = F.interpolate(x, mode='bilinear', size=(118, 118))
         x = self.pad(x)
 
         d_outs = []
@@ -465,26 +535,5 @@ class HUNet(UNet):
             dim=1
         )
         x = self._output(before_out)
-        x = F.interpolate(x, size=(101, 101), mode='bilinear')
         return x, center, before_out
 
-class StackingFCN(nn.Module):
-    def __init__(self, in_ch, num_classes=2, filter_nr=32):
-        super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, filter_nr, kernel_size=(3, 3)),
-            nn.BatchNorm2d(filter_nr),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(filter_nr, num_classes, kernel_size=1, padding=0)
-        )
-
-    def forward(self, base, base_out):
-        before_out = torch.cat(
-            [
-                base,
-                F.interpolate(base_out, size=x.size()[2:])
-            ],
-            dim=1
-        )
-        out = self.conv(x)
-        return x, before_out

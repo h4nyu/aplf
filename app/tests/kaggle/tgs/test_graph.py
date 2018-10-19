@@ -14,8 +14,8 @@ def test_graph():
         'epochs': 400,
         'batch_size': 32,
         'no_label_batch_size': 4,
-        'model_type': 'HUNet',
-        'erase_num': 10,
+        'model_type': 'SHUNet',
+        'erase_num': 3,
         'erase_p': 0.5,
         'model_kwargs': {
             'feature_size': 64,
@@ -23,7 +23,6 @@ def test_graph():
         'consistency_loss_wight': 10,
         'center_loss_weight': 0.3,
         'seg_loss_weight': 0.5,
-
     }
     fine_train_config = {
         'epochs': 400,
@@ -48,7 +47,7 @@ def test_graph():
         fine_train_config=fine_train_config,
         n_splits=8,
         top_num=8,
-        folds=[0],
+        folds=[7],
     )
 
     with Client('dask-scheduler:8786') as c:

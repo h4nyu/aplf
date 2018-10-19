@@ -1,4 +1,4 @@
-from aplf.kaggle.tgs.train import train
+from aplf.kaggle.tgs.train import base_train
 import numpy as np
 from torch.utils.data import Subset
 from datetime import datetime
@@ -10,26 +10,24 @@ import uuid
 
 def test_train():
     train_config = {
-        'epochs': 1,
-        'labeled_batch_size': 32,
-        'no_labeled_batch_size': 16,
-        'model_type': 'HUNet',
-        'model_kwargs':{
-            'feature_size': 16,
-            'depth': 3,
-        },
-        'ema_decay': 0.1,
-        'consistency': 1,
-        'consistency_rampup': 10,
-        'cyclic_period': 5,
-        'milestones': [(0, 1)],
+        'epochs': 2,
+        'batch_size': 16,
+        'no_label_batch_size': 4,
+        'model_type': 'SHUNet',
         'erase_num': 3,
+        'erase_p': 0.5,
+        'model_kwargs': {
+            'feature_size': 64,
+        },
+        'consistency_loss_wight': 10,
+        'center_loss_weight': 0.3,
+        'seg_loss_weight': 0.5,
     }
     dataset_df = load_dataset_df(
         '/store/kaggle/tgs',
         'train.csv'
     )
-    train_df, val_df = train_test_split(dataset_df, test_size=0.2)
+    train_df, val_df = train_test_split(dataset_df, test_size=1/8)
 
     unsupervised_dataset = load_dataset_df(
         '/store/kaggle/tgs',
@@ -50,11 +48,12 @@ def test_train():
         indices=np.arange(100)
     )
 
-    train(
+    base_train(
         **train_config,
         model_path='/store/tmp/mock_model.pt',
         train_set=train_set,
         val_set=val_set,
-        no_labeled_set=train_set,
+        seg_set=train_set,
+        no_lable_set=train_set,
         log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/test',
     )
