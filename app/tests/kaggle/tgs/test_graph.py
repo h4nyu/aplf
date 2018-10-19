@@ -48,7 +48,7 @@ def test_graph():
         fine_train_config=fine_train_config,
         n_splits=8,
         top_num=8,
-        folds=[4],
+        folds=[0],
     )
 
     with Client('dask-scheduler:8786') as c:
