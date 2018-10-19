@@ -26,5 +26,6 @@ def parse_args():
     parser.add_argument("file", help="hdf5 file (*.h5)")
     return parser.parse_args()
 
+
 if __name__ == '__main__':
     main()

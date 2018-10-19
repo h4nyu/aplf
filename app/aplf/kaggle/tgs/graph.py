@@ -115,6 +115,7 @@ class Graph(object):
             log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
             dataset=predict_set,
             log_interval=10,
+            hdf5_path=f'{output_dir}/{id}.hdf5'
         )
         #
         submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
