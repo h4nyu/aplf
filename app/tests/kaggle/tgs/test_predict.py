@@ -23,6 +23,7 @@ def test_predict(csv_fn, has_y):
     predicted_df = predict(
         model_paths=model_paths,
         log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/test',
+        hdf5_path="/store/tmp/out.hdf5",
         dataset=dataset,
         log_interval=1
     )

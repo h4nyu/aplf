@@ -40,13 +40,13 @@ def test_graph():
     }
     g = Graph(
         **base_param,
-        id="seg-set-4",
+        id="seg-set-sub",
         base_train_config=base_train_config,
         fine_train_config=fine_train_config,
         n_splits=8,
         top_num=8,
-        #  folds=[0, 2, 3, 7],
         folds=[1],
+        #  folds=[1],
     )
 
     with Client('dask-scheduler:8786') as c:

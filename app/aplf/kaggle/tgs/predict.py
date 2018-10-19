@@ -1,3 +1,5 @@
+import h5py
+import numpy as np
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -16,9 +18,11 @@ from .metric import iou
 def predict(model_paths,
             dataset,
             log_dir,
+            hdf5_path,
             log_interval=100,
             ):
 
+    dataset.df.sort_index(inplace=True)
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
     device = torch.device('cpu')
     if torch.cuda.is_available():
@@ -38,17 +42,25 @@ def predict(model_paths,
     scores = []
 
     n_itr = 0
+    images = []
+    ids = []
+
 
     with torch.no_grad():
         for sample in loader:
             sample_id = sample['id'][0]
             image = sample['image'].to(device)
+            ids.append(str(sample_id))
 
             normal_outputs = pipe(
                 models,
                 map(lambda x: x(image)[0]),
                 list,
             )
+            images.append(
+                normal_outputs[0][0, 1, :, :]
+            )
+
             fliped_outputs = pipe(
                 models,
                 map(lambda x: x(image.flip([3]))[0].flip([3])),
@@ -91,4 +103,14 @@ def predict(model_paths,
             with SummaryWriter(log_dir) as w:
                 w.add_text('score', f'score: {score}')
         df = df.set_index('id')
+        ids = pipe(
+            ids,
+            map(lambda x: x.encode('ascii', 'ignore')),
+            list
+        )
+
+        images = torch.stack(images).cpu().numpy().astype(np.float16)
+        with h5py.File(hdf5_path, 'w') as f:
+            f.create_dataset('id', data=ids)
+            f.create_dataset('mask', data=images)
         return df
