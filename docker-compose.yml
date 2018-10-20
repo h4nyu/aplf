@@ -51,6 +51,7 @@ services:
       - ./log:/log
     ports:
       - ${DASKBOARD_PORT}:8787
+      - ${DASKSCHEDULER_PORT}:8786
 
   dask-worker:
     build:
@@ -115,6 +116,16 @@ services:
       - dask-worker
       - tensorboard
       - dask-scheduler
+
+  nfs:
+    image: itsthenetwork/nfs-server-alpine:latest
+    environment:
+      - SHARED_DIRECTORY=/nfsshare
+    privileged: true
+    volumes:
+      - ./:/nfsshare
+    ports:
+      - "2049:2049"
 
 
 networks:
