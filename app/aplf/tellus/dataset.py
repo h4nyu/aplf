@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, compose
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv
 from torchvision.transforms import (
     RandomRotation,
     ToPILImage,
@@ -22,30 +22,70 @@ import glob
 import random
 import torch.nn.functional as F
 from torchvision.transforms.functional import hflip, vflip, rotate
+import glob
+import os
+from pathlib import Path
 from .preprocess import add_is_empty
 
 
-def load_dataset_df(dataset_dir, csv_fn='train.csv'):
+def get_row(base_path, sat, label_dir, label):
 
-    dataset_dir = dataset_dir
-    image_dir = os.path.join(dataset_dir, "images")
-    mask_dir = os.path.join(dataset_dir, "masks")
-    depth_fn = os.path.join(dataset_dir, "depths.csv")
-    depth_df = pd.read_csv(
-        os.path.join(dataset_dir, "depths.csv")
+    after_path = os.path.join(
+        base_path,
+        sat,
+        "after",
+        label_dir,
+        "*.tif"
     )
-    depth_df = depth_df.set_index('id')
-    df = pd.read_csv(os.path.join(dataset_dir, csv_fn))
+
+    before_path = os.path.join(
+        base_path,
+        sat,
+        "before",
+        label_dir,
+        "*.tif"
+    )
+
+    rows =pipe(
+        zip(glob.glob(after_path), glob.glob(before_path)),
+        map(lambda x: list(map(Path)(x))),
+        map(lambda x: {
+            "id": x[0].name,
+            "y": label,
+            "sat": sat,
+            "before_image": x[0],
+            "after_image": x[1],
+        }),
+        list
+    )
+    return rows
+
+
+def load_dataset_df(dataset_dir='/store/tellus/train'):
+    rows = pipe(
+        concatv(
+            get_row(
+                base_path=dataset_dir,
+                sat="LANDSAT",
+                label_dir="positive",
+                label=True,
+            ),
+            get_row(
+                base_path=dataset_dir,
+                sat="LANDSAT",
+                label_dir="negative",
+                label=False,
+            ),
+        ),
+        list
+    )
+
+    df = pd.DataFrame(
+        rows
+    )
     df = df.set_index('id')
-    df['x_image'] = df.index.map(
-        lambda x: os.path.join(image_dir, f"{x}.png")
-    )
-    df['y_mask_true'] = df.index.map(
-        lambda x: os.path.join(mask_dir, f"{x}.png")
-    )
-    df = pd.concat([df, depth_df], join='inner', axis=1)
-    df = add_is_empty(df)
     return df
+
 
 
 class TellusDataset(Dataset):
