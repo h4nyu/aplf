@@ -61,13 +61,11 @@ services:
         - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space --nprocs=1  --nthreads=1 --memory-limit=40e8
+    command: dask-worker ${MASTER_IP}:${DASKSCHEDULER_PORT} --local-directory=/dask-worker-space --nprocs=1  --nthreads=1 --memory-limit=40e8
     volumes:
       - ./app:/srv
       - ./store:/store
       - ./log:/log
-    depends_on:
-      - dask-scheduler
 
   front:
     build:
