@@ -19,10 +19,3 @@ matplotlib
 
 # workflow engine
 dask[complete]       
-
-requests
-
-# kaggle
-kaggle
-
-
