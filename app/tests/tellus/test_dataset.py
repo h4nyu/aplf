@@ -19,9 +19,8 @@ def test_dataset():
         output='/store/tmp/train.pqt'
     )
     df = pd.read_parquet(output)
-    print(df)
-    #  dataset = TellusDataset(
-    #      df=df,
-    #      has_y=True,
-    #  )
-    #  print(dataset[0])
+    dataset = TellusDataset(
+        df=df,
+        has_y=True,
+    )
+    print(dataset[0])

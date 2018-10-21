@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv
+from skimage import img_as_float
 from dask import delayed
 from torchvision.transforms import (
     RandomRotation,
@@ -55,7 +56,7 @@ def get_row(base_path, sat, label_dir, label):
         map(lambda x: list(map(Path)(x))),
         map(lambda x: {
             "id": x[0].name,
-            "y": label,
+            "label": label,
             "sat": sat,
             "before_image": str(x[0]),
             "after_image": str(x[1]),
@@ -74,13 +75,13 @@ def load_dataset_df(dataset_dir='/store/tellus/train',
                 base_path=dataset_dir,
                 sat="PALSAR",
                 label_dir="positive",
-                label=True,
+                label=1,
             ),
             get_row(
                 base_path=dataset_dir,
                 sat="PALSAR",
                 label_dir="negative",
-                label=False,
+                label=0,
             ),
         ),
         list
@@ -95,6 +96,18 @@ def read_image(path):
         path,
         as_gray=True
     )
+
+
+def image_to_tensor(path):
+    image = io.imread(
+        path,
+        as_gray=True
+    )
+    image = img_as_float(image)
+    h, w = image.shape
+    image = image.reshape(1, h, w)
+    tensor = torch.FloatTensor(image)
+    return tensor
 
 class TellusDataset(Dataset):
     def __init__(self, df, has_y=True):
@@ -111,35 +124,32 @@ class TellusDataset(Dataset):
 
     def __getitem__(self, idx):
         id = self.df.index[idx]
-        image = io.imread(
-            self.df['before_image'].iloc[idx],
-            as_gray=True
+        row = self.df.iloc[idx]
+        before = image_to_tensor(
+            row['before_image']
         )
-        h, w = image.shape
-        image = image.reshape(1, h, w)
-        image = torch.FloatTensor(image)
-        #  if self.has_y:
-        #      transform = Compose([
-        #          ToPILImage(),
-        #          random.choice(self.transforms),
-        #          ToTensor()
-        #      ])
-        #      mask = torch.FloatTensor(
-        #          io.imread(
-        #              self.df['y_mask_true'].iloc[idx],
-        #              as_gray=True
-        #          ).astype(bool).astype(float).reshape(1, 101, 101)
-        #      )
-        #      return {
-        #          'id': id,
-        #          'depth': depth,
-        #          'image': transform(image),
-        #          'mask': transform(mask),
-        #      }
-        #  else:
-        #      return {
-        #          'id': id,
-        #          'depth': depth,
-        #          'image': image,
-        #      }
-        #
+
+        after = image_to_tensor(
+            row['after_image']
+        )
+
+
+        if self.has_y:
+            transform = Compose([
+                ToPILImage(),
+                random.choice(self.transforms),
+                ToTensor()
+            ])
+
+            return {
+                'id': id,
+                'before': transform(before),
+                'after': transform(after),
+                'label': row['label'],
+            }
+        else:
+            return {
+                'id': id,
+                'before': transform(before),
+                'after': transform(after),
+            }
