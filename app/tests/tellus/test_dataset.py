@@ -23,4 +23,4 @@ def test_dataset():
         df=df,
         has_y=True,
     )
-    print(dataset[0])
+    assert len(dataset[0]) == 4
