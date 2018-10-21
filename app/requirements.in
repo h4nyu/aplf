@@ -10,6 +10,7 @@ scikit-image
 tensorboardX
 tensorflow
 pydensecrf
+fastparquet
 
 # graph
 bokeh

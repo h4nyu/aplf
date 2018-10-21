@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv
+from dask import delayed
 from torchvision.transforms import (
     RandomRotation,
     ToPILImage,
@@ -25,7 +26,10 @@ from torchvision.transforms.functional import hflip, vflip, rotate
 import glob
 import os
 from pathlib import Path
+import h5py
 from .preprocess import add_is_empty
+from aplf.utils import skip_if_exists
+
 
 
 def get_row(base_path, sat, label_dir, label):
@@ -53,40 +57,44 @@ def get_row(base_path, sat, label_dir, label):
             "id": x[0].name,
             "y": label,
             "sat": sat,
-            "before_image": x[0],
-            "after_image": x[1],
+            "before_image": str(x[0]),
+            "after_image": str(x[1]),
         }),
         list
     )
     return rows
 
 
-def load_dataset_df(dataset_dir='/store/tellus/train'):
+@skip_if_exists("output")
+def load_dataset_df(dataset_dir='/store/tellus/train',
+                    output='/store/tellus/train.pqt'):
     rows = pipe(
         concatv(
             get_row(
                 base_path=dataset_dir,
-                sat="LANDSAT",
+                sat="PALSAR",
                 label_dir="positive",
                 label=True,
             ),
             get_row(
                 base_path=dataset_dir,
-                sat="LANDSAT",
+                sat="PALSAR",
                 label_dir="negative",
                 label=False,
             ),
         ),
         list
     )
+    df = pd.DataFrame(rows)
+    df.set_index('id')
+    df.to_parquet(output, compression='gzip' )
+    return output
 
-    df = pd.DataFrame(
-        rows
+def read_image(path):
+    return io.imread(
+        path,
+        as_gray=True
     )
-    df = df.set_index('id')
-    return df
-
-
 
 class TellusDataset(Dataset):
     def __init__(self, df, has_y=True):
@@ -103,35 +111,35 @@ class TellusDataset(Dataset):
 
     def __getitem__(self, idx):
         id = self.df.index[idx]
-        depth = self.df['z'].iloc[idx],
-        image = torch.FloatTensor(
-            io.imread(
-                self.df['x_image'].iloc[idx],
-                as_gray=True
-            ).reshape(1, 101, 101)
+        image = io.imread(
+            self.df['before_image'].iloc[idx],
+            as_gray=True
         )
-        if self.has_y:
-            transform = Compose([
-                ToPILImage(),
-                random.choice(self.transforms),
-                ToTensor()
-            ])
-            mask = torch.FloatTensor(
-                io.imread(
-                    self.df['y_mask_true'].iloc[idx],
-                    as_gray=True
-                ).astype(bool).astype(float).reshape(1, 101, 101)
-            )
-            return {
-                'id': id,
-                'depth': depth,
-                'image': transform(image),
-                'mask': transform(mask),
-            }
-        else:
-            return {
-                'id': id,
-                'depth': depth,
-                'image': image,
-            }
-
+        h, w = image.shape
+        image = image.reshape(1, h, w)
+        image = torch.FloatTensor(image)
+        #  if self.has_y:
+        #      transform = Compose([
+        #          ToPILImage(),
+        #          random.choice(self.transforms),
+        #          ToTensor()
+        #      ])
+        #      mask = torch.FloatTensor(
+        #          io.imread(
+        #              self.df['y_mask_true'].iloc[idx],
+        #              as_gray=True
+        #          ).astype(bool).astype(float).reshape(1, 101, 101)
+        #      )
+        #      return {
+        #          'id': id,
+        #          'depth': depth,
+        #          'image': transform(image),
+        #          'mask': transform(mask),
+        #      }
+        #  else:
+        #      return {
+        #          'id': id,
+        #          'depth': depth,
+        #          'image': image,
+        #      }
+        #

@@ -1,6 +1,7 @@
 logging:
     distributed: info
     distributed.client: warning
+    distributed.worker: debug
     bokeh: critical
 
 # Scheduler options
@@ -20,3 +21,4 @@ require-encryption: False   # whether to require encryption on non-local comms
 
 # Bokeh web dashboard
 bokeh-export-tool: False
+

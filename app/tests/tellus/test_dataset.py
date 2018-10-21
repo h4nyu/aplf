@@ -1,4 +1,5 @@
-from aplf.tellus.dataset import load_dataset_df, get_row
+from aplf.tellus.dataset import load_dataset_df, get_row, TellusDataset
+import pandas as pd
 
 
 def test_get_row():
@@ -11,6 +12,16 @@ def test_get_row():
     assert len(rows) == 1530
 
 
+
 def test_dataset():
-    df = load_dataset_df(dataset_dir='/store/tellus/train')
-    assert len(df) == 247971
+    output = load_dataset_df(
+        dataset_dir='/store/tellus/train',
+        output='/store/tmp/train.pqt'
+    )
+    df = pd.read_parquet(output)
+    print(df)
+    #  dataset = TellusDataset(
+    #      df=df,
+    #      has_y=True,
+    #  )
+    #  print(dataset[0])
