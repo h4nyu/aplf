@@ -6,13 +6,13 @@ from torch.utils.data import Subset
 import numpy as np
 import pandas as pd
 import uuid
+import os
 from aplf import config
-from .dataset import TgsSaltDataset, load_dataset_df
+from .dataset import TellusDataset, load_dataset_df
 from .train import base_train
-from .fine_tune import fine_train
-from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
 
+from os.path import join
 
 class Graph(object):
     def __init__(self,
@@ -21,7 +21,6 @@ class Graph(object):
                  output_dir,
                  n_splits,
                  base_train_config,
-                 fine_train_config,
                  top_num,
                  folds,
                  ):
@@ -32,101 +31,57 @@ class Graph(object):
             list
         )
 
-        dataset_df = delayed(load_dataset_df)(
-            dataset_dir,
-            'train.csv'
+        train_df_path = delayed(load_dataset_df)(
+            dataset_dir=join(dataset_dir, 'train'),
+            output=join(output_dir, 'train.pqt')
         )
-        dataset = delayed(TgsSaltDataset)(
-            dataset_df,
+
+        train_df = delayed(pd.read_parquet)(train_df_path)
+        kfolded = delayed(kfold)(train_df, n_splits)
+
+        dataset = delayed(TellusDataset)(
+            train_df,
             has_y=True,
         )
 
-        kfolded = delayed(kfold)(dataset, n_splits)
-
-        train_sets = pipe(
+        fold_train_sets = pipe(
             range(n_splits),
             map(lambda idx: delayed(lambda x: x[idx][0])(kfolded)),
             map(lambda x: delayed(Subset)(dataset, x)),
             list
         )
 
-        seg_sets = pipe(
-            train_sets,
-            map(delayed(lambda x: x.indices)),
-            map(lambda x: delayed(get_segment_indices)(dataset, x)),
-            map(lambda x: delayed(Subset)(dataset, x)),
-            list
-        )
-
-        val_sets = pipe(
+        fold_val_sets = pipe(
             range(n_splits),
             map(lambda idx: delayed(lambda x: x[idx][1])(kfolded)),
             map(lambda x: delayed(Subset)(dataset, x)),
             list
         )
 
-        predict_dataset_df = delayed(load_dataset_df)(
-            dataset_dir,
-            'sample_submission.csv'
-        )
-
-        predict_set = delayed(TgsSaltDataset)(
-            predict_dataset_df,
-            has_y=False
-        )
-        trains = pipe(
-            zip(ids, train_sets, seg_sets, val_sets),
+        train_sets = pipe(
+            zip(ids, fold_train_sets, fold_val_sets),
             filter(lambda x: x[0] in folds),
             list
         )
 
-
         model_paths = pipe(
-            trains,
+            train_sets,
             map(lambda x: delayed(base_train)(
                 **base_train_config,
-                model_path=f"{output_dir}/id-{id}-fold-{x[0]}-base-model.pt",
+                model_path=join(output_dir, f"{id}-fold-{x[0]}-base-model.pt"),
                 train_set=x[1],
-                seg_set=x[2],
-                val_set=x[3],
-                no_lable_set=predict_set,
+                val_set=x[2],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
             list
         )
 
-        #  model_paths = pipe(
-        #      zip(trains, model_paths),
-        #      map(lambda x: delayed(fine_train)(
-        #          **fine_train_config,
-        #          base_model_path=x[1],
-        #          model_path=f"{output_dir}/id-{id}-fold-{x[0][0]}-fine-model.pt",
-        #          train_set=x[0][1],
-        #          seg_set=x[0][2],
-        #          val_set=x[0][3],
-        #          no_lable_set=predict_set,
-        #          log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0][0]}/fine',
-        #      )),
-        #      list
-        #  )
-        #
-        submission_df = delayed(predict)(
-            model_paths=model_paths,
-            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
-            dataset=predict_set,
-            log_interval=10,
-            hdf5_path=f'{output_dir}/{id}.hdf5'
-        )
-        #
-        submission_df = delayed(lambda df: df[['rle_mask']])(submission_df)
-        submission_file = delayed(lambda df: df.to_csv(f"{output_dir}/id-{id}-submission.csv"))(
-            submission_df,
-        )
 
         self.output = delayed(lambda x: x)((
             model_paths,
-            submission_df,
-            submission_file,
         ))
+
+    def __call__(self):
+        return self.output.compute()
 
 

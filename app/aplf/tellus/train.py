@@ -102,10 +102,7 @@ class CyclicLR(object):
 @skip_if_exists('model_path')
 def base_train(model_path,
                train_set,
-               seg_set,
                val_set,
-               no_lable_set,
-               no_label_batch_size,
                model_type,
                model_kwargs,
                epochs,
@@ -128,32 +125,16 @@ def base_train(model_path,
         shuffle=True,
     )
 
-
-    seg_batch_size = int(batch_size *
-                         len(seg_set.indices) / len(train_set.indices))
-    seg_loader = DataLoader(
-        seg_set,
-        batch_size=seg_batch_size,
-        shuffle=True,
-    )
-
     val_batch_size = int(batch_size *
                          len(val_set.indices) / len(train_set.indices))
 
     val_loader = DataLoader(
         val_set,
         batch_size=val_batch_size,
-        shuffle=True
-    )
-    no_label_loader = DataLoader(
-        no_lable_set,
-        batch_size=no_label_batch_size,
-        shuffle=True
+        shuffle=True,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
-    seg_criterion = lovasz_softmax
-    consistency_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
     len_batch = min(
         len(train_loader),
@@ -167,98 +148,45 @@ def base_train(model_path,
     for epoch in range(epochs):
         sum_class_loss = 0
         sum_train_loss = 0
-        sum_center_loss = 0
         sum_train_score = 0
         sum_val_loss = 0
         sum_val_score = 0
         sum_consistency_loss = 0
         sum_seg_loss = 0
-        for train_sample, seg_sample, val_sample, no_label_sample in zip(train_loader, seg_loader, val_loader, no_label_loader):
-            train_image = train_sample['image'].to(device)
-            train_mask = train_sample['mask'].to(device)
-            train_out, train_center_out = model(
-                train_image,
+        for train_sample,  val_sample, in zip(train_loader,  val_loader):
+            train_after = train_sample['after'].to(device)
+            train_before = train_sample['before'].to(device)
+            train_label = train_sample['label'].to(device)
+            train_out = model(
+                train_before,
+                train_after,
             )
 
-            train_score = validate(
+
+            class_loss = class_criterion(
                 train_out,
-                train_mask.view(-1, 101, 101).long(),
-                epoch,
+                train_label
             )
 
-            class_loss = seg_criterion(
-                train_out,
-                train_mask.view(-1, 101, 101).long()
-            )
-
-            with torch.no_grad():
-                val_image = val_sample['image'].to(device)
-                val_mask = val_sample['mask'].to(device)
-                no_label_image = no_label_sample['image'].to(device)
-                consistency_input = torch.cat([
-                    train_image[0:val_batch_size//2],
-                    val_image,
-                    no_label_image,
-                ], dim=0)
-
-                tea_out, tea_center_out = model(
-                    consistency_input.flip([3]),
-                )
-
-            stu_out, stu_center_out = model(
-                add_noise(
-                    consistency_input,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
-                )
-            )
-            consistency_loss = consistency_loss_wight * (
-                consistency_criterion(
-                    stu_out.softmax(dim=1),
-                    tea_out.flip([3]).softmax(dim=1)
-                )
-            )
-
-            seg_image = seg_sample['image'].to(device)
-            seg_out, _  = model(
-                add_noise(
-                    seg_image,
-                    erase_num=erase_num,
-                    erase_p=erase_p,
-                )
-            )
-            seg_mask = seg_sample['mask'].to(device)
-            seg_loss = seg_loss_weight * seg_criterion(
-                seg_out,
-                seg_mask.view(-1, *seg_out.size()[2:]).long()
-            )
-
-
-            loss = class_loss + consistency_loss + seg_loss
+            loss = class_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-
-            sum_train_score += train_score
-            sum_class_loss += class_loss.item()
-            sum_consistency_loss += consistency_loss.item()
-            sum_train_loss += loss.item()
-            sum_seg_loss += seg_loss.item()
-
             with torch.no_grad():
-                val_out, _ = model(val_image)
+                val_before = val_sample['before'].to(device)
+                val_after = val_sample['after'].to(device)
+                val_lable = val_sample['label'].to(device)
+
+                val_out = model(
+                    val_before,
+                    val_after
+                )
                 val_loss = class_criterion(
                     val_out,
-                    val_mask.view(-1, *val_out.size()[2:]).long()
-                )
-                val_score = validate(
-                    val_out,
-                    val_mask.view(-1, *val_out.size()[2:]).long(),
-                    epoch,
+                    val_lable
                 )
                 sum_val_loss += val_loss.item()
-                sum_val_score += val_score
 
         mean_iou_val = sum_val_score / len_batch
         mean_iou_train = sum_train_score / len_batch

@@ -113,10 +113,6 @@ class TellusDataset(Dataset):
     def __init__(self, df, has_y=True):
         self.has_y = has_y
         self.df = df
-        self.transforms = [
-            lambda x:x,
-            hflip,
-        ]
 
 
     def __len__(self):
@@ -135,16 +131,10 @@ class TellusDataset(Dataset):
 
 
         if self.has_y:
-            transform = Compose([
-                ToPILImage(),
-                random.choice(self.transforms),
-                ToTensor()
-            ])
-
             return {
                 'id': id,
-                'before': transform(before),
-                'after': transform(after),
+                'before': before,
+                'after': after,
                 'label': row['label'],
             }
         else:
