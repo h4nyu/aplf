@@ -41,16 +41,10 @@ def get_learning_rate(optimizer):
 
 
 def validate(x, y, epoch):
-    score = pipe(
-        zip(
-            x.argmax(dim=1).cpu().detach().numpy(),
-            y.cpu().detach().numpy()
-        ),
-        map(lambda x: iou(*x)),
-        list,
-        np.mean
+    return iou(
+        x.argmax(dim=1).cpu().detach().numpy(),
+        y.cpu().detach().numpy()
     )
-    return score
 
 
 @skip_if_exists('model_path')
@@ -144,7 +138,7 @@ def base_train(model_path,
 
             train_score = validate(
                 train_out,
-                train_lable,
+                train_label,
                 epoch,
             )
             sum_train_score += train_score
