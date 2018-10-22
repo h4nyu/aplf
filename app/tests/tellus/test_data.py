@@ -46,7 +46,23 @@ def test_kfold():
             len
         ) == 0
         assert pipe(
+            s['val_pos'],
+            take(100),
+            map(lambda x: x['label']),
+            filter(lambda x: x == 0),
+            list,
+            len
+        ) == 0
+        assert pipe(
             s['train_neg'],
+            take(100),
+            map(lambda x: x['label']),
+            filter(lambda x: x == 1),
+            list,
+            len
+        ) == 0
+        assert pipe(
+            s['val_neg'],
             take(100),
             map(lambda x: x['label']),
             filter(lambda x: x == 1),

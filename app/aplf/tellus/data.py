@@ -194,7 +194,5 @@ def kfold(df, n_splits, random_state=0):
         map(valmap(lambda x: Subset(dataset, x))),
         list
     )
-    print(splieted[0]['train_pos'].indices)
-    print(splieted[0]['train_neg'].indices)
 
     return splieted

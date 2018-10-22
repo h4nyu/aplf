@@ -105,7 +105,7 @@ def base_train(model_path,
 
     max_iou_val = 0
     max_iou_train = 0
-    min_val_loss = 0
+    min_vial_loss = 0
 
     for epoch in range(epochs):
         sum_class_loss = 0
@@ -133,7 +133,6 @@ def base_train(model_path,
                 train_before,
                 train_after,
             )
-            print(train_label)
 
             class_loss = class_criterion(
                 train_out,
