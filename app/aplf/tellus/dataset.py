@@ -1,5 +1,6 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv
-from torch.utils.data import Subset
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first
+import random
+from torch.utils.data import Subset, Sampler
 from skimage import img_as_float
 from dask import delayed
 from torchvision.transforms import (
@@ -160,3 +161,31 @@ def to_pn_set(subset):
         indices=neg_indices
     )
     return pos_set, neg_set
+
+
+class ChunkSampler(Sampler):
+    def __init__(self,  epoch_size, len_indices, shuffle=True):
+        self.shuffle = shuffle
+        self.epoch_size = epoch_size
+        self.len_indices = len_indices
+        indices = range(len_indices)
+        self.chunks = pipe(
+            range(0, len_indices//epoch_size),
+            map(lambda x: indices[x*epoch_size:(x+1)*epoch_size]),
+            map(list),
+            list,
+        )
+        self.chunk_idx = 0
+
+    def __iter__(self):
+        chunk = self.chunks[self.chunk_idx]
+        if self.shuffle:
+            random.shuffle(chunk)
+        for i in chunk:
+            yield i
+        self.chunk_idx += 1
+        if self.chunk_idx >= len(self.chunks):
+            self.chunk_idx = 0
+
+    def __len__(self):
+        return self.epoch_size
