@@ -204,11 +204,6 @@ def add_consistency_noise(batch_images, ):
         torch.stack
     )
 
-@curry
-def kfold(dataset, n_splits, random_state=0):
-    kf = KFold(n_splits, random_state=random_state)
-    return list(kf.split(dataset))
-
 def get_segment_indices(dataset, filter_indcies):
     df = dataset.df
     filtered = df.iloc[filter_indcies]

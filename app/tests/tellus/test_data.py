@@ -1,4 +1,4 @@
-from aplf.tellus.dataset import load_dataset_df, get_row, TellusDataset, to_pn_set, ChunkSampler
+from aplf.tellus.data import load_dataset_df, get_row, TellusDataset, kfold, ChunkSampler
 from torch.utils.data import DataLoader
 import pandas as pd
 
@@ -29,22 +29,16 @@ def test_dataset():
     )
     assert len(dataset[0]) == 4
 
-def test_pn():
+def test_kfold():
     output = load_dataset_df(
         dataset_dir='/store/tellus/train',
         output='/store/tmp/train.pqt'
     )
     df = pd.read_parquet(output)
-    dataset = TellusDataset(
-        df=df,
-        has_y=True,
-    )
-    subset = Subset(
-        dataset,
-        list(range(1500, 1600))
-    )
-    pos_set, neg_set = to_pn_set(subset)
-    assert len(pos_set) + len(neg_set) == 100
+    sets = kfold(df, n_splits=10)
+    for s in sets:
+        assert len(s) == 4
+
 
 def test_esampler():
 

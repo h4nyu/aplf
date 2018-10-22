@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, valmap
 import random
 from torch.utils.data import Subset, Sampler
 from skimage import img_as_float
@@ -32,6 +32,7 @@ from pathlib import Path
 import h5py
 from .preprocess import add_is_empty
 from aplf.utils import skip_if_exists
+from sklearn.model_selection import KFold
 
 
 def get_row(base_path, sat, label_dir, label):
@@ -146,21 +147,6 @@ class TellusDataset(Dataset):
             }
 
 
-def to_pn_set(subset):
-    df = subset.dataset.df
-    filtered_df = df.ix[subset.indices]
-    pos_indices = filtered_df[filtered_df['label'] == 1].index
-    neg_indices = filtered_df[filtered_df['label'] == 0].index
-    pos_set = Subset(
-        dataset=subset.dataset,
-        indices=pos_indices
-    )
-
-    neg_set = Subset(
-        dataset=subset.dataset,
-        indices=neg_indices
-    )
-    return pos_set, neg_set
 
 
 class ChunkSampler(Sampler):
@@ -189,3 +175,24 @@ class ChunkSampler(Sampler):
 
     def __len__(self):
         return self.epoch_size
+
+
+def kfold(df, n_splits, random_state=0):
+    kf = KFold(n_splits, random_state=random_state, shuffle=True)
+    pos_df = df[df['label'] == 1]
+    neg_df = df[df['label'] == 0]
+    dataset = TellusDataset(df, has_y=True)
+
+    splieted = pipe(
+        zip(kf.split(pos_df), kf.split(neg_df)),
+        map(lambda x:{
+            "train_pos": x[0][0],
+            "val_pos": x[0][1],
+            "train_neg": x[1][0],
+            "val_neg": x[1][1],
+        }),
+        map(valmap(lambda x: Subset(dataset, x))),
+        list
+    )
+
+    return splieted

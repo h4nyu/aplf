@@ -8,11 +8,12 @@ import pandas as pd
 import uuid
 import os
 from aplf import config
-from .dataset import TellusDataset, load_dataset_df
+from .data import TellusDataset, load_dataset_df, kfold
 from .train import base_train
-from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json, kfold, get_segment_indices
+from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
 
 from os.path import join
+
 
 class Graph(object):
     def __init__(self,
@@ -28,6 +29,7 @@ class Graph(object):
 
         ids = pipe(
             range(n_splits),
+            filter(lambda x: x in folds),
             list
         )
 
@@ -37,45 +39,28 @@ class Graph(object):
         )
 
         train_df = delayed(pd.read_parquet)(train_df_path)
-        kfolded = delayed(kfold)(train_df, n_splits)
 
-        dataset = delayed(TellusDataset)(
+        kfolded = delayed(kfold)(
             train_df,
-            has_y=True,
-        )
-
-        fold_train_sets = pipe(
-            range(n_splits),
-            map(lambda idx: delayed(lambda x: x[idx][0])(kfolded)),
-            map(lambda x: delayed(Subset)(dataset, x)),
-            list
-        )
-
-        fold_val_sets = pipe(
-            range(n_splits),
-            map(lambda idx: delayed(lambda x: x[idx][1])(kfolded)),
-            map(lambda x: delayed(Subset)(dataset, x)),
-            list
+            n_splits
         )
 
         train_sets = pipe(
-            zip(ids, fold_train_sets, fold_val_sets),
-            filter(lambda x: x[0] in folds),
+            ids,
+            map(lambda x: delayed(lambda i: i[x])(kfolded)),
             list
         )
 
         model_paths = pipe(
-            train_sets,
+            zip(ids, train_sets),
             map(lambda x: delayed(base_train)(
                 **base_train_config,
                 model_path=join(output_dir, f"{id}-fold-{x[0]}-base-model.pt"),
-                train_set=x[1],
-                val_set=x[2],
+                sets=x[1],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
             list
         )
-
 
         self.output = delayed(lambda x: x)((
             model_paths,
@@ -83,5 +68,3 @@ class Graph(object):
 
     def __call__(self, *args, **kwargs):
         return self.output.compute(*args, **kwargs)
-
-

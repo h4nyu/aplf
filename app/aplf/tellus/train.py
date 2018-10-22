@@ -21,6 +21,7 @@ from .ramps import linear_rampup
 from .preprocess import hflip, add_noise
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
+from .data import ChunkSampler
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
@@ -52,57 +53,9 @@ def validate(x, y, epoch):
     return score
 
 
-class CyclicLR(object):
-
-    def __init__(self,
-                 min_factor,
-                 max_factor,
-                 period,
-                 milestones,
-                 turning_point,
-                 ):
-        self.min_factor = min_factor
-        self.max_factor = max_factor
-        self.period = period
-        self.milestones = milestones
-        self.turning_point = turning_point
-        self.range = self.max_factor - self.min_factor
-
-
-
-    def __call__(self, epoch):
-        cyclic = 1.0
-        phase = epoch % self.period
-        turn_phase, ratio = self.turning_point
-        turn_cyclic = self.min_factor + self.range * ratio
-
-
-        if  phase <= turn_phase:
-            cyclic = (
-                self.min_factor +
-                (turn_cyclic - self.min_factor) *
-                phase/turn_phase
-            )
-
-        else:
-            cyclic = turn_cyclic + \
-                (self.max_factor - turn_cyclic) * \
-                (phase - turn_phase)/(self.period - turn_phase)
-
-        gamma = pipe(
-            self.milestones,
-            filter(lambda x: x[0] <= epoch),
-            map(lambda x: x[1]),
-            last
-        )
-        return cyclic * gamma
-
-
-
 @skip_if_exists('model_path')
 def base_train(model_path,
-               train_set,
-               val_set,
+               sets,
                model_type,
                model_kwargs,
                epochs,
@@ -119,32 +72,36 @@ def base_train(model_path,
     Model = getattr(mdl, model_type)
 
     model = Model(**model_kwargs).to(device).train()
-    print(train_set.__dict__)
-    assert False
 
-    train_loader = DataLoader(
-        train_set,
-        batch_size=batch_size,
+    train_pos_loader = DataLoader(
+        sets['train_pos'],
+        batch_size=batch_size//2,
         shuffle=True,
         pin_memory=True,
     )
 
-    val_batch_size = int(batch_size *
-                         len(val_set.indices) / len(train_set.indices))
+    train_neg_loader = DataLoader(
+        sets['train_neg'],
+        batch_size=batch_size//2,
+        pin_memory=True,
+        sampler=ChunkSampler(
+            epoch_size=len(sets['train_pos']),
+            len_indices=len(sets['train_neg']),
+            shuffle=True
+        ),
+    )
 
     val_loader = DataLoader(
-        val_set,
-        batch_size=val_batch_size,
+        sets['val_pos'] + sets['val_neg'],
+        batch_size=batch_size,
         shuffle=True,
         pin_memory=True,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
-    len_batch = min(
-        len(train_loader),
-        len(val_loader)
-    )
+    train_len = len(train_pos_loader)
+    val_len = len(val_loader)
 
     max_iou_val = 0
     max_iou_train = 0
@@ -158,15 +115,18 @@ def base_train(model_path,
         sum_val_score = 0
         sum_consistency_loss = 0
         sum_seg_loss = 0
-        for train_sample,  val_sample, in zip(train_loader,  val_loader):
-            train_after = train_sample['after'].to(device)
-            train_before = train_sample['before'].to(device)
-            train_label = train_sample['label'].to(device)
+        for pos_sample, neg_sample in zip(train_pos_loader, train_neg_loader):
+            train_after = torch.cat(
+                [pos_sample['after'], pos_sample['after']], dim=0).to(device)
+            train_before = torch.cat(
+                [pos_sample['before'], pos_sample['before']], dim=0).to(device)
+            train_label = torch.cat(
+                [pos_sample['label'], pos_sample['label']], dim=0).to(device)
+
             train_out = model(
                 train_before,
                 train_after,
             )
-
 
             class_loss = class_criterion(
                 train_out,
@@ -178,6 +138,10 @@ def base_train(model_path,
             loss.backward()
             optimizer.step()
 
+        mean_iou_train = sum_train_score / train_len
+        mean_train_loss = sum_train_loss / train_len
+
+        for val_sample in val_loader:
             with torch.no_grad():
                 val_before = val_sample['before'].to(device)
                 val_after = val_sample['after'].to(device)
@@ -192,11 +156,8 @@ def base_train(model_path,
                     val_lable
                 )
                 sum_val_loss += val_loss.item()
-
-        mean_iou_val = sum_val_score / len_batch
-        mean_iou_train = sum_train_score / len_batch
-        mean_train_loss = sum_train_loss / len_batch
-        mean_val_loss = sum_val_loss / len_batch
+        mean_val_loss = sum_val_loss / val_len
+        mean_iou_val = sum_val_score / val_len
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -218,10 +179,10 @@ def base_train(model_path,
             w.add_scalar('iou/diff', mean_iou_train - mean_iou_val, epoch)
             w.add_scalar('lr', get_learning_rate(optimizer), epoch)
 
-
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
-                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}' , epoch)
+                w.add_text(
+                    'iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}', epoch)
                 torch.save(model, model_path)
 
             if max_iou_train <= mean_iou_train:
