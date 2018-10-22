@@ -114,15 +114,19 @@ def base_train(model_path,
                center_loss_weight,
                seg_loss_weight,
                ):
+
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
     model = Model(**model_kwargs).to(device).train()
+    print(train_set.__dict__)
+    assert False
 
     train_loader = DataLoader(
         train_set,
         batch_size=batch_size,
         shuffle=True,
+        pin_memory=True,
     )
 
     val_batch_size = int(batch_size *
@@ -132,6 +136,7 @@ def base_train(model_path,
         val_set,
         batch_size=val_batch_size,
         shuffle=True,
+        pin_memory=True,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
@@ -192,10 +197,6 @@ def base_train(model_path,
         mean_iou_train = sum_train_score / len_batch
         mean_train_loss = sum_train_loss / len_batch
         mean_val_loss = sum_val_loss / len_batch
-        mean_class_loss = sum_class_loss / len_batch
-        mean_center_loss = sum_center_loss / len_batch
-        mean_consistency_loss = sum_consistency_loss / len_batch
-        mean_seg_loss = sum_seg_loss / len_batch
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -216,11 +217,6 @@ def base_train(model_path,
             )
             w.add_scalar('iou/diff', mean_iou_train - mean_iou_val, epoch)
             w.add_scalar('lr', get_learning_rate(optimizer), epoch)
-            w.add_scalar('loss/consistency', mean_consistency_loss, epoch)
-            w.add_scalar('loss/class', mean_class_loss, epoch)
-            w.add_scalar('loss/center', mean_center_loss, epoch)
-            w.add_scalar('loss/seg', mean_seg_loss, epoch)
-            w.add_scalar('loss/diff', mean_val_loss - mean_class_loss, epoch)
 
 
             if max_iou_val <= mean_iou_val:

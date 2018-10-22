@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv
+from torch.utils.data import Subset
 from skimage import img_as_float
 from dask import delayed
 from torchvision.transforms import (
@@ -32,7 +33,6 @@ from .preprocess import add_is_empty
 from aplf.utils import skip_if_exists
 
 
-
 def get_row(base_path, sat, label_dir, label):
 
     after_path = os.path.join(
@@ -51,7 +51,7 @@ def get_row(base_path, sat, label_dir, label):
         "*.tif"
     )
 
-    rows =pipe(
+    rows = pipe(
         zip(glob.glob(after_path), glob.glob(before_path)),
         map(lambda x: list(map(Path)(x))),
         map(lambda x: {
@@ -88,8 +88,9 @@ def load_dataset_df(dataset_dir='/store/tellus/train',
     )
     df = pd.DataFrame(rows)
     df.set_index('id')
-    df.to_parquet(output, compression='gzip' )
+    df.to_parquet(output, compression='gzip')
     return output
+
 
 def read_image(path):
     return io.imread(
@@ -109,11 +110,11 @@ def image_to_tensor(path):
     tensor = torch.FloatTensor(image)
     return tensor
 
+
 class TellusDataset(Dataset):
     def __init__(self, df, has_y=True):
         self.has_y = has_y
         self.df = df
-
 
     def __len__(self):
         return len(self.df)
@@ -129,7 +130,6 @@ class TellusDataset(Dataset):
             row['after_image']
         )
 
-
         if self.has_y:
             return {
                 'id': id,
@@ -143,3 +143,20 @@ class TellusDataset(Dataset):
                 'before': transform(before),
                 'after': transform(after),
             }
+
+
+def to_pn_set(subset):
+    df = subset.dataset.df
+    filtered_df = df.ix[subset.indices]
+    pos_indices = filtered_df[filtered_df['label'] == 1].index
+    neg_indices = filtered_df[filtered_df['label'] == 0].index
+    pos_set = Subset(
+        dataset=subset.dataset,
+        indices=pos_indices
+    )
+
+    neg_set = Subset(
+        dataset=subset.dataset,
+        indices=neg_indices
+    )
+    return pos_set, neg_set

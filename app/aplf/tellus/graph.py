@@ -81,7 +81,7 @@ class Graph(object):
             model_paths,
         ))
 
-    def __call__(self):
-        return self.output.compute()
+    def __call__(self, *args, **kwargs):
+        return self.output.compute(*args, **kwargs)
 
 
