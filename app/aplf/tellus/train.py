@@ -141,6 +141,14 @@ def base_train(model_path,
 
             loss = class_loss
             sum_train_loss += loss.item()
+
+            train_score = validate(
+                train_out,
+                train_lable,
+                epoch,
+            )
+            sum_train_score += train_score
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -163,6 +171,13 @@ def base_train(model_path,
                     val_lable
                 )
                 sum_val_loss += val_loss.item()
+
+                val_score = validate(
+                    val_out,
+                    val_lable,
+                    epoch,
+                )
+                sum_val_score += val_score
 
         mean_val_loss = sum_val_loss / val_len
         mean_iou_val = sum_val_score / val_len

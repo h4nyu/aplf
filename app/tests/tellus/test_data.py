@@ -2,8 +2,11 @@ from aplf.tellus.data import load_dataset_df, get_row, TellusDataset, kfold, Chu
 from torch.utils.data import DataLoader
 import pandas as pd
 
-from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, take
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, take, concat
 from torch.utils.data import Subset
+from tensorboardX import SummaryWriter
+import torchvision.utils as vutils
+from aplf import config
 
 
 def test_get_row():
@@ -107,3 +110,26 @@ def test_esampler():
             list
         )
         assert len(samples) == 5
+
+def test_aug():
+    output = load_dataset_df(
+        dataset_dir='/store/tellus/train',
+        output='/store/tmp/train.pqt'
+    )
+    df = pd.read_parquet(output)
+    dataset = TellusDataset(
+        df=df,
+        has_y=True,
+    )
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
+    writer.add_image(
+        f"flip",
+        vutils.make_grid(
+            pipe(range(2),
+                 map(lambda x: dataset[12]),
+                 map(lambda x: [x['before'], x['after']]),
+                 concat,
+                 list)
+        ),
+    )
