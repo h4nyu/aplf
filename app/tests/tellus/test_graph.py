@@ -12,7 +12,7 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 400,
-        'batch_size': 64,
+        'batch_size': 128,
         'model_type': 'Net',
         'erase_num': 10,
         'erase_p': 0.5,
@@ -22,13 +22,19 @@ def test_graph():
         'consistency_loss_wight': 10,
         'center_loss_weight': 0.3,
         'seg_loss_weight': 0.5,
-
     }
-    result = Graph(
+
+    g = Graph(
         **base_param,
         id="seg-set-5",
         base_train_config=base_train_config,
         n_splits=8,
         top_num=8,
-        folds=[0],
-    )(scheduler='single-threaded')
+        folds=[0, 1],
+    )
+
+    with Client('dask-scheduler:8786') as c:
+        #  g(scheduler='single-threaded')
+        g()
+
+

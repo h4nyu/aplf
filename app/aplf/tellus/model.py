@@ -39,20 +39,22 @@ class DownSample(nn.Module):
         return down, conv
 
 
-class FcBlock(nn.Module):
+class SEBlock(nn.Module):
     def __init__(self, in_ch, out_ch, r=1):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(in_ch, int(in_ch * r)),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.Linear(int(in_ch * r), out_ch),
-            nn.Sigmoid()
+            nn.ELU(inplace=True),
         )
         self.out_ch = out_ch
 
+
     def forward(self, x):
         b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
         y = self.fc(y).view(b, self.out_ch, 1, 1)
         return y
 
@@ -70,9 +72,11 @@ class Net(nn.Module):
         ])
 
         self.out = SEBlock(
-            in_ch=feature_size * 2 ** 3,
-            out_ch=2
+            in_ch=(feature_size * 2 ** 3),
+            out_ch=2,
+            r=1/2
         )
+
         self.pad = nn.ZeroPad2d(5)
 
     def forward(self, before, after):

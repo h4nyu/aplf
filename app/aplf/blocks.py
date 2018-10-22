@@ -7,7 +7,7 @@ class SEBlock(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(in_ch, int(in_ch * r)),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.Linear(int(in_ch * r), out_ch),
             nn.Sigmoid()
         )
@@ -85,7 +85,7 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.Conv2d(
                 out_ch,
                 out_ch,
@@ -95,7 +95,7 @@ class ResBlock(nn.Module):
                 groups=2,
             ),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.Conv2d(
                 out_ch,
                 out_ch,
@@ -131,6 +131,11 @@ class DownSample(nn.Module):
         self.out_ch = out_ch
 
         self.block = nn.Sequential(
+            ResBlock(
+                in_ch=in_ch,
+                out_ch=out_ch,
+            ),
+            SCSE(out_ch),
             ResBlock(
                 in_ch=in_ch,
                 out_ch=out_ch,
