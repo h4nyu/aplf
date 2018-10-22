@@ -117,16 +117,23 @@ def base_train(model_path,
         sum_seg_loss = 0
         for pos_sample, neg_sample in zip(train_pos_loader, train_neg_loader):
             train_after = torch.cat(
-                [pos_sample['after'], pos_sample['after']], dim=0).to(device)
+                [pos_sample['after'], neg_sample['after']],
+                dim=0
+            ).to(device)
             train_before = torch.cat(
-                [pos_sample['before'], pos_sample['before']], dim=0).to(device)
+                [pos_sample['before'], neg_sample['before']],
+                dim=0
+            ).to(device)
             train_label = torch.cat(
-                [pos_sample['label'], pos_sample['label']], dim=0).to(device)
+                [pos_sample['label'], neg_sample['label']],
+                dim=0
+            ).to(device)
 
             train_out = model(
                 train_before,
                 train_after,
             )
+            print(train_label)
 
             class_loss = class_criterion(
                 train_out,
@@ -134,6 +141,7 @@ def base_train(model_path,
             )
 
             loss = class_loss
+            sum_train_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -156,6 +164,7 @@ def base_train(model_path,
                     val_lable
                 )
                 sum_val_loss += val_loss.item()
+
         mean_val_loss = sum_val_loss / val_len
         mean_iou_val = sum_val_score / val_len
 

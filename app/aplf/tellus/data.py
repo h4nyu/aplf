@@ -186,13 +186,15 @@ def kfold(df, n_splits, random_state=0):
     splieted = pipe(
         zip(kf.split(pos_df), kf.split(neg_df)),
         map(lambda x:{
-            "train_pos": x[0][0],
-            "val_pos": x[0][1],
-            "train_neg": x[1][0],
-            "val_neg": x[1][1],
+            "train_pos": pos_df.index[x[0][0]],
+            "val_pos": pos_df.index[x[0][1]],
+            "train_neg": neg_df.index[x[1][0]],
+            "val_neg": neg_df.index[x[1][1]],
         }),
         map(valmap(lambda x: Subset(dataset, x))),
         list
     )
+    print(splieted[0]['train_pos'].indices)
+    print(splieted[0]['train_neg'].indices)
 
     return splieted
