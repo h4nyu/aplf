@@ -12,7 +12,7 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 400,
-        'batch_size': 128,
+        'batch_size': 32,
         'model_type': 'Net',
         'erase_num': 10,
         'erase_p': 0.5,
@@ -30,11 +30,10 @@ def test_graph():
         base_train_config=base_train_config,
         n_splits=8,
         top_num=8,
-        folds=[0, 1],
+        folds=[0],
     )
 
-    with Client('dask-scheduler:8786') as c:
-        #  g(scheduler='single-threaded')
-        g()
+    g(scheduler='single-threaded')
+
 
 

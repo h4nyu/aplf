@@ -68,7 +68,6 @@ class Net(nn.Module):
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
             DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
             DownSample(feature_size * 2 ** 3, feature_size * 2 ** 3),
-            DownSample(feature_size * 2 ** 3, feature_size * 2 ** 3),
         ])
 
         self.out = SEBlock(

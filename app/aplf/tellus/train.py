@@ -85,17 +85,18 @@ def base_train(model_path,
         ),
     )
 
+    val_batch_size = batch_size * len(sets['val_pos'])//len(sets['train_pos'])
+
     val_loader = DataLoader(
         sets['val_pos'] + sets['val_neg'],
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         shuffle=True,
         pin_memory=True,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True)
-    train_len = len(train_pos_loader)
-    val_len = len(val_loader)
+    batch_len = len(train_pos_loader)
 
     max_iou_val = 0
     max_iou_train = 0
@@ -109,7 +110,7 @@ def base_train(model_path,
         sum_val_score = 0
         sum_consistency_loss = 0
         sum_seg_loss = 0
-        for pos_sample, neg_sample in zip(train_pos_loader, train_neg_loader):
+        for pos_sample, neg_sample, val_sample in zip(train_pos_loader, train_neg_loader, val_loader):
             train_after = torch.cat(
                 [pos_sample['after'], neg_sample['after']],
                 dim=0
@@ -147,10 +148,6 @@ def base_train(model_path,
             loss.backward()
             optimizer.step()
 
-        mean_iou_train = sum_train_score / train_len
-        mean_train_loss = sum_train_loss / train_len
-
-        for val_sample in val_loader:
             with torch.no_grad():
                 val_before = val_sample['before'].to(device)
                 val_after = val_sample['after'].to(device)
@@ -173,8 +170,10 @@ def base_train(model_path,
                 )
                 sum_val_score += val_score
 
-        mean_val_loss = sum_val_loss / val_len
-        mean_iou_val = sum_val_score / val_len
+        mean_iou_train = sum_train_score / batch_len
+        mean_train_loss = sum_train_loss / batch_len
+        mean_val_loss = sum_val_loss / batch_len
+        mean_iou_val = sum_val_score / batch_len
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -198,8 +197,7 @@ def base_train(model_path,
 
             if max_iou_val <= mean_iou_val:
                 max_iou_val = mean_iou_val
-                w.add_text(
-                    'iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}', epoch)
+                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}', epoch)
                 torch.save(model, model_path)
 
             if max_iou_train <= mean_iou_train:
