@@ -11,6 +11,7 @@ from aplf import config
 from .data import TellusDataset, load_train_df, kfold
 from .train import base_train
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
+import torch
 
 from os.path import join
 
