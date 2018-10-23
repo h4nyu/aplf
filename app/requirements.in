@@ -11,6 +11,8 @@ tensorboardX
 tensorflow
 pydensecrf
 fastparquet
+sacred
+pymongo
 
 # graph
 bokeh

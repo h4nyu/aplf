@@ -59,16 +59,28 @@ class SEBlock(nn.Module):
         return y
 
 
-class Net(nn.Module):
-    def __init__(self, feature_size=64):
+class Encorder(nn.Module):
+    def __init__(self, in_ch=1, feature_size=64):
         super().__init__()
         self.down_layers = nn.ModuleList([
-            DownSample(2, feature_size),
+            DownSample(in_ch, feature_size),
             DownSample(feature_size, feature_size * 2 ** 1),
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
             DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
             DownSample(feature_size * 2 ** 3, feature_size * 2 ** 3),
         ])
+    def forward(self, x):
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+        return x
+
+class Net(nn.Module):
+    def __init__(self, feature_size=64):
+        super().__init__()
+        self.enc = Encorder(
+            in_ch=2,
+            feature_size=feature_size,
+        )
 
         self.out = SEBlock(
             in_ch=(feature_size * 2 ** 3),
@@ -79,14 +91,12 @@ class Net(nn.Module):
         self.pad = nn.ZeroPad2d(5)
 
     def forward(self, before, after):
-        x = torch.cat([before, after], 1)
-        x = F.interpolate(x, mode='bilinear', size=(108, 108))
+        x = torch.cat([before, after], dim=1)
+        _, _, h, w = x.size()
+        x = F.interpolate(x, size=(2*h, 2*w))
         x = self.pad(x)
-
-        d_outs = []
-        for layer in self.down_layers:
-            x, d_out = layer(x)
-            d_outs.append(d_out)
-
+        x = self.enc(x)
+        self.out(x)
         x = self.out(x).view(-1, 2)
         return x
+

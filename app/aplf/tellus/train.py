@@ -1,4 +1,6 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
+import random
+import torchvision.utils as vutils
 from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
@@ -40,7 +42,7 @@ def get_learning_rate(optimizer):
         return param_group['lr']
 
 
-def validate(x, y, epoch):
+def validate(x, y):
     return iou(
         x.argmax(dim=1).cpu().detach().numpy(),
         y.cpu().detach().numpy()
@@ -87,15 +89,26 @@ def base_train(model_path,
 
     val_batch_size = batch_size * len(sets['val_pos'])//len(sets['train_pos'])
 
-    val_loader = DataLoader(
-        sets['val_pos'] + sets['val_neg'],
+    val_pos_loader = DataLoader(
+        sets['val_pos'],
         batch_size=val_batch_size,
         shuffle=True,
         pin_memory=True,
     )
 
+    val_neg_loader = DataLoader(
+        sets['val_neg'],
+        batch_size=val_batch_size,
+        pin_memory=True,
+        sampler=ChunkSampler(
+            epoch_size=len(sets['val_pos']),
+            len_indices=len(sets['val_neg']),
+            shuffle=True
+        ),
+    )
+
     class_criterion = nn.CrossEntropyLoss(size_average=True)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True)
+    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=0.0001)
     batch_len = len(train_pos_loader)
 
     max_iou_val = 0
@@ -110,7 +123,7 @@ def base_train(model_path,
         sum_val_score = 0
         sum_consistency_loss = 0
         sum_seg_loss = 0
-        for pos_sample, neg_sample, val_sample in zip(train_pos_loader, train_neg_loader, val_loader):
+        for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
             train_after = torch.cat(
                 [pos_sample['after'], neg_sample['after']],
                 dim=0
@@ -128,19 +141,16 @@ def base_train(model_path,
                 train_before,
                 train_after,
             )
-
             class_loss = class_criterion(
                 train_out,
                 train_label
             )
-
             loss = class_loss
             sum_train_loss += loss.item()
 
             train_score = validate(
                 train_out,
                 train_label,
-                epoch,
             )
             sum_train_score += train_score
 
@@ -149,9 +159,19 @@ def base_train(model_path,
             optimizer.step()
 
             with torch.no_grad():
-                val_before = val_sample['before'].to(device)
-                val_after = val_sample['after'].to(device)
-                val_lable = val_sample['label'].to(device)
+
+                val_after = torch.cat(
+                    [val_pos_sample['after'], val_neg_sample['after']],
+                    dim=0
+                ).to(device)
+                val_before = torch.cat(
+                    [val_pos_sample['before'], val_neg_sample['before']],
+                    dim=0
+                ).to(device)
+                val_label = torch.cat(
+                    [val_pos_sample['label'], val_neg_sample['label']],
+                    dim=0
+                ).to(device)
 
                 val_out = model(
                     val_before,
@@ -159,14 +179,13 @@ def base_train(model_path,
                 )
                 val_loss = class_criterion(
                     val_out,
-                    val_lable
+                    val_label
                 )
                 sum_val_loss += val_loss.item()
 
                 val_score = validate(
                     val_out,
-                    val_lable,
-                    epoch,
+                    val_label,
                 )
                 sum_val_score += val_score
 

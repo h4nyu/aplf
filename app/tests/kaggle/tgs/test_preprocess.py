@@ -33,7 +33,6 @@ def test_rle_decode():
 def test_add_mask_size():
     dataset_df = load_dataset_df('/store/kaggle/tgs')
     dataset_df = add_mask_size(dataset_df)
-    print(dataset_df)
 
     idx = dataset_df.index.get_loc('1fba03699e')
     sample = dataset_df.iloc[idx]

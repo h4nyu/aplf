@@ -1,6 +1,8 @@
-from aplf.tellus.data import load_dataset_df, get_row, TellusDataset, kfold, ChunkSampler
+from pathlib import Path
+from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler
 from torch.utils.data import DataLoader
 import pandas as pd
+import pytest
 
 from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, take, concat
 from torch.utils.data import Subset
@@ -9,13 +11,17 @@ import torchvision.utils as vutils
 from aplf import config
 
 
-def test_get_row():
-    rows = get_row(
+def test_get_train_row():
+    rows = get_train_row(
         base_path='/store/tellus/train',
-        sat="LANDSAT",
         label_dir="positive",
-        label=True
+        label=1
     )
+    for r in rows:
+        assert Path(rows[0]['palser_after']).name == Path(rows[0]['palser_before']).name
+        assert Path(rows[0]['palser_before']).name == Path(rows[0]['landsat_after']).name
+        assert Path(rows[0]['landsat_after']).name == Path(rows[0]['landsat_before']).name
+
     assert len(rows) == 1530
 
 
@@ -111,12 +117,15 @@ def test_esampler():
         )
         assert len(samples) == 5
 
-def test_aug():
-    output = load_dataset_df(
+
+@pytest.mark.parametrize("idx", range(1524, 1536))
+def test_aug(idx):
+    output = load_train_df(
         dataset_dir='/store/tellus/train',
-        output='/store/tmp/train.pqt'
+        output='/store/tellus/train.pqt'
     )
     df = pd.read_parquet(output)
+
     dataset = TellusDataset(
         df=df,
         has_y=True,
@@ -124,11 +133,108 @@ def test_aug():
 
     writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test')
     writer.add_image(
-        f"flip",
+        f"palser/{dataset[idx]['id']}/{dataset[idx]['label']}",
         vutils.make_grid(
-            pipe(range(2),
-                 map(lambda x: dataset[12]),
-                 map(lambda x: [x['before'], x['after']]),
+            pipe(range(1),
+                 map(lambda x: dataset[idx]),
+                 map(lambda x: [
+                     x['palser_before'],
+                     x['palser_after'],
+                 ]),
+                 concat,
+                 list)
+        ),
+    )
+
+    writer.add_image(
+        f"landsat/{dataset[idx]['id']}/{dataset[idx]['label']}",
+        vutils.make_grid(
+            pipe(range(1),
+                 map(lambda x: dataset[idx]),
+                 map(lambda x: [
+                     x['landsat_before'],
+                     x['landsat_after']
+                 ]),
+                 concat,
+                 list)
+        ),
+    )
+
+@pytest.mark.parametrize("idx", range(1520, 1536))
+def test_diff(idx):
+    output = load_train_df(
+        dataset_dir='/store/tellus/train',
+        output='/store/tellus/train.pqt'
+    )
+    df = pd.read_parquet(output)
+
+    dataset = TellusDataset(
+        df=df,
+        has_y=True,
+    )
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/diff')
+    writer.add_image(
+        f"palser/{idx}/{dataset[idx]['label']}",
+        vutils.make_grid(
+            pipe(range(1),
+                 map(lambda x: dataset[idx]),
+                 map(lambda x: [
+                     x['palser_after'] - x['palser_before'],
+                 ]),
+                 concat,
+                 list)
+        ),
+    )
+
+    writer.add_image(
+        f"landsat/{idx}/{dataset[idx]['label']}",
+        vutils.make_grid(
+            pipe(range(1),
+                 map(lambda x: dataset[idx]),
+                 map(lambda x: [
+                     x['landsat_after'] - x['landsat_before']
+                 ]),
+                 concat,
+                 list)
+        ),
+    )
+
+@pytest.mark.parametrize("idx", range(1520, 1536))
+def test_sum(idx):
+    output = load_train_df(
+        dataset_dir='/store/tellus/train',
+        output='/store/tellus/train.pqt'
+    )
+    df = pd.read_parquet(output)
+
+    dataset = TellusDataset(
+        df=df,
+        has_y=True,
+    )
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/sum')
+    writer.add_image(
+        f"palser/{idx}/{dataset[idx]['label']}",
+        vutils.make_grid(
+            pipe(range(1),
+                 map(lambda x: dataset[idx]),
+                 map(lambda x: [
+                     x['palser_after'] + x['palser_before'],
+                 ]),
+                 concat,
+                 list)
+        ),
+    )
+
+    writer.add_image(
+        f"landsat/{idx}/{dataset[idx]['label']}",
+        vutils.make_grid(
+            pipe(range(1),
+                 map(lambda x: dataset[idx]),
+                 map(lambda x: [
+                     x['landsat_after'] + x['landsat_before']
+                 ]),
                  concat,
                  list)
         ),
