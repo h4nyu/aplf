@@ -12,7 +12,7 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 1000,
-        'batch_size': 64,
+        'batch_size': 128,
         'model_type': 'Net',
         'erase_num': 10,
         'erase_p': 0.5,
@@ -22,12 +22,12 @@ def test_graph():
         'consistency_loss_wight': 10,
         'center_loss_weight': 0.3,
         'rgb_loss_weight': 1,
-        'lr': 0.001,
+        'lr': 0.005,
     }
 
     g = Graph(
         **base_param,
-        id="lovas-1",
+        id="lovas-lr0.005-bsize128-rgb1",
         base_train_config=base_train_config,
         n_splits=8,
         top_num=8,
