@@ -18,7 +18,7 @@ from tensorboardX import SummaryWriter
 from .metric import iou
 from os import path
 from .utils import AverageMeter
-from .losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
+from aplf.losses import lovasz_softmax_flat
 from .ramps import linear_rampup
 from .preprocess import hflip, add_noise
 from aplf.utils import skip_if_exists
@@ -62,6 +62,7 @@ def base_train(model_path,
                consistency_loss_wight,
                center_loss_weight,
                rgb_loss_weight,
+               lr,
                ):
 
     device = torch.device("cuda")
@@ -107,9 +108,9 @@ def base_train(model_path,
         ),
     )
 
-    class_criterion = nn.CrossEntropyLoss(size_average=True)
+    class_criterion = lovasz_softmax_flat
     image_criterion = nn.MSELoss(size_average=True)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     batch_len = len(train_pos_loader)
 
     max_iou_val = 0

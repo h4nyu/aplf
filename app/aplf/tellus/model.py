@@ -23,6 +23,13 @@ class DownSample(nn.Module):
             ),
             SCSE(out_ch),
         )
+        self.block = nn.Sequential(
+            ResBlock(
+                in_ch=in_ch,
+                out_ch=out_ch,
+            ),
+            SCSE(out_ch),
+        )
 
         self.down = nn.Conv2d(
             out_ch,

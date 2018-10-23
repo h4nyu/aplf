@@ -26,6 +26,7 @@ class Graph(object):
                  folds,
                  ):
         params = locals()
+        torch.manual_seed(0)
 
         ids = pipe(
             range(n_splits),
