@@ -8,7 +8,7 @@ import pandas as pd
 import uuid
 import os
 from aplf import config
-from .data import TellusDataset, load_dataset_df, kfold
+from .data import TellusDataset, load_train_df, kfold
 from .train import base_train
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
 
@@ -33,7 +33,7 @@ class Graph(object):
             list
         )
 
-        train_df_path = delayed(load_dataset_df)(
+        train_df_path = delayed(load_train_df)(
             dataset_dir=join(dataset_dir, 'train'),
             output=join(output_dir, 'train.pqt')
         )

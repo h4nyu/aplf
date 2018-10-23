@@ -61,7 +61,7 @@ def base_train(model_path,
                erase_p,
                consistency_loss_wight,
                center_loss_weight,
-               seg_loss_weight,
+               rgb_loss_weight,
                ):
 
     device = torch.device("cuda")
@@ -108,6 +108,7 @@ def base_train(model_path,
     )
 
     class_criterion = nn.CrossEntropyLoss(size_average=True)
+    image_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=0.0001)
     batch_len = len(train_pos_loader)
 
@@ -124,20 +125,28 @@ def base_train(model_path,
         sum_consistency_loss = 0
         sum_seg_loss = 0
         for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
-            train_after = torch.cat(
-                [pos_sample['after'], neg_sample['after']],
+            train_before = torch.cat(
+                [pos_sample['palser_before'], neg_sample['palser_before']],
                 dim=0
             ).to(device)
-            train_before = torch.cat(
-                [pos_sample['before'], neg_sample['before']],
+            train_after = torch.cat(
+                [pos_sample['palser_after'], neg_sample['palser_after']],
                 dim=0
             ).to(device)
             train_label = torch.cat(
                 [pos_sample['label'], neg_sample['label']],
                 dim=0
             ).to(device)
+            train_b_rgb = torch.cat(
+                [pos_sample['landsat_before'], neg_sample['landsat_before']],
+                dim=0
+            ).to(device)
+            train_a_rgb = torch.cat(
+                [pos_sample['landsat_after'], neg_sample['landsat_after']],
+                dim=0
+            ).to(device)
 
-            train_out = model(
+            train_out, train_b_rgb_out, train_a_rgb_out = model(
                 train_before,
                 train_after,
             )
@@ -145,7 +154,18 @@ def base_train(model_path,
                 train_out,
                 train_label
             )
-            loss = class_loss
+
+            t_a_rgb_loss = image_criterion(
+                train_a_rgb_out,
+                train_a_rgb
+            )
+
+            t_b_rgb_loss = image_criterion(
+                train_b_rgb_out,
+                train_b_rgb
+            )
+            t_rgb_loss = t_a_rgb_loss + t_b_rgb_loss
+            loss = class_loss + t_rgb_loss
             sum_train_loss += loss.item()
 
             train_score = validate(
@@ -159,13 +179,12 @@ def base_train(model_path,
             optimizer.step()
 
             with torch.no_grad():
-
-                val_after = torch.cat(
-                    [val_pos_sample['after'], val_neg_sample['after']],
+                val_before = torch.cat(
+                    [val_pos_sample['palser_before'], val_neg_sample['palser_before']],
                     dim=0
                 ).to(device)
-                val_before = torch.cat(
-                    [val_pos_sample['before'], val_neg_sample['before']],
+                val_after = torch.cat(
+                    [val_pos_sample['palser_after'], val_neg_sample['palser_after']],
                     dim=0
                 ).to(device)
                 val_label = torch.cat(
@@ -173,7 +192,7 @@ def base_train(model_path,
                     dim=0
                 ).to(device)
 
-                val_out = model(
+                val_out, val_b_rgb_out, val_a_rgb_out = model(
                     val_before,
                     val_after
                 )
@@ -181,6 +200,7 @@ def base_train(model_path,
                     val_out,
                     val_label
                 )
+
                 sum_val_loss += val_loss.item()
 
                 val_score = validate(

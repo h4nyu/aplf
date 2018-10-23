@@ -59,44 +59,59 @@ class SEBlock(nn.Module):
         return y
 
 
-class Encorder(nn.Module):
-    def __init__(self, in_ch=1, feature_size=64):
+class Encoder(nn.Module):
+    def __init__(self, in_ch, out_ch, feature_size=64):
         super().__init__()
         self.down_layers = nn.ModuleList([
             DownSample(in_ch, feature_size),
             DownSample(feature_size, feature_size * 2 ** 1),
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
-            DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
-            DownSample(feature_size * 2 ** 3, feature_size * 2 ** 3),
+            DownSample(feature_size * 2 ** 2, out_ch),
         ])
     def forward(self, x):
+        d_outs = []
         for layer in self.down_layers:
             x, d_out = layer(x)
         return x
 
+
 class Net(nn.Module):
     def __init__(self, feature_size=64):
         super().__init__()
-        self.enc = Encorder(
+        self.seg_enc = Encoder(
             in_ch=2,
+            out_ch=feature_size * 2 ** 3,
+            feature_size=feature_size,
+        )
+
+        self.rgb_enc = Encoder(
+            in_ch=1,
+            out_ch=3,
             feature_size=feature_size,
         )
 
         self.out = SEBlock(
-            in_ch=(feature_size * 2 ** 3),
+            in_ch=feature_size * 2 ** 3 + 6,
             out_ch=2,
             r=1/2
         )
 
-        self.pad = nn.ZeroPad2d(5)
+        self.pad = nn.ZeroPad2d(2)
 
-    def forward(self, before, after):
-        x = torch.cat([before, after], dim=1)
-        _, _, h, w = x.size()
-        x = F.interpolate(x, size=(2*h, 2*w))
-        x = self.pad(x)
-        x = self.enc(x)
+    def forward(self, b_x, a_x):
+        b_x = F.interpolate(b_x, mode='bilinear', size=(60, 60))
+        a_x = F.interpolate(a_x, mode='bilinear', size=(60, 60))
+        b_x = self.pad(b_x)
+        a_x = self.pad(a_x)
+
+        x = torch.cat([b_x, a_x], dim=1)
+        x = self.seg_enc(x)
+
+        b_rgb = self.rgb_enc(b_x)
+        a_rgb = self.rgb_enc(a_x)
+
+        x = torch.cat([x, b_rgb, a_rgb], dim=1)
         self.out(x)
         x = self.out(x).view(-1, 2)
-        return x
+        return x, b_rgb, a_rgb
 

@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class SEBlock(nn.Module):
     def __init__(self, in_ch, out_ch, r=1):
         super().__init__()
@@ -12,7 +13,6 @@ class SEBlock(nn.Module):
             nn.Sigmoid()
         )
         self.out_ch = out_ch
-
 
     def forward(self, x):
         b, c, _, _ = x.size()
@@ -46,6 +46,7 @@ class SSE(nn.Module):
         x = input_x * x
 
         return x
+
 
 class SCSE(nn.Module):
     def __init__(self, in_ch, r=2 / 3):
@@ -92,7 +93,7 @@ class ResBlock(nn.Module):
                 kernel_size=3,
                 padding=1,
                 stride=1,
-                groups=2,
+                groups=2 - (out_ch % 2),
             ),
             nn.BatchNorm2d(out_ch),
             nn.ELU(inplace=True),
@@ -115,7 +116,6 @@ class ResBlock(nn.Module):
         out += residual
         out = self.activation(out)
         return out
-
 
 
 class DownSample(nn.Module):

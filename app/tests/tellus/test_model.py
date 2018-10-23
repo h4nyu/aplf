@@ -13,8 +13,10 @@ def test_unet(depth, feature_size):
         )
         before = torch.empty(32, 1, 40, 40)
         after = torch.empty(32, 1, 40, 40)
-        out_image = model(before, after)
+        out_image, b_rgb, a_rgb = model(before, after)
         assert out_image.size() == (32, 2)
+        assert b_rgb.size() == (32, 3, 4, 4)
+        assert a_rgb.size() == (32, 3, 4, 4)
 
 
 def test_down():
