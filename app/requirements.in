@@ -13,7 +13,6 @@ pydensecrf
 fastparquet
 sacred
 pymongo
-GitPython
 
 # graph
 bokeh

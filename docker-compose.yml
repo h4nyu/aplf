@@ -113,6 +113,8 @@ services:
       - ./store:/store
       - ./experiments:/experiments
     depends_on:
+      - mongo
+      - omniboard
       - dask-worker
       - tensorboard
       - dask-scheduler
