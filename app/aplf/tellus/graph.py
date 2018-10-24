@@ -23,7 +23,6 @@ class Graph(object):
                  output_dir,
                  n_splits,
                  base_train_config,
-                 top_num,
                  folds,
                  ):
         params = locals()

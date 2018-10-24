@@ -30,7 +30,6 @@ def test_graph():
         id="all-loader-1",
         base_train_config=base_train_config,
         n_splits=8,
-        top_num=8,
         folds=[0],
     )
 
