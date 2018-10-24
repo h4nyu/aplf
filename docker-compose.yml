@@ -13,11 +13,10 @@ services:
         - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: tensorboard --logdir=/log
+    command: tensorboard --logdir=/store/log
     volumes:
       - ./app:/srv
       - ./store:/store
-      - ./log:/log
     ports:
       - ${TENSORBOARD_PORT}:6006
 
@@ -33,10 +32,11 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - ./log:/log
     ports:
       - ${DASKBOARD_PORT}:8787
       - ${DASKSCHEDULER_PORT}:8786
+    depends_on:
+      - nfs
 
   dask-worker:
     build:
@@ -50,7 +50,6 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - ./log:/log
 
   front:
     build:
@@ -112,7 +111,6 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - ./log:/log
       - ./experiments:/experiments
     depends_on:
       - dask-worker

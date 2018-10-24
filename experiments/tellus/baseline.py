@@ -27,9 +27,7 @@ def cfg():
             'model_kwargs': {
                 'feature_size': 64,
             },
-            'consistency_loss_wight': 10,
-            'center_loss_weight': 0.3,
-            'rgb_loss_weight': 1,
+            'rgb_loss_weight': 1.5,
             'lr': 0.0001,
         },
         "n_splits": 8,

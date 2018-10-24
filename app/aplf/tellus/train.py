@@ -59,8 +59,6 @@ def base_train(model_path,
                log_dir,
                erase_num,
                erase_p,
-               consistency_loss_wight,
-               center_loss_weight,
                rgb_loss_weight,
                lr,
                ):
