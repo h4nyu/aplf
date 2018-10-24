@@ -46,26 +46,6 @@ class DownSample(nn.Module):
         return down, conv
 
 
-class SEBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, r=1):
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(in_ch, int(in_ch * r)),
-            nn.ELU(inplace=True),
-            nn.Linear(int(in_ch * r), out_ch),
-            nn.ELU(inplace=True),
-        )
-        self.out_ch = out_ch
-
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, self.out_ch, 1, 1)
-        return y
-
-
 class Encoder(nn.Module):
     def __init__(self, in_ch, out_ch, feature_size=64):
         super().__init__()
@@ -75,6 +55,7 @@ class Encoder(nn.Module):
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
             DownSample(feature_size * 2 ** 2, out_ch),
         ])
+
     def forward(self, x):
         d_outs = []
         for layer in self.down_layers:
@@ -82,43 +63,64 @@ class Encoder(nn.Module):
         return x
 
 
-class Net(nn.Module):
-    def __init__(self, feature_size=64):
+class Fc(nn.Module):
+    def __init__(self, in_ch, out_ch, feature_size=64, r=2):
         super().__init__()
-        self.seg_enc = Encoder(
-            in_ch=2,
-            out_ch=feature_size * 2 ** 3,
-            feature_size=feature_size,
+        self.before_pool = ResBlock(
+            in_ch=in_ch,
+            out_ch=in_ch//r,
+        ),
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_ch, in_ch//r//r),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_ch//r//r, out_ch),
+        )
+        self.out_ch = out_ch
+
+    def forward(self, x):
+        b, c, _, _=x.size()
+        y=self.avg_pool(x).view(b, c)
+        y=self.fc(y).view(b, self.out_ch, 1, 1)
+        return y
+
+
+
+class Net(nn.Module):
+    def __init__(self, feature_size = 64):
+        super().__init__()
+        self.seg_enc=Encoder(
+            in_ch = 2,
+            out_ch = feature_size * 2 ** 3,
+            feature_size = feature_size,
         )
 
-        self.rgb_enc = Encoder(
-            in_ch=1,
-            out_ch=3,
-            feature_size=feature_size,
+        self.rgb_enc=Encoder(
+            in_ch = 1,
+            out_ch = 3,
+            feature_size = feature_size,
         )
 
-        self.out = SEBlock(
-            in_ch=feature_size * 2 ** 3 + 6,
-            out_ch=2,
-            r=1/2
+        self.out=Fc(
+            in_ch = feature_size * 2 ** 3 + 6,
+            out_ch = 2
         )
 
-        self.pad = nn.ZeroPad2d(2)
+        self.pad=nn.ZeroPad2d(2)
 
     def forward(self, b_x, a_x):
-        b_x = F.interpolate(b_x, mode='bilinear', size=(60, 60))
-        a_x = F.interpolate(a_x, mode='bilinear', size=(60, 60))
-        b_x = self.pad(b_x)
-        a_x = self.pad(a_x)
+        b_x=F.interpolate(b_x, mode = 'bilinear', size = (60, 60))
+        a_x=F.interpolate(a_x, mode = 'bilinear', size = (60, 60))
+        b_x=self.pad(b_x)
+        a_x=self.pad(a_x)
 
-        x = torch.cat([b_x, a_x], dim=1)
-        x = self.seg_enc(x)
+        x=torch.cat([b_x, a_x], dim = 1)
+        x=self.seg_enc(x)
 
-        b_rgb = self.rgb_enc(b_x)
-        a_rgb = self.rgb_enc(a_x)
+        b_rgb=self.rgb_enc(b_x)
+        a_rgb=self.rgb_enc(a_x)
 
-        x = torch.cat([x, b_rgb, a_rgb], dim=1)
+        x=torch.cat([x, b_rgb, a_rgb], dim = 1)
         self.out(x)
-        x = self.out(x).view(-1, 2)
+        x=self.out(x).view(-1, 2)
         return x, b_rgb, a_rgb
-

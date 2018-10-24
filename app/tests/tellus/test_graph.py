@@ -22,12 +22,12 @@ def test_graph():
         'consistency_loss_wight': 10,
         'center_loss_weight': 0.3,
         'rgb_loss_weight': 1,
-        'lr': 0.005,
+        'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="lovas-lr0.005-bsize128-rgb1",
+        id="all-loader-1",
         base_train_config=base_train_config,
         n_splits=8,
         top_num=8,
