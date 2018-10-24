@@ -4,7 +4,7 @@ from distributed import Client
 from aplf.tellus.graph import Graph
 
 
-EXPERIMENT_ID = "all-loader-1"
+EXPERIMENT_ID = "all-loader-2"
 Client('dask-scheduler:8786')
 
 ex = Experiment(EXPERIMENT_ID)
@@ -28,7 +28,7 @@ def cfg():
                 'feature_size': 64,
             },
             'rgb_loss_weight': 1.5,
-            'lr': 0.0001,
+            'lr': 0.001,
         },
         "n_splits": 8,
         "folds": [0],
