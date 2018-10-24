@@ -5,12 +5,14 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack",
-    "watch": "webpack --watch"
+    "watch": "webpack --watch",
+    "omniboard": "omniboard -m mongo:27017:sacred"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bulma": "^0.7.1",
+    "omniboard": "0.0.3",
     "vue": "^2.5.16",
     "vue-router": "^3.0.1"
   },

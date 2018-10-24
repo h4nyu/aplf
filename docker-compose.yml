@@ -1,7 +1,7 @@
 version: "3"
 
 volumes:
-  db_data:
+  mongo_data:
 
 services:
 
@@ -20,21 +20,6 @@ services:
       - ./log:/log
     ports:
       - ${TENSORBOARD_PORT}:6006
-
-  db:
-    build: 
-      context: ./db
-      args:
-        - http_proxy
-        - https_proxy
-
-    volumes:
-      - ./db/postgresql.conf:/etc/postgresql.conf
-      - ./db:/srv
-      - db_data:/var/lib/postgresql/data
-    ports:
-      - ${DB_PORT}:5432
-
 
   dask-scheduler:
     build:
@@ -79,13 +64,26 @@ services:
     volumes:
       - ./front:/srv
 
+  omniboard:
+    build:
+      context: ./front
+      args:
+        - http_proxy
+        - https_proxy
+    environment:
+      - NODE_ENV=development
+    command: npm run omniboard 
+    volumes:
+      - ./front:/srv
+    ports:
+      - "${OMNIBOARD_PORT}:9000"
+
   web:
     build:
       context: ./web
       args:
         - http_proxy
         - https_proxy
-
     volumes:
       - ./front/dist:/public/aplf
       - ./store:/public/store
@@ -96,6 +94,12 @@ services:
       - front
       - dask-scheduler
       - tensorboard
+
+  mongo:
+    image: mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
 
   app:
     build:
@@ -108,8 +112,8 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
-      - ~/.kaggle:/root/.kaggle
       - ./log:/log
+      - ./experiments:/experiments
     depends_on:
       - dask-worker
       - tensorboard
