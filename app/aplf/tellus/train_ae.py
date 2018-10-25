@@ -174,7 +174,6 @@ def train_ae(model_path,
 
             sum_train_loss += loss.item()
 
-            threshold = 1.1*(train_pos_loss).item()
 
             optimizer.zero_grad()
             loss.backward()
@@ -222,12 +221,13 @@ def train_ae(model_path,
                         torch.cat(
                             [val_palser_pos_out, val_palser_neg_out], dim=0),
                         torch.cat(
-                            [val_palser_pos, val_palser_neg], dim=0),
+                            [val_palser_pos, val_palser_pos_out], dim=0),
                     ),
                     map(lambda x: F.mse_loss(*x).item()),
                     list,
                     np.array,
                 )
+                threshold = (val_pos_loss - val_neg_loss).item()/2
 
                 val_score = validate(
                     val_out > threshold,
