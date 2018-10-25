@@ -1,3 +1,5 @@
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, tail, take
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -149,3 +151,32 @@ class DownSample(nn.Module):
         conv = out
         down = self.pool(conv)
         return down, conv
+
+
+class UpSample(nn.Module):
+
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 kernel_size=3,
+                 padding=1,
+                 ):
+        super().__init__()
+        self.block = nn.Sequential(
+            ResBlock(
+                in_ch,
+                out_ch,
+            ),
+            SCSE(out_ch),
+        )
+
+    def forward(self, x, others):
+        up_size = others[-1].size()[2:]
+        out = pipe(
+            [x, *others],
+            map(lambda x: F.interpolate(x, mode='bilinear', size=up_size)),
+            list
+        )
+        out = torch.cat([*out], 1)
+        out = self.block(out)
+        return out

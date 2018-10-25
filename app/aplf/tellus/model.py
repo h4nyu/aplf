@@ -1,6 +1,6 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, tail, take
 import torch.nn as nn
-from aplf.blocks import SEBlock, ResBlock, SCSE
+from aplf.blocks import SEBlock, ResBlock, SCSE, UpSample
 import torch
 import torch.nn.functional as F
 
@@ -114,8 +114,10 @@ class Net(nn.Module):
         self.pad = nn.ZeroPad2d(pad)
 
     def forward(self, b_x, a_x):
-        b_x = F.interpolate(b_x, mode='bilinear', size=(self.resize, self.resize))
-        a_x = F.interpolate(a_x, mode='bilinear', size=(self.resize, self.resize))
+        b_x = F.interpolate(b_x, mode='bilinear',
+                            size=(self.resize, self.resize))
+        a_x = F.interpolate(a_x, mode='bilinear',
+                            size=(self.resize, self.resize))
         b_x = self.pad(b_x)
         a_x = self.pad(a_x)
 
@@ -131,3 +133,109 @@ class Net(nn.Module):
         b_rgb = F.interpolate(b_rgb, mode='bilinear', size=(4, 4))
         a_rgb = F.interpolate(a_rgb, mode='bilinear', size=(4, 4))
         return x, b_rgb, a_rgb
+
+
+class AE(nn.Module):
+    def __init__(self,
+                 in_size=(2, 40, 40),
+                 out_size=(2, 40, 40),
+                 center_out_size=(6, 4, 4),
+                 feature_size=64,
+                 resize=120,
+                 pad=4,
+                 ):
+        super().__init__()
+        self.resize = resize
+        self.in_size = in_size
+        self.out_size = out_size
+        self.center_out_size = center_out_size
+        self.down_layers = nn.ModuleList([
+            DownSample(in_size[0], feature_size),
+            DownSample(feature_size, feature_size * 2 ** 1),
+            DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
+            DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
+        ])
+
+        self.center = DownSample(
+            in_ch=feature_size * 2 ** 3,
+            out_ch=feature_size * 2 ** 3,
+        )
+
+        self.center_out = nn.Conv2d(
+            feature_size * 2 ** 3,
+            center_out_size[0],
+            kernel_size=3
+        )
+
+        self.up_layers = nn.ModuleList([
+            UpSample(
+                in_ch=feature_size * 16,
+                out_ch=feature_size,
+            ),
+            UpSample(
+                in_ch=feature_size * 13,
+                out_ch=feature_size,
+            ),
+            UpSample(
+                in_ch=feature_size * 7,
+                out_ch=feature_size
+            ),
+            UpSample(
+                in_ch=feature_size * 4,
+                out_ch=feature_size
+            ),
+        ])
+        self._output = nn.Conv2d(
+            feature_size + center_out_size[0],
+            out_size[0],
+            kernel_size=3
+        )
+        self.pad = nn.ZeroPad2d(pad)
+
+    def forward(self, x):
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(self.resize, self.resize)
+        )
+        x = self.pad(x)
+
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            d_outs.append(d_out)
+
+        _, x = self.center(x)
+        center = self.center_out(x)
+        center = F.interpolate(
+            center,
+            mode='bilinear',
+            size=(self.center_out_size[1], self.center_out_size[2])
+        )
+
+        d_outs = list(reversed(d_outs))
+
+        # up samples
+        u_outs = []
+        for i, layer in enumerate(self.up_layers):
+            x = layer(x, d_outs[:i+1][-2:])
+            print(x.size())
+
+        x = torch.cat(
+            [
+                x,
+                F.interpolate(
+                    center,
+                    size=x.size()[2:],
+                    mode='bilinear',
+                )
+            ],
+            dim=1
+        )
+        x = self._output(x)
+        x = F.interpolate(
+            x,
+            mode='bilinear',
+            size=(self.out_size[1], self.out_size[2]),
+        )
+        return x, center
