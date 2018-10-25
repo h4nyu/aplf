@@ -13,25 +13,27 @@ def test_graph():
     base_train_config = {
         'epochs': 1000,
         'batch_size': 128,
-        'model_type': 'Net',
-        'erase_num': 10,
-        'erase_p': 0.5,
+        'model_type': 'AE',
         'model_kwargs': {
             'feature_size': 64,
+            'in_size': (2, 40, 40),
+            'out_size': (2, 40, 40),
+            'resize': 80,
+            'pad': 4
         },
-        'consistency_loss_wight': 10,
-        'center_loss_weight': 0.3,
-        'rgb_loss_weight': 1,
+        'rgb_loss_weight': 0.1,
+        'pos_loss_weight': 0.1,
         'lr': 0.001,
     }
 
     g = Graph(
         **base_param,
-        id="all-loader-1",
+        id="ae-posloss-2",
         base_train_config=base_train_config,
         n_splits=8,
         folds=[0],
     )
 
     g(scheduler='single-threaded')
+
 

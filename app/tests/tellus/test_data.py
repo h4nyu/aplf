@@ -66,7 +66,7 @@ def test_train_dataset():
 
 
 def test_kfold():
-    output = load_dataset_df(
+    output = load_train_df(
         dataset_dir='/store/tellus/train',
         output='/store/tmp/train.pqt'
     )

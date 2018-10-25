@@ -1,8 +1,33 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, tail, take
 import torch.nn as nn
-from aplf.blocks import SEBlock, ResBlock, SCSE, UpSample
+from aplf.blocks import SEBlock, ResBlock, SCSE
 import torch
 import torch.nn.functional as F
+
+class UpSample(nn.Module):
+
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 scale=2,
+                 kernel_size=3,
+                 padding=1,
+                 ):
+        super().__init__()
+        self.scale = scale
+        self.block = nn.Sequential(
+            ResBlock(
+                in_ch,
+                out_ch,
+            ),
+            SCSE(out_ch),
+        )
+
+    def forward(self, x):
+        _, _, h, w = x.size()
+        out = F.interpolate(x, mode='bilinear', size=(h*self.scale, w*self.scale))
+        out = self.block(out)
+        return out
 
 
 class DownSample(nn.Module):
@@ -169,19 +194,19 @@ class AE(nn.Module):
 
         self.up_layers = nn.ModuleList([
             UpSample(
-                in_ch=feature_size * 16,
+                in_ch=feature_size * 2 ** 3,
                 out_ch=feature_size,
             ),
             UpSample(
-                in_ch=feature_size * 13,
+                in_ch=feature_size,
                 out_ch=feature_size,
             ),
             UpSample(
-                in_ch=feature_size * 7,
+                in_ch=feature_size,
                 out_ch=feature_size
             ),
             UpSample(
-                in_ch=feature_size * 4,
+                in_ch=feature_size,
                 out_ch=feature_size
             ),
         ])
@@ -200,10 +225,8 @@ class AE(nn.Module):
         )
         x = self.pad(x)
 
-        d_outs = []
         for layer in self.down_layers:
-            x, d_out = layer(x)
-            d_outs.append(d_out)
+            x, _ = layer(x)
 
         _, x = self.center(x)
         center = self.center_out(x)
@@ -213,13 +236,10 @@ class AE(nn.Module):
             size=(self.center_out_size[1], self.center_out_size[2])
         )
 
-        d_outs = list(reversed(d_outs))
-
         # up samples
         u_outs = []
         for i, layer in enumerate(self.up_layers):
-            x = layer(x, d_outs[:i+1][-2:])
-            print(x.size())
+            x = layer(x)
 
         x = torch.cat(
             [

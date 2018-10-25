@@ -62,30 +62,6 @@ def get_train_row(base_path, label_dir, label):
     return rows
 
 
-@skip_if_exists("output")
-def load_train_df(dataset_dir='/store/tellus/train',
-                  output='/store/tellus/train.pqt'):
-    rows = pipe(
-        concatv(
-            get_train_row(
-                base_path=dataset_dir,
-                label_dir="positive",
-                label=1,
-            ),
-            get_train_row(
-                base_path=dataset_dir,
-                label_dir="negative",
-                label=0,
-            ),
-        ),
-        list
-    )
-    df = pd.DataFrame(rows)
-    df = df.set_index('id')
-    df = df.sort_index()
-    df.to_parquet(output, compression='gzip')
-    return output
-
 
 def get_test_row(base_path):
     rows = pipe(
@@ -110,14 +86,39 @@ def get_test_row(base_path):
 
 
 @skip_if_exists("output")
+def load_train_df(dataset_dir='/store/tellus/train',
+                  output='/store/tellus/train.pqt'):
+    rows = pipe(
+        concatv(
+            get_train_row(
+                base_path=dataset_dir,
+                label_dir="positive",
+                label=1,
+            ),
+            get_train_row(
+                base_path=dataset_dir,
+                label_dir="negative",
+                label=0,
+            ),
+        ),
+        list
+    )
+    df = pd.DataFrame(rows)
+    df = df.sort_values(by=['id'])
+    df = df.reset_index()
+    df.to_parquet(output, compression='gzip')
+    return output
+
+
+@skip_if_exists("output")
 def load_test_df(dataset_dir='/store/tellus/test',
                  output='/store/tellus/test.pqt'):
     rows = get_test_row(
         base_path=dataset_dir,
     )
     df = pd.DataFrame(rows)
-    df = df.set_index('id')
-    df = df.sort_index()
+    df = df.sort_values(by=['id'])
+    df = df.reset_index()
     df.to_parquet(output, compression='gzip')
     return output
 
@@ -152,7 +153,7 @@ class TellusDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        id = self.df.index[idx]
+        id = row['id']
         palser_after = image_to_tensor(
             row['palser_after'],
         )
@@ -222,6 +223,8 @@ def kfold(df, n_splits, random_state=0):
     kf = KFold(n_splits, random_state=random_state, shuffle=True)
     pos_df = df[df['label'] == 1]
     neg_df = df[df['label'] == 0]
+    print(pos_df['label'].head())
+    print(pos_df['label'].head())
     dataset = TellusDataset(df, has_y=True)
 
     splieted = pipe(
