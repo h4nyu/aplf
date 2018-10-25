@@ -12,17 +12,17 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 1000,
-        'batch_size': 128,
+        'batch_size': 64,
         'model_type': 'AE',
         'model_kwargs': {
             'feature_size': 64,
             'in_size': (2, 40, 40),
             'out_size': (2, 40, 40),
-            'resize': 80,
+            'resize': 40,
             'pad': 4
         },
-        'rgb_loss_weight': 0.1,
-        'pos_loss_weight': 0.1,
+        'rgb_loss_weight': 0.01,
+        'pos_loss_weight': 1.1,
         'lr': 0.001,
     }
 

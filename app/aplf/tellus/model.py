@@ -178,27 +178,22 @@ class AE(nn.Module):
             DownSample(in_size[0], feature_size),
             DownSample(feature_size, feature_size * 2 ** 1),
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
-            DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
         ])
 
         self.center = DownSample(
-            in_ch=feature_size * 2 ** 3,
-            out_ch=feature_size * 2 ** 3,
+            in_ch=feature_size * 2 ** 2,
+            out_ch=feature_size * 2 ** 2,
         )
 
         self.center_out = nn.Conv2d(
-            feature_size * 2 ** 3,
+            feature_size * 2 ** 2,
             center_out_size[0],
             kernel_size=3
         )
 
         self.up_layers = nn.ModuleList([
             UpSample(
-                in_ch=feature_size * 2 ** 3,
-                out_ch=feature_size,
-            ),
-            UpSample(
-                in_ch=feature_size,
+                in_ch=feature_size * 2 ** 2,
                 out_ch=feature_size,
             ),
             UpSample(

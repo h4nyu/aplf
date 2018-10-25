@@ -167,10 +167,14 @@ def train_ae(model_path,
             )
             sum_train_pos_loss += train_pos_loss.item()
 
-            loss = train_neg_loss + train_neg_center_loss - pos_loss_weight * train_pos_loss
+            loss = train_neg_loss + train_neg_center_loss
+            if train_pos_loss.item() < train_neg_loss.item():
+                print('add pos loss')
+                loss += - pos_loss_weight * train_pos_loss
+
             sum_train_loss += loss.item()
 
-            threshold = ((train_pos_loss + train_neg_loss)/2).item()
+            threshold = 1.1*(train_pos_loss).item()
 
             optimizer.zero_grad()
             loss.backward()

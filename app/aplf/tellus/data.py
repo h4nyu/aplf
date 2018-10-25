@@ -223,8 +223,6 @@ def kfold(df, n_splits, random_state=0):
     kf = KFold(n_splits, random_state=random_state, shuffle=True)
     pos_df = df[df['label'] == 1]
     neg_df = df[df['label'] == 0]
-    print(pos_df['label'].head())
-    print(pos_df['label'].head())
     dataset = TellusDataset(df, has_y=True)
 
     splieted = pipe(
