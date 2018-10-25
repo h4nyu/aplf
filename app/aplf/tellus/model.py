@@ -79,48 +79,55 @@ class Fc(nn.Module):
         self.out_ch = out_ch
 
     def forward(self, x):
-        b, c, _, _=x.size()
-        y=self.avg_pool(x).view(b, c)
-        y=self.fc(y).view(b, self.out_ch, 1, 1)
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, self.out_ch, 1, 1)
         return y
 
 
-
 class Net(nn.Module):
-    def __init__(self, feature_size = 64):
+    def __init__(self,
+                 feature_size=64,
+                 resize=120,
+                 pad=4,
+                 ):
         super().__init__()
-        self.seg_enc=Encoder(
-            in_ch = 2,
-            out_ch = feature_size * 2 ** 3,
-            feature_size = feature_size,
+        self.resize = resize
+
+        self.seg_enc = Encoder(
+            in_ch=2,
+            out_ch=feature_size * 2 ** 3,
+            feature_size=feature_size,
         )
 
-        self.rgb_enc=Encoder(
-            in_ch = 1,
-            out_ch = 3,
-            feature_size = feature_size,
+        self.rgb_enc = Encoder(
+            in_ch=1,
+            out_ch=3,
+            feature_size=feature_size,
         )
 
-        self.out=Fc(
-            in_ch = feature_size * 2 ** 3 + 6,
-            out_ch = 2
+        self.out = Fc(
+            in_ch=feature_size * 2 ** 3 + 6,
+            out_ch=2
         )
 
-        self.pad=nn.ZeroPad2d(2)
+        self.pad = nn.ZeroPad2d(pad)
 
     def forward(self, b_x, a_x):
-        b_x=F.interpolate(b_x, mode = 'bilinear', size = (60, 60))
-        a_x=F.interpolate(a_x, mode = 'bilinear', size = (60, 60))
-        b_x=self.pad(b_x)
-        a_x=self.pad(a_x)
+        b_x = F.interpolate(b_x, mode='bilinear', size=(self.resize, self.resize))
+        a_x = F.interpolate(a_x, mode='bilinear', size=(self.resize, self.resize))
+        b_x = self.pad(b_x)
+        a_x = self.pad(a_x)
 
-        x=torch.cat([b_x, a_x], dim = 1)
-        x=self.seg_enc(x)
+        x = torch.cat([b_x, a_x], dim=1)
+        x = self.seg_enc(x)
 
-        b_rgb=self.rgb_enc(b_x)
-        a_rgb=self.rgb_enc(a_x)
+        b_rgb = self.rgb_enc(b_x)
+        a_rgb = self.rgb_enc(a_x)
 
-        x=torch.cat([x, b_rgb, a_rgb], dim = 1)
+        x = torch.cat([x, b_rgb, a_rgb], dim=1)
         self.out(x)
-        x=self.out(x).view(-1, 2)
+        x = self.out(x).view(-1, 2)
+        b_rgb = F.interpolate(b_rgb, mode='bilinear', size=(4, 4))
+        a_rgb = F.interpolate(a_rgb, mode='bilinear', size=(4, 4))
         return x, b_rgb, a_rgb

@@ -8,8 +8,9 @@ import pandas as pd
 import uuid
 import os
 from aplf import config
-from .data import TellusDataset, load_train_df, kfold
+from .data import TellusDataset, load_train_df, kfold, load_test_df
 from .train import base_train
+from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
 import torch
 
@@ -41,6 +42,7 @@ class Graph(object):
 
         train_df = delayed(pd.read_parquet)(train_df_path)
 
+
         kfolded = delayed(kfold)(
             train_df,
             n_splits
@@ -63,8 +65,28 @@ class Graph(object):
             list
         )
 
+        test_df_path = load_test_df(
+            dataset_dir='/store/tellus/test',
+            output='/store/tellus/test.pqt'
+        )
+        test_df = delayed(pd.read_parquet)(test_df_path)
+        test_dataset = delayed(TellusDataset)(
+            test_df,
+            has_y=False,
+        )
+
+
+        submission_df_path = delayed(predict)(
+            model_paths=model_paths,
+            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
+            dataset=test_dataset,
+            log_interval=10,
+            out_path=f'{output_dir}/{id}_submission.tsv',
+        )
+
         self.output = delayed(lambda x: x)((
             model_paths,
+            submission_df_path,
         ))
 
     def __call__(self, *args, **kwargs):

@@ -81,11 +81,45 @@ def load_train_df(dataset_dir='/store/tellus/train',
         list
     )
     df = pd.DataFrame(rows)
-    df.set_index('id')
+    df = df.set_index('id')
+    df = df.sort_index()
     df.to_parquet(output, compression='gzip')
     return output
 
 
+def get_test_row(base_path):
+    rows = pipe(
+        [
+            ("PALSAR", "before"),
+            ("PALSAR", "after"),
+        ],
+        map(lambda x: (base_path, *x, "*.tif")),
+        map(lambda x: os.path.join(*x)),
+        map(glob.glob),
+        list,
+        lambda x: zip(*x),
+        map(lambda x: list(map(Path)(x))),
+        map(lambda x: {
+            "id": str(x[0].name),
+            "palser_before": str(x[0]),
+            "palser_after": str(x[1]),
+        }),
+        list
+    )
+    return rows
+
+
+@skip_if_exists("output")
+def load_test_df(dataset_dir='/store/tellus/test',
+                 output='/store/tellus/test.pqt'):
+    rows = get_test_row(
+        base_path=dataset_dir,
+    )
+    df = pd.DataFrame(rows)
+    df = df.set_index('id')
+    df = df.sort_index()
+    df.to_parquet(output, compression='gzip')
+    return output
 
 
 def image_to_tensor(path):
@@ -97,7 +131,6 @@ def image_to_tensor(path):
         image = img_as_float(image.reshape(h, w, -1)).astype(np.float32)
     tensor = ToTensor()(image)
     return tensor
-
 
 
 class TellusDataset(Dataset):
@@ -119,7 +152,7 @@ class TellusDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        id = row['id']
+        id = self.df.index[idx]
         palser_after = image_to_tensor(
             row['palser_after'],
         )
@@ -152,8 +185,8 @@ class TellusDataset(Dataset):
         else:
             return {
                 'id': id,
-                'palser_before': transform(before),
-                'palser_after': transform(after),
+                'palser_before': palser_before,
+                'palser_after': palser_after,
             }
 
 

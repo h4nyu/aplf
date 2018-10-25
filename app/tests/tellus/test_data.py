@@ -1,5 +1,5 @@
 from pathlib import Path
-from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler
+from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler, get_test_row, load_test_df
 from torch.utils.data import DataLoader
 import pandas as pd
 import pytest
@@ -18,15 +18,42 @@ def test_get_train_row():
         label=1
     )
     for r in rows:
-        assert Path(rows[0]['palser_after']).name == Path(rows[0]['palser_before']).name
-        assert Path(rows[0]['palser_before']).name == Path(rows[0]['landsat_after']).name
-        assert Path(rows[0]['landsat_after']).name == Path(rows[0]['landsat_before']).name
+        assert Path(rows[0]['palser_after']).name == Path(
+            rows[0]['palser_before']).name
+        assert Path(rows[0]['palser_before']).name == Path(
+            rows[0]['landsat_after']).name
+        assert Path(rows[0]['landsat_after']).name == Path(
+            rows[0]['landsat_before']).name
 
     assert len(rows) == 1530
 
 
-def test_dataset():
-    output = load_dataset_df(
+def test_get_test_row():
+    rows = get_test_row(
+        base_path='/store/tellus/test',
+    )
+    for r in rows:
+        assert Path(rows[0]['palser_after']).name == Path(
+            rows[0]['palser_before']).name
+
+    assert len(rows) == 133520
+
+
+def test_test_dataset():
+    output = load_test_df(
+        dataset_dir='/store/tellus/test',
+        output='/store/tmp/test.pqt'
+    )
+    df = pd.read_parquet(output)
+    dataset = TellusDataset(
+        df=df,
+        has_y=False,
+    )
+    assert len(dataset[0]) == 3
+
+
+def test_train_dataset():
+    output = load_train_df(
         dataset_dir='/store/tellus/train',
         output='/store/tmp/train.pqt'
     )
@@ -160,6 +187,7 @@ def test_aug(idx):
         ),
     )
 
+
 @pytest.mark.parametrize("idx", range(1520, 1536))
 def test_diff(idx):
     output = load_train_df(
@@ -199,6 +227,7 @@ def test_diff(idx):
                  list)
         ),
     )
+
 
 @pytest.mark.parametrize("idx", range(1520, 1536))
 def test_sum(idx):

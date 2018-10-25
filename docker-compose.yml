@@ -99,6 +99,8 @@ services:
     restart: always
     volumes:
       - mongo_data:/data/db
+    ports:
+      - "${MONGO_PORT}:27017"
 
   app:
     build:
@@ -108,16 +110,12 @@ services:
         - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
+      - MASTER_IP
+      - MONGO_PORT
     volumes:
       - ./app:/srv
       - ./store:/store
       - ./experiments:/experiments
-    depends_on:
-      - mongo
-      - omniboard
-      - dask-worker
-      - tensorboard
-      - dask-scheduler
 
   nfs:
     image: itsthenetwork/nfs-server-alpine:latest

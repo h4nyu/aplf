@@ -10,19 +10,18 @@ import torch
 from dask import delayed
 import pandas as pd
 from aplf import config
+from aplf.utils import skip_if_exists
 from .preprocess import rl_enc
-from .dataset import TgsSaltDataset
 from .metric import iou
 
 
+@skip_if_exists('out_path')
 def predict(model_paths,
             dataset,
+            out_path,
             log_dir,
-            hdf5_path,
             log_interval=100,
             ):
-
-    dataset.df.sort_index(inplace=True)
     loader = DataLoader(dataset, batch_size=1, shuffle=False)
     device = torch.device('cpu')
     if torch.cuda.is_available():
@@ -30,40 +29,32 @@ def predict(model_paths,
 
     models = pipe(model_paths,
                   map(torch.load),
-                  map(lambda x: x.to(device)),
+                  map(lambda x: x.eval().to(device)),
                   list)
 
-    for m in models:
-        m.eval()
-    df = pd.DataFrame()
-
-    sample_ids = []
-    rle_masks = []
-    scores = []
-
-    n_itr = 0
-    images = []
-    ids = []
-
+    rows = []
 
     with torch.no_grad():
         for sample in loader:
             sample_id = sample['id'][0]
-            image = sample['image'].to(device)
-            ids.append(str(sample_id))
+            palser_before = sample['palser_before'].to(device)
+            palser_after = sample['palser_after'].to(device)
 
             normal_outputs = pipe(
                 models,
-                map(lambda x: x(image)[0]),
+                map(lambda x: x(
+                    palser_before,
+                    palser_after
+                )[0]),
                 list,
-            )
-            images.append(
-                normal_outputs[0][0, 1, :, :]
             )
 
             fliped_outputs = pipe(
                 models,
-                map(lambda x: x(image.flip([3]))[0].flip([3])),
+                map(lambda x: x(
+                    palser_before.flip([3]),
+                    palser_after.flip([3]),
+                )[0]),
                 list,
             )
             output = pipe(
@@ -71,46 +62,14 @@ def predict(model_paths,
                 map(lambda x: x.softmax(dim=1)),
                 reduce(lambda x, y: x + y / 2),
                 lambda x: F.softmax(x, dim=1),
-                lambda x: x.argmax(dim=1).float()
+                lambda x: x.argmax(dim=1)[0]
             )
+            row = {
+                'id': sample_id,
+                'label': int(output)
+            }
+            rows.append(row)
 
-
-            sample_ids.append(sample_id)
-            rle_masks.append(rl_enc(output.cpu().numpy().reshape(101, 101)))
-
-            log_images = [image[0], output]
-            if 'mask' in sample.keys():
-                mask = sample['mask'].to(device)[0]
-                log_images.append(mask)
-                score = iou(output.cpu().numpy(), mask.cpu().numpy())
-                scores.append(score)
-
-            if n_itr % log_interval == 0:
-                with SummaryWriter(log_dir) as w:
-                    w.add_image(
-                        f"predict",
-                        vutils.make_grid(log_images, scale_each=True),
-                        n_itr
-                    )
-
-            n_itr += 1
-
-        df['id'] = sample_ids
-        df['rle_mask'] = rle_masks
-        if len(scores) > 0:
-            df['score'] = scores
-            score = df['score'].mean()
-            with SummaryWriter(log_dir) as w:
-                w.add_text('score', f'score: {score}')
-        df = df.set_index('id')
-        ids = pipe(
-            ids,
-            map(lambda x: x.encode('ascii', 'ignore')),
-            list
-        )
-
-        images = torch.stack(images).cpu().numpy().astype(np.float16)
-        with h5py.File(hdf5_path, 'w') as f:
-            f.create_dataset('id', data=ids)
-            f.create_dataset('mask', data=images)
-        return df
+        df = pd.DataFrame(rows)
+        df.to_csv(out_path, sep='\t', header=False, index=False)
+        return out_path
