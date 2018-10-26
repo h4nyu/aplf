@@ -9,9 +9,9 @@ class SEBlock(nn.Module):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(in_ch, int(in_ch * r)),
+            nn.Linear(in_ch, in_ch//r),
             nn.ELU(inplace=True),
-            nn.Linear(int(in_ch * r), out_ch),
+            nn.Linear(in_ch//r, out_ch),
             nn.Sigmoid()
         )
         self.out_ch = out_ch
@@ -51,7 +51,7 @@ class SSE(nn.Module):
 
 
 class SCSE(nn.Module):
-    def __init__(self, in_ch, r=2 / 3):
+    def __init__(self, in_ch, r=2):
         super(SCSE, self).__init__()
 
         self.cSE = CSE(in_ch, r)

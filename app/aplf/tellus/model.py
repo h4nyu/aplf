@@ -47,14 +47,30 @@ class DownSample(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_ch, out_ch, feature_size=64):
+    def __init__(self,
+                 in_ch,
+                 feature_size=64,
+                 depth=2,
+                 r=2
+                 ):
         super().__init__()
-        self.down_layers = nn.ModuleList([
-            DownSample(in_ch, feature_size),
-            DownSample(feature_size, feature_size * 2 ** 1),
-            DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
-            DownSample(feature_size * 2 ** 2, out_ch),
-        ])
+        self.down_layers = nn.ModuleList(
+            [
+                DownSample(
+                    in_ch=in_ch,
+                    out_ch=feature_size,
+                ),
+                *pipe(
+                    range(depth),
+                    map(lambda d: DownSample(
+                        in_ch=int(feature_size*r**(d)),
+                        out_ch=int(feature_size*r**(d + 1)),
+                    )),
+                    list,
+                )
+            ]
+        )
+        self.out_ch = feature_size * r ** (depth)
 
     def forward(self, x):
         d_outs = []
@@ -63,32 +79,9 @@ class Encoder(nn.Module):
         return x
 
 
-class Fc(nn.Module):
-    def __init__(self, in_ch, out_ch, feature_size=64, r=2):
-        super().__init__()
-        self.before_pool = ResBlock(
-            in_ch=in_ch,
-            out_ch=in_ch//r,
-        ),
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(in_ch, in_ch//r//r),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_ch//r//r, out_ch),
-        )
-        self.out_ch = out_ch
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, self.out_ch, 1, 1)
-        return y
-
-
 class UNet(nn.Module):
     def __init__(self,
                  in_ch,
-                 out_ch,
                  feature_size=64,
                  depth=3,
                  ratio=2):
@@ -118,16 +111,18 @@ class UNet(nn.Module):
                 range(depth),
                 reversed,
                 map(lambda l: UpSample(
-                    in_ch=feature_size*ratio**(l+1) + feature_size*ratio**(l+1),
+                    in_ch=feature_size *
+                    ratio**(l+1) + feature_size*ratio**(l+1),
                     out_ch=feature_size*ratio**l,
                 )),
                 list,
             ),
             UpSample(
                 in_ch=feature_size + feature_size,
-                out_ch=out_ch,
+                out_ch=feature_size,
             ),
         ])
+        self.out_ch = feature_size
 
     def forward(self, x):
         d_outs = []
@@ -136,7 +131,6 @@ class UNet(nn.Module):
             d_outs.append(d_out)
         d_outs = list(reversed(d_outs))
         x, _ = self.center(x)
-        # up samples
         u_outs = []
         for d, layer in zip(d_outs, self.up_layers):
             x = layer(x, [d])
@@ -147,31 +141,50 @@ class MultiEncoder(nn.Module):
     def __init__(self,
                  feature_size=64,
                  resize=120,
+                 depth=2,
                  pad=4,
                  ):
         super().__init__()
         self.resize = resize
 
-        self.denoise = Encoder(
-            in_ch=2,
-            out_ch=feature_size * 2 ** 3,
+        self.denoise_enc = UNet(
+            in_ch=1,
             feature_size=feature_size,
         )
+        self.palsar_out = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.denoise_enc.out_ch,
+                out_channels=1,
+                kernel_size=3,
+            ),
+            nn.Upsample(size=(40, 40), mode="bilinear")
+        )
 
-        self.rgb_enc = Encoder(
+        self.landsat_enc = UNet(
             in_ch=1,
-            out_ch=3,
             feature_size=feature_size,
+            depth=depth,
+        )
+        self.landsat_out = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.landsat_enc.out_ch,
+                out_channels=3,
+                kernel_size=3,
+            ),
+            nn.Upsample(size=(4, 4), mode='bilinear')
         )
         self.fusion_enc = Encoder(
-            in_ch=1,
-            out_ch=3,
-            feature_size=feature_size,
+            feature_size=8,
+            in_ch=8,
+            depth=depth,
         )
-
-        self.out = Fc(
-            in_ch=feature_size * 2 ** 3 + 6,
-            out_ch=2
+        self.logit_out = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.fusion_enc.out_ch,
+                out_channels=2,
+                kernel_size=3,
+            ),
+            nn.AdaptiveAvgPool2d(1)
         )
 
         self.pad = nn.ZeroPad2d(pad)
@@ -184,17 +197,26 @@ class MultiEncoder(nn.Module):
         b_x = self.pad(b_x)
         a_x = self.pad(a_x)
 
-        p_before = self.denoise_enc(x)
-        p_after = self.denoise_enc(x)
-
-        b_rgb = self.rgb_enc(b_x)
-        a_rgb = self.rgb_enc(a_x)
-
-        x = torch.cat([x, b_rgb, a_rgb, p_before], dim=1)
-        self.out(x)
-        x = self.out(x).view(-1, 2)
-        b_rgb = F.interpolate(b_rgb, mode='bilinear', size=(4, 4))
-        a_rgb = F.interpolate(a_rgb, mode='bilinear', size=(4, 4))
+        p_before = self.denoise_enc(b_x)
+        p_after = self.denoise_enc(a_x)
+        p_before = self.palsar_out(p_before)
+        p_after = self.palsar_out(p_after)
+        #
+        l_before = self.landsat_enc(b_x)
+        l_after = self.landsat_enc(a_x)
+        l_before = self.landsat_out(l_before)
+        l_after = self.landsat_out(l_after)
+        x = pipe(
+            [l_before, l_after, p_before, p_after],
+            map(lambda x: F.interpolate(x, mode='bilinear',
+                                        size=(self.resize, self.resize))),
+            list,
+            lambda x: torch.cat(x, dim=1)
+        )
+        print(x.size())
+        x = self.fusion_enc(x)
+        print(x.size())
+        x = self.logit_out(x).view(-1, 2)
         return x, p_before, p_after, l_before, l_after
 
 

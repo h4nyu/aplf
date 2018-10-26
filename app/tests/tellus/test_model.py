@@ -1,6 +1,7 @@
-from aplf.tellus.model import MultiEncoder, DownSample, AE, UNet
+from aplf.tellus.model import MultiEncoder, DownSample, AE, UNet, Encoder
 import torch
 import pytest
+
 
 @pytest.mark.parametrize("depth, feature_size", [
     (3, 8),
@@ -19,7 +20,23 @@ def test_unet(depth, feature_size):
 
 
 @pytest.mark.parametrize("depth, feature_size", [
-    (3, 32),
+    (2, 8),
+])
+def test_enc(depth, feature_size):
+    with torch.no_grad():
+        model = Encoder(
+            in_ch=1,
+            feature_size=feature_size,
+            depth=depth,
+            r=2,
+        )
+        image = torch.empty(32, 1, 80, 80)
+        out = model(image)
+        assert out.size() == (32, model.out_ch, 80//(2**(depth + 1)), 80//(2**(depth + 1)))
+
+
+@pytest.mark.parametrize("depth, feature_size", [
+    (2, 16),
 ])
 def test_multi(depth, feature_size):
     with torch.no_grad():
@@ -28,11 +45,12 @@ def test_multi(depth, feature_size):
         )
         before = torch.empty(32, 1, 40, 40)
         after = torch.empty(32, 1, 40, 40)
-        out_image, b_rgb, a_rgb = model(before, after)
-        assert out_image.size() == (32, 2)
-        assert b_rgb.size() == (32, 3, 4, 4)
-        assert a_rgb.size() == (32, 3, 4, 4)
-
+        logit, p_before, p_after, l_after, l_before = model(before, after)
+        assert logit.size() == (32, 2)
+        assert p_before.size() == (32, 1, 40, 40)
+        assert p_after.size() == (32, 1, 40, 40)
+        assert l_before.size() == (32, 3, 4, 4)
+        assert l_after.size() == (32, 3, 4, 4)
 
 
 def test_ae():
