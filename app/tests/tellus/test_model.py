@@ -1,14 +1,29 @@
-from aplf.tellus.model import Net, DownSample, AE
+from aplf.tellus.model import MultiEncoder, DownSample, AE, UNet
 import torch
 import pytest
+
+@pytest.mark.parametrize("depth, feature_size", [
+    (3, 8),
+])
+def test_unet(depth, feature_size):
+    with torch.no_grad():
+        model = UNet(
+            in_ch=1,
+            out_ch=2,
+            feature_size=feature_size,
+            depth=depth,
+        )
+        image = torch.empty(32, 1, 40, 40)
+        out = model(image)
+        assert out.size() == (32, 2, 40, 40)
 
 
 @pytest.mark.parametrize("depth, feature_size", [
     (3, 32),
 ])
-def test_unet(depth, feature_size):
+def test_multi(depth, feature_size):
     with torch.no_grad():
-        model = Net(
+        model = MultiEncoder(
             feature_size=feature_size,
         )
         before = torch.empty(32, 1, 40, 40)
@@ -19,16 +34,6 @@ def test_unet(depth, feature_size):
         assert a_rgb.size() == (32, 3, 4, 4)
 
 
-def test_down():
-    with torch.no_grad():
-        model = DownSample(
-            in_size=10,
-            out_ch=4,
-        )
-        image = torch.empty(32, 10, 40, 40)
-        down_image, out_image = model(image)
-        assert down_image.size() == (32, 4, 20, 20)
-        assert out_image.size() == (32, 4, 40, 40)
 
 def test_ae():
     with torch.no_grad():

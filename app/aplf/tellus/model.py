@@ -85,7 +85,65 @@ class Fc(nn.Module):
         return y
 
 
-class Net(nn.Module):
+class UNet(nn.Module):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 feature_size=64,
+                 depth=3,
+                 ratio=2):
+        super().__init__()
+        self.down_layers = nn.ModuleList(
+            [
+                DownSample(
+                    in_ch=in_ch,
+                    out_ch=feature_size,
+                ),
+                *pipe(
+                    range(depth),
+                    map(lambda d: DownSample(
+                        in_ch=int(feature_size*ratio**(d)),
+                        out_ch=int(feature_size*ratio**(d + 1)),
+                    )),
+                    list,
+                )
+            ]
+        )
+        self.center = DownSample(
+            in_ch=feature_size*ratio**depth,
+            out_ch=feature_size*ratio**depth,
+        )
+        self.up_layers = nn.ModuleList([
+            *pipe(
+                range(depth),
+                reversed,
+                map(lambda l: UpSample(
+                    in_ch=feature_size*ratio**(l+1) + feature_size*ratio**(l+1),
+                    out_ch=feature_size*ratio**l,
+                )),
+                list,
+            ),
+            UpSample(
+                in_ch=feature_size + feature_size,
+                out_ch=out_ch,
+            ),
+        ])
+
+    def forward(self, x):
+        d_outs = []
+        for layer in self.down_layers:
+            x, d_out = layer(x)
+            d_outs.append(d_out)
+        d_outs = list(reversed(d_outs))
+        x, _ = self.center(x)
+        # up samples
+        u_outs = []
+        for d, layer in zip(d_outs, self.up_layers):
+            x = layer(x, [d])
+        return x
+
+
+class MultiEncoder(nn.Module):
     def __init__(self,
                  feature_size=64,
                  resize=120,
@@ -94,13 +152,18 @@ class Net(nn.Module):
         super().__init__()
         self.resize = resize
 
-        self.seg_enc = Encoder(
+        self.denoise = Encoder(
             in_ch=2,
             out_ch=feature_size * 2 ** 3,
             feature_size=feature_size,
         )
 
         self.rgb_enc = Encoder(
+            in_ch=1,
+            out_ch=3,
+            feature_size=feature_size,
+        )
+        self.fusion_enc = Encoder(
             in_ch=1,
             out_ch=3,
             feature_size=feature_size,
@@ -121,18 +184,18 @@ class Net(nn.Module):
         b_x = self.pad(b_x)
         a_x = self.pad(a_x)
 
-        x = torch.cat([b_x, a_x], dim=1)
-        x = self.seg_enc(x)
+        p_before = self.denoise_enc(x)
+        p_after = self.denoise_enc(x)
 
         b_rgb = self.rgb_enc(b_x)
         a_rgb = self.rgb_enc(a_x)
 
-        x = torch.cat([x, b_rgb, a_rgb], dim=1)
+        x = torch.cat([x, b_rgb, a_rgb, p_before], dim=1)
         self.out(x)
         x = self.out(x).view(-1, 2)
         b_rgb = F.interpolate(b_rgb, mode='bilinear', size=(4, 4))
         a_rgb = F.interpolate(a_rgb, mode='bilinear', size=(4, 4))
-        return x, b_rgb, a_rgb
+        return x, p_before, p_after, l_before, l_after
 
 
 class AE(nn.Module):
