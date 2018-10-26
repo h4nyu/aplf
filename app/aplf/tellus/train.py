@@ -109,7 +109,6 @@ def base_train(model_path,
     class_criterion = lovasz_softmax_flat
     image_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=0.0001)
-    batch_len = len(train_pos_loader)
 
     max_iou_val = 0
     max_iou_train = 0
@@ -123,6 +122,7 @@ def base_train(model_path,
         sum_val_score = 0
         sum_consistency_loss = 0
         sum_seg_loss = 0
+        batch_len = 0
         for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
             train_before = torch.cat(
                 [pos_sample['palser_before'], neg_sample['palser_before']],
@@ -207,6 +207,7 @@ def base_train(model_path,
                     val_label,
                 )
                 sum_val_score += val_score
+                batch_len += 1
 
         mean_iou_train = sum_train_score / batch_len
         mean_train_loss = sum_train_loss / batch_len

@@ -59,6 +59,7 @@ def train_ae(model_path,
              log_dir,
              rgb_loss_weight,
              pos_loss_weight,
+             ratio,
              lr,
              ):
 
@@ -105,14 +106,25 @@ def train_ae(model_path,
         ),
     )
 
+    val_loader = DataLoader(
+        sets['val_neg'] + sets['val_pos'],
+        batch_size=val_batch_size,
+        shuffle=True,
+        pin_memory=True,
+    )
+
     image_criterion = nn.MSELoss(size_average=True)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(train_pos_loader)
 
     max_val_score = 0
     max_iou_train = 0
     min_vial_loss = 0
-
+    mean_train_pos_loss = 0
+    mean_train_neg_loss = 0
+    mean_val_pos_loss = 0
+    mean_val_neg_loss = 0
+    min_train_pos_loss = 1
     for epoch in range(epochs):
         sum_val_score = 0
         sum_train_neg_loss = 0
@@ -122,7 +134,7 @@ def train_ae(model_path,
         sum_train_loss = 0
         train_neg_center_loss = 0
         sum_train_neg_center_loss = 0
-        for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
+        for pos_sample, neg_sample, val_pos_sample, val_neg_sample, val_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader, val_loader):
             train_palser_neg = torch.cat(
                 [
                     neg_sample['palser_before'], neg_sample['palser_after']
@@ -131,7 +143,7 @@ def train_ae(model_path,
             ).to(device)
             train_landsat_neg = torch.cat(
                 [
-                    neg_sample['landsat_after'], neg_sample['landsat_before']
+                    neg_sample['landsat_before'], neg_sample['landsat_after']
                 ],
                 dim=1
             ).to(device)
@@ -168,9 +180,9 @@ def train_ae(model_path,
             sum_train_pos_loss += train_pos_loss.item()
 
             loss = train_neg_loss + train_neg_center_loss
-            if train_pos_loss.item() < train_neg_loss.item():
+            if train_pos_loss < train_neg_loss * ratio:
                 print('add pos loss')
-                loss += - pos_loss_weight * train_pos_loss
+                loss += - pos_loss_weight * train_neg_loss
 
             sum_train_loss += loss.item()
 
@@ -212,28 +224,35 @@ def train_ae(model_path,
                 )
                 sum_val_pos_loss += val_pos_loss.item()
 
-                val_label = torch.cat(
-                    [val_pos_sample['label'], val_neg_sample['label']],
-                    dim=0
-                ).to(device)
+
+                val_pos_neg = torch.cat(
+                        [
+                            val_sample['palser_before'], val_sample['palser_after']
+                        ],
+                        dim=1
+                    ).to(device)
+                val_out, _ = model(
+                    val_pos_neg,
+                )
                 val_out = pipe(
-                    zip(
-                        torch.cat(
-                            [val_palser_pos_out, val_palser_neg_out], dim=0),
-                        torch.cat(
-                            [val_palser_pos, val_palser_pos_out], dim=0),
-                    ),
+                    zip(val_out, val_pos_neg),
                     map(lambda x: F.mse_loss(*x).item()),
                     list,
-                    np.array,
+                    np.array
                 )
-                threshold = (val_pos_loss - val_neg_loss).item()/2
+                val_label = val_sample['label'].to(device)
+
+                threshold = min_train_pos_loss
+
+                print(val_out)
+                val_out = (val_out > threshold).astype(int)
+                print(val_out)
+                print(val_label.cpu().detach().numpy())
 
                 val_score = validate(
-                    val_out > threshold,
+                    val_out,
                     val_label.cpu().detach().numpy(),
                 )
-                print(val_out)
                 print(f'threshold: {threshold}, score: {val_score}')
                 sum_val_score += val_score
 
@@ -273,5 +292,9 @@ def train_ae(model_path,
                     epoch
                 )
                 torch.save(model, model_path)
+
+            if min_train_pos_loss >= mean_train_pos_loss:
+                min_train_pos_loss = mean_train_pos_loss
+
 
     return model_path

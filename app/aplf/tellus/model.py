@@ -1,33 +1,8 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, tail, take
 import torch.nn as nn
-from aplf.blocks import SEBlock, ResBlock, SCSE
+from aplf.blocks import SEBlock, ResBlock, SCSE, UpSample
 import torch
 import torch.nn.functional as F
-
-class UpSample(nn.Module):
-
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 scale=2,
-                 kernel_size=3,
-                 padding=1,
-                 ):
-        super().__init__()
-        self.scale = scale
-        self.block = nn.Sequential(
-            ResBlock(
-                in_ch,
-                out_ch,
-            ),
-            SCSE(out_ch),
-        )
-
-    def forward(self, x):
-        _, _, h, w = x.size()
-        out = F.interpolate(x, mode='bilinear', size=(h*self.scale, w*self.scale))
-        out = self.block(out)
-        return out
 
 
 class DownSample(nn.Module):
@@ -178,30 +153,35 @@ class AE(nn.Module):
             DownSample(in_size[0], feature_size),
             DownSample(feature_size, feature_size * 2 ** 1),
             DownSample(feature_size * 2 ** 1, feature_size * 2 ** 2),
+            DownSample(feature_size * 2 ** 2, feature_size * 2 ** 3),
         ])
 
         self.center = DownSample(
-            in_ch=feature_size * 2 ** 2,
-            out_ch=feature_size * 2 ** 2,
+            in_ch=feature_size * 2 ** 3,
+            out_ch=feature_size * 2 ** 3,
         )
 
         self.center_out = nn.Conv2d(
-            feature_size * 2 ** 2,
+            feature_size * 2 ** 3,
             center_out_size[0],
             kernel_size=3
         )
 
         self.up_layers = nn.ModuleList([
             UpSample(
-                in_ch=feature_size * 2 ** 2,
+                in_ch=feature_size * 16,
                 out_ch=feature_size,
             ),
             UpSample(
-                in_ch=feature_size,
+                in_ch=feature_size * 13,
+                out_ch=feature_size,
+            ),
+            UpSample(
+                in_ch=feature_size * 7,
                 out_ch=feature_size
             ),
             UpSample(
-                in_ch=feature_size,
+                in_ch=feature_size * 4,
                 out_ch=feature_size
             ),
         ])
@@ -220,8 +200,10 @@ class AE(nn.Module):
         )
         x = self.pad(x)
 
+        d_outs = []
         for layer in self.down_layers:
-            x, _ = layer(x)
+            x, d_out = layer(x)
+            d_outs.append(d_out)
 
         _, x = self.center(x)
         center = self.center_out(x)
@@ -231,10 +213,12 @@ class AE(nn.Module):
             size=(self.center_out_size[1], self.center_out_size[2])
         )
 
+        d_outs = list(reversed(d_outs))
+
         # up samples
         u_outs = []
         for i, layer in enumerate(self.up_layers):
-            x = layer(x)
+            x = layer(x, d_outs[:i+1][-2:])
 
         x = torch.cat(
             [
