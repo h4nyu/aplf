@@ -150,16 +150,26 @@ def train_multi(model_path,
                 dim=0
             ).to(device)
 
-            logit_out, p_before_out, p_after_out, l_before_out, l_after_out = model(
+
+
+            logit_out, _, _, _, _ = model(
                 p_before,
                 p_after
             )
-
             logit_loss = class_criterion(
                 logit_out,
                 label
             )
 
+            loss = logit_loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            _, _, _, l_before_out, l_after_out = model(
+                p_before,
+                p_after
+            )
             l_before_loss = image_criterion(
                 l_before_out,
                 l_before,
@@ -169,6 +179,13 @@ def train_multi(model_path,
                 l_after_out,
                 l_after,
             )
+
+            loss = (l_before_loss + l_after_loss)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            sum_train_loss += loss.item()
             #
             #  p_mean = (p_before[(batch_size//4 * 3):] +
             #            p_after[(batch_size//4 * 3):])/2
@@ -181,14 +198,6 @@ def train_multi(model_path,
             #      p_after_out[(batch_size//4 * 3):],
             #      p_mean,
             #  )
-
-            loss = logit_loss + rgb_loss_weight * \
-                (l_before_loss + l_after_loss)
-
-            sum_train_loss += loss.item()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
             train_score = validate(
                 logit_out.argmax(dim=1).cpu().detach().tolist(),
                 label.cpu().detach().tolist()

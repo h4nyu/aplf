@@ -20,8 +20,8 @@ def test_graph():
             'pad': 4,
             'depth': 3
         },
-        'rgb_loss_weight': 0.001,
-        'lr': 0.0001,
+        'rgb_loss_weight': 0.5,
+        'lr': 0.001,
     }
 
     g = Graph(

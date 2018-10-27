@@ -68,7 +68,7 @@ class Graph(object):
 
         test_df_path = load_test_df(
             dataset_dir='/store/tellus/test',
-            output='/store/tellus/test.pqt'
+            output=join(output_dir, 'test.pqt')
         )
         test_df = delayed(pd.read_parquet)(test_df_path)
         test_dataset = delayed(TellusDataset)(
