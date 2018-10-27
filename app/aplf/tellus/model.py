@@ -146,14 +146,9 @@ class MultiEncoder(nn.Module):
                  ):
         super().__init__()
         self.resize = resize
-
-        self.denoise_enc = UNet(
-            in_ch=1,
-            feature_size=feature_size,
-        )
         self.palsar_out = nn.Sequential(
             nn.Conv2d(
-                in_channels=self.denoise_enc.out_ch,
+                in_channels=1,
                 out_channels=1,
                 kernel_size=3,
             ),
@@ -197,10 +192,8 @@ class MultiEncoder(nn.Module):
         b_x = self.pad(b_x)
         a_x = self.pad(a_x)
 
-        p_before = self.denoise_enc(b_x)
-        p_after = self.denoise_enc(a_x)
-        p_before = self.palsar_out(p_before)
-        p_after = self.palsar_out(p_after)
+        p_before = self.palsar_out(b_x)
+        p_after = self.palsar_out(a_x)
         #
         l_before = self.landsat_enc(b_x)
         l_after = self.landsat_enc(a_x)
@@ -213,9 +206,7 @@ class MultiEncoder(nn.Module):
             list,
             lambda x: torch.cat(x, dim=1)
         )
-        print(x.size())
         x = self.fusion_enc(x)
-        print(x.size())
         x = self.logit_out(x).view(-1, 2)
         return x, p_before, p_after, l_before, l_after
 

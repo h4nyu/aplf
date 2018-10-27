@@ -9,8 +9,7 @@ import uuid
 import os
 from aplf import config
 from .data import TellusDataset, load_train_df, kfold, load_test_df
-from .train import base_train
-from .train_ae import train_ae
+from . import train as tra
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
 import torch
@@ -26,6 +25,7 @@ class Graph(object):
                  n_splits,
                  base_train_config,
                  folds,
+                 train_method,
                  ):
         params = locals()
         torch.manual_seed(0)
@@ -57,7 +57,7 @@ class Graph(object):
 
         model_paths = pipe(
             zip(ids, train_sets),
-            map(lambda x: delayed(train_ae)(
+            map(lambda x: delayed(getattr(tra, train_method))(
                 **base_train_config,
                 model_path=join(output_dir, f"{id}-fold-{x[0]}-base-model.pt"),
                 sets=x[1],

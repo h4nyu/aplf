@@ -11,19 +11,16 @@ from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
-from . import model as mdl
+from .. import model as mdl
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
-from .metric import iou
+from ..metric import iou
 from os import path
-from .utils import AverageMeter
-from .losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
-from .ramps import linear_rampup
-from .preprocess import hflip, add_noise
+from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
-from .data import ChunkSampler
+from ..data import ChunkSampler
 
 
 def get_current_consistency_weight(epoch, weight, rampup):
@@ -42,26 +39,24 @@ def get_learning_rate(optimizer):
         return param_group['lr']
 
 
-def validate(x, y):
+def validate(prob, label):
     return iou(
-        x.argmax(dim=1).cpu().detach().numpy(),
-        y.cpu().detach().numpy()
+        prob,
+        label
     )
 
 
 @skip_if_exists('model_path')
-def base_train(model_path,
-               sets,
-               model_type,
-               model_kwargs,
-               epochs,
-               batch_size,
-               log_dir,
-               erase_num,
-               erase_p,
-               rgb_loss_weight,
-               lr,
-               ):
+def train_multi(model_path,
+                sets,
+                model_type,
+                model_kwargs,
+                epochs,
+                batch_size,
+                log_dir,
+                rgb_loss_weight,
+                lr,
+                ):
 
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -70,7 +65,7 @@ def base_train(model_path,
 
     train_pos_loader = DataLoader(
         sets['train_pos'],
-        batch_size=batch_size//2,
+        batch_size=batch_size// 2,
         shuffle=True,
         pin_memory=True,
     )
@@ -90,14 +85,14 @@ def base_train(model_path,
 
     val_pos_loader = DataLoader(
         sets['val_pos'],
-        batch_size=val_batch_size,
+        batch_size=batch_size // 50,
         shuffle=True,
         pin_memory=True,
     )
 
     val_neg_loader = DataLoader(
         sets['val_neg'],
-        batch_size=val_batch_size,
+        batch_size=batch_size,
         pin_memory=True,
         sampler=ChunkSampler(
             epoch_size=len(sets['val_pos']),
@@ -105,124 +100,148 @@ def base_train(model_path,
             shuffle=True
         ),
     )
+    print(len(sets['val_pos']))
 
     class_criterion = lovasz_softmax_flat
     image_criterion = nn.MSELoss(size_average=True)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
+    batch_len = len(train_pos_loader)
 
-    max_iou_val = 0
+    max_val_score = 0
     max_iou_train = 0
     min_vial_loss = 0
-
+    mean_train_pos_loss = 0
+    mean_train_neg_loss = 0
+    mean_val_pos_loss = 0
+    mean_val_neg_loss = 0
+    min_train_pos_loss = 1
     for epoch in range(epochs):
-        sum_class_loss = 0
         sum_train_loss = 0
-        sum_train_score = 0
         sum_val_loss = 0
+        sum_train_score = 0
         sum_val_score = 0
-        sum_consistency_loss = 0
-        sum_seg_loss = 0
         batch_len = 0
+        val_probs = []
+        val_labels = []
+        train_probs = []
+        train_labels = []
         for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
-            train_before = torch.cat(
+            start = random.randint(0, batch_size//2 - 1)
+            end = random.randint(batch_size//2, batch_size - 1)
+
+            p_before = torch.cat(
                 [pos_sample['palser_before'], neg_sample['palser_before']],
                 dim=0
             ).to(device)
-            train_after = torch.cat(
+            p_after = torch.cat(
                 [pos_sample['palser_after'], neg_sample['palser_after']],
                 dim=0
             ).to(device)
-            train_label = torch.cat(
+            label = torch.cat(
                 [pos_sample['label'], neg_sample['label']],
                 dim=0
             ).to(device)
-            train_b_rgb = torch.cat(
+            l_before = torch.cat(
                 [pos_sample['landsat_before'], neg_sample['landsat_before']],
                 dim=0
             ).to(device)
-            train_a_rgb = torch.cat(
+            l_after = torch.cat(
                 [pos_sample['landsat_after'], neg_sample['landsat_after']],
                 dim=0
             ).to(device)
 
-            train_out, train_b_rgb_out, train_a_rgb_out = model(
-                train_before,
-                train_after,
-            )
-            class_loss = class_criterion(
-                train_out,
-                train_label
+            logit_out, p_before_out, p_after_out, l_before_out, l_after_out = model(
+                p_before,
+                p_after
             )
 
-            t_a_rgb_loss = image_criterion(
-                train_a_rgb_out,
-                train_a_rgb
+            logit_loss = class_criterion(
+                logit_out,
+                label
             )
 
-            t_b_rgb_loss = image_criterion(
-                train_b_rgb_out,
-                train_b_rgb
+            l_before_loss = image_criterion(
+                l_before_out,
+                l_before,
             )
-            t_rgb_loss = t_a_rgb_loss + t_b_rgb_loss
-            loss = class_loss + t_rgb_loss
+
+            l_after_loss = image_criterion(
+                l_after_out,
+                l_after,
+            )
+            #
+            #  p_mean = (p_before[(batch_size//4 * 3):] +
+            #            p_after[(batch_size//4 * 3):])/2
+            #  p_before_loss = image_criterion(
+            #      p_before_out[(batch_size//4 * 3):],
+            #      p_mean,
+            #  )
+            #
+            #  p_after_loss = image_criterion(
+            #      p_after_out[(batch_size//4 * 3):],
+            #      p_mean,
+            #  )
+
+            loss = logit_loss + rgb_loss_weight * \
+                (l_before_loss + l_after_loss)
+
             sum_train_loss += loss.item()
-
-            train_score = validate(
-                train_out,
-                train_label,
-            )
-            sum_train_score += train_score
-
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            train_score = validate(
+                logit_out.argmax(dim=1).cpu().detach().tolist(),
+                label.cpu().detach().tolist()
+
+            )
+            sum_train_score += train_score
 
             with torch.no_grad():
-                val_before = torch.cat(
+                p_before = torch.cat(
                     [val_pos_sample['palser_before'], val_neg_sample['palser_before']],
                     dim=0
                 ).to(device)
-                val_after = torch.cat(
+
+                p_after = torch.cat(
                     [val_pos_sample['palser_after'], val_neg_sample['palser_after']],
                     dim=0
                 ).to(device)
-                val_label = torch.cat(
+                label = torch.cat(
                     [val_pos_sample['label'], val_neg_sample['label']],
                     dim=0
                 ).to(device)
 
-                val_out, val_b_rgb_out, val_a_rgb_out = model(
-                    val_before,
-                    val_after
-                )
-                val_loss = class_criterion(
-                    val_out,
-                    val_label
+
+                logit_out, _, _, _, _, = model(
+                    p_before,
+                    p_after,
                 )
 
+                val_loss = class_criterion(
+                    logit_out,
+                    label
+                )
                 sum_val_loss += val_loss.item()
 
+                val_prob = logit_out.argmax(dim=1).cpu().detach().tolist()
+                val_label = label.cpu().detach().tolist()
                 val_score = validate(
-                    val_out,
+                    val_prob,
                     val_label,
                 )
                 sum_val_score += val_score
+                print(val_prob)
+                print(val_label)
+                print(val_score)
                 batch_len += 1
 
-        mean_iou_train = sum_train_score / batch_len
+        mean_train_score = sum_train_score / batch_len
         mean_train_loss = sum_train_loss / batch_len
         mean_val_loss = sum_val_loss / batch_len
         mean_iou_val = sum_val_score / batch_len
+        mean_val_score = sum_val_score / batch_len
 
         with SummaryWriter(log_dir) as w:
-            w.add_scalars(
-                'iou',
-                {
-                    'val': mean_iou_val,
-                    'train': mean_iou_train,
-                },
-                epoch
-            )
             w.add_scalars(
                 'loss',
                 {
@@ -231,14 +250,26 @@ def base_train(model_path,
                 },
                 epoch
             )
-            w.add_scalar('iou/diff', mean_iou_train - mean_iou_val, epoch)
-            w.add_scalar('lr', get_learning_rate(optimizer), epoch)
 
-            if max_iou_val <= mean_iou_val:
-                max_iou_val = mean_iou_val
-                w.add_text('iou', f'val: {mean_iou_val}, train: {mean_iou_train}, val_loss:{mean_val_loss}, train_loss:{mean_train_loss}', epoch)
+            w.add_scalars(
+                'score',
+                {
+                    'val': mean_val_score,
+                    'train': mean_train_score,
+                },
+                epoch
+            )
+
+            if max_val_score <= mean_val_score:
+                max_val_score = mean_val_score
+                w.add_text(
+                    'iou',
+                    f'val: {mean_val_score}, epoch: {epoch}',
+                    epoch
+                )
                 torch.save(model, model_path)
 
-            if max_iou_train <= mean_iou_train:
-                max_iou_train = mean_iou_train
+            if min_train_pos_loss >= mean_train_pos_loss:
+                min_train_pos_loss = mean_train_pos_loss
+
     return model_path
