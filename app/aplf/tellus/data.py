@@ -192,7 +192,7 @@ class TellusDataset(Dataset):
 
 
 class ChunkSampler(Sampler):
-    def __init__(self,  epoch_size, len_indices, shuffle=True):
+    def __init__(self,  epoch_size, len_indices, shuffle=True, start_at=0):
         self.shuffle = shuffle
         self.epoch_size = epoch_size
         self.len_indices = len_indices
@@ -203,7 +203,7 @@ class ChunkSampler(Sampler):
             map(list),
             list,
         )
-        self.chunk_idx = 0
+        self.chunk_idx = start_at
 
     def __iter__(self):
         chunk = self.chunks[self.chunk_idx]

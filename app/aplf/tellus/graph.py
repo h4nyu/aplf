@@ -59,7 +59,7 @@ class Graph(object):
             zip(ids, train_sets),
             map(lambda x: delayed(getattr(tra, train_method))(
                 **base_train_config,
-                model_path=join(output_dir, f"{id}-fold-{x[0]}-base-model.pt"),
+                model_dir=join(output_dir, f"{id}-fold-{x[0]}"),
                 sets=x[1],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),

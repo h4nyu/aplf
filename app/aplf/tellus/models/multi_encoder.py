@@ -59,7 +59,8 @@ class MultiEncoder(nn.Module):
                 out_channels=6,
                 kernel_size=3,
             ),
-            nn.Upsample(size=(4, 4), mode='bilinear')
+            nn.Upsample(size=(4, 4), mode='bilinear'),
+            nn.Sigmoid(),
         )
 
         self.fusion_enc = Encoder(
