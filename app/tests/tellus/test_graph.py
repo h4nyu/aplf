@@ -12,13 +12,13 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 1000,
-        'batch_size': 256,
+        'batch_size': 128,
         'model_type': 'MultiEncoder',
         'model_kwargs': {
             'feature_size': 32,
-            'resize': 40,
+            'resize': 80,
             'pad': 4,
-            'depth': 3
+            'depth': 2
         },
         'rgb_loss_weight': 0.5,
         'lr': 0.001,

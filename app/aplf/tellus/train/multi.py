@@ -1,5 +1,6 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
 from sklearn.metrics import confusion_matrix
+from dask import delayed
 import random
 import torchvision.utils as vutils
 from pathlib import Path
@@ -26,39 +27,84 @@ from ..data import ChunkSampler
 
 def validate(model,
              loader,
-             class_criterion,
+             criterion,
              device):
     y_preds = []
     y_trues = []
     sum_loss = 0
-    batch_len = len(loader)
+    batch_len = 0
     for sample in loader:
         with torch.no_grad():
-            palser_x = sample['palsar'].to(device)
+            palsar_x = sample['palsar'].to(device)
+            landsat_y = sample['landsat'].to(device)
             labels = sample['label'].to(device)
-            logit_out, _, _, _, _, = model(
-                palser_x,
+            label_preds, landsat_pred = model(palsar_x)
+            loss = criterion(
+                (label_preds, landsat_pred),
+                (labels, landsat_y),
             )
-
-            loss = class_criterion(
-                logit_out,
-                labels
-            )
-            sum_loss += val_loss.item()
-            y_preds += logit_out.argmax(dim=1).cpu().detach().tolist()
-            y_trues = labels.cpu().detach().tolist()
+            sum_loss += loss.item()
+            y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
+            y_trues += labels.cpu().detach().tolist()
+            batch_len += 1
 
     score = iou(
-        val_prob,
-        val_label,
+        y_preds,
+        y_trues,
     )
     mean_loss = sum_loss / batch_len
 
-    return {
-        'loss': mean_loss,
-        'score': score,
-        'confusion': confusion_matrix(y_trues, y_preds)
-    }
+    return mean_loss, confusion_matrix(y_trues, y_preds)
+
+
+def train_epoch(model,
+                criterion,
+                pos_loader,
+                neg_loader,
+                device,
+                lr,
+                ):
+
+    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
+    batch_len = len(pos_loader)
+    sum_train_loss = 0
+    for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        palsar_x = torch.cat(
+            [pos_sample['palsar'], neg_sample['palsar']],
+            dim=0
+        ).to(device)
+        landsat_x = torch.cat(
+            [pos_sample['landsat'], neg_sample['landsat']],
+            dim=0
+        ).to(device)
+        labels = torch.cat(
+            [pos_sample['label'], neg_sample['label']],
+            dim=0
+        ).to(device)
+
+        logit_loss = criterion(
+            model(palsar_x),
+            (labels, landsat_x)
+        )
+
+        loss = logit_loss
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        sum_train_loss += loss.item()
+    mean_loss = sum_train_loss / batch_len
+
+    return model, mean_loss
+
+
+def criterion(x, y):
+    image_cri = nn.MSELoss(size_average=True)
+    class_cri = nn.CrossEntropyLoss(size_average=True)
+    logit, landsat_x = x
+    labels, landsat_y = y
+    loss = class_cri(logit, labels) + image_cri(landsat_x, landsat_y)
+    return loss
 
 
 @skip_if_exists('model_path')
@@ -104,12 +150,8 @@ def train_multi(model_path,
         pin_memory=True,
         shuffle=True,
     )
-    print(len(sets['val_pos']))
-
-    class_criterion = lovasz_softmax_flat
-    image_criterion = nn.MSELoss(size_average=True)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(train_pos_loader)
+    print(batch_len)
 
     max_val_score = 0
     max_iou_train = 0
@@ -124,64 +166,33 @@ def train_multi(model_path,
         sum_val_loss = 0
         sum_train_score = 0
         sum_val_score = 0
-        batch_len = 0
         val_probs = []
         val_labels = []
         train_probs = []
         train_labels = []
-        for pos_sample, neg_sample in zip(train_pos_loader, train_neg_loader):
 
-            palsar_x = torch.cat(
-                [pos_sample['palsar'], neg_sample['palsar']],
-                dim=0
-            ).to(device)
-            landsat_x = torch.cat(
-                [pos_sample['landsat'], neg_sample['landsat']],
-                dim=0
-            ).to(device)
-            labels = torch.cat(
-                [pos_sample['label'], neg_sample['label']],
-                dim=0
-            ).to(device)
-
-            logit_out, _, _, _, _ = model(
-                palsar,
-            )
-            logit_loss = class_criterion(
-                logit_out,
-                label
-            )
-
-            loss = logit_loss
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            sum_train_loss += loss.item()
-            train_score = validate(
-                logit_out.argmax(dim=1).cpu().detach().tolist(),
-                label.cpu().detach().tolist()
-            )
-            sum_train_score += train_score
-
-        mean_val_loss, mean_val_score, matrix = validate(
-            model,
-            val_loader,
-            class_criterion,
-            device
+        model, train_loss = train_epoch(
+            model=model,
+            pos_loader=train_pos_loader,
+            neg_loader=train_neg_loader,
+            criterion=criterion,
+            device=device,
+            lr=lr
         )
-        mean_train_score = sum_train_score / batch_len
-        mean_train_loss = sum_train_loss / batch_len
-        mean_val_loss = sum_val_loss / batch_len
-        mean_iou_val = sum_val_score / batch_len
-        mean_val_score = sum_val_score / batch_len
+
+        val_loss, (tn, fp, fn, tp) = validate(
+            model=model,
+            loader=val_loader,
+            criterion=criterion,
+            device=device
+        )
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
                 'loss',
                 {
-                    'train': mean_train_loss,
-                    'val': mean_val_loss,
+                    'train': train_loss,
+                    'val': val_loss,
                 },
                 epoch
             )
@@ -189,22 +200,24 @@ def train_multi(model_path,
             w.add_scalars(
                 'score',
                 {
-                    'val': mean_val_score,
-                    'train': mean_train_score,
+                    'TPR': tp/(tp+fn),
+                    'FNR': fn/(tp+fn),
+                    'FPR': fp/(fp+tn),
+                    'acc': (tp+tn) / (tp+tn+fp+fn),
+                    'pre': tp / (tp + fp),
+                    'iou': tp / (fn+tp+fp),
                 },
                 epoch
             )
 
-            if max_val_score <= mean_val_score:
-                max_val_score = mean_val_score
+            if max_val_score <= val_score:
+                max_val_score = val_score
                 w.add_text(
                     'iou',
-                    f'val: {mean_val_score}, epoch: {epoch}',
+                    f'val: {val_score}, epoch: {epoch}',
                     epoch
                 )
-                torch.save(model, model_path)
 
-            if min_train_pos_loss >= mean_train_pos_loss:
-                min_train_pos_loss = mean_train_pos_loss
+                torch.save(model, model_path)
 
     return model_path

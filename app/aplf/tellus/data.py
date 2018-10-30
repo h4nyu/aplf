@@ -52,8 +52,8 @@ def get_train_row(base_path, label_dir, label):
         map(lambda x: {
             "id": x[0].name,
             "label": label,
-            "palser_before": str(x[0]),
-            "palser_after": str(x[1]),
+            "palsar_before": str(x[0]),
+            "palsar_after": str(x[1]),
             "landsat_before": str(x[2]),
             "landsat_after": str(x[3]),
         }),
@@ -76,8 +76,8 @@ def get_test_row(base_path):
         map(lambda x: list(map(Path)(x))),
         map(lambda x: {
             "id": str(x[0].name),
-            "palser_before": str(x[0]),
-            "palser_after": str(x[1]),
+            "palsar_before": str(x[0]),
+            "palsar_after": str(x[1]),
         }),
         list
     )
@@ -153,15 +153,15 @@ class TellusDataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         id = row['id']
-        palser_after = image_to_tensor(
-            row['palser_after'],
+        palsar_after = image_to_tensor(
+            row['palsar_after'],
         )
-        palser_before = image_to_tensor(
-            row['palser_before'],
+        palsar_before = image_to_tensor(
+            row['palsar_before'],
         )
 
         palsar = torch.cat(
-            [palser_before, palser_after],
+            [palsar_before, palsar_after],
             dim=0,
         )
 
@@ -173,28 +173,21 @@ class TellusDataset(Dataset):
             landsat_before = image_to_tensor(
                 row['landsat_before']
             )
-
             landsat = torch.cat(
                 [landsat_before, landsat_after],
                 dim=0,
             )
 
-            transform = Compose([
-                ToPILImage(),
-                random.choice(self.transforms),
-                ToTensor()
-            ])
             return {
                 'id': id,
-                'palsar': transform(palser),
-                'landsat': transform(landsat),
+                'palsar': palsar,
+                'landsat': landsat,
                 'label': row['label'],
             }
         else:
             return {
                 'id': id,
-                'palser_before': palser_before,
-                'palser_after': palser_after,
+                'palsar': palsar,
             }
 
 
