@@ -1,4 +1,4 @@
-from aplf.tellus.models import FusionNet
+from aplf.tellus.models import FusionNet, MultiEncoder
 import torch
 import pytest
 
@@ -43,14 +43,10 @@ def test_multi(depth, feature_size):
         model = MultiEncoder(
             feature_size=feature_size,
         )
-        before = torch.empty(32, 1, 40, 40)
-        after = torch.empty(32, 1, 40, 40)
-        logit, p_before, p_after, l_after, l_before = model(before, after)
+        parlsar_x = torch.empty(32, 2, 40, 40)
+        landsat_x = torch.empty(32, 6, 4, 4)
+        logit, landsat_y = model(parlsar_x)
         assert logit.size() == (32, 2)
-        assert p_before.size() == (32, 1, 40, 40)
-        assert p_after.size() == (32, 1, 40, 40)
-        assert l_before.size() == (32, 3, 4, 4)
-        assert l_after.size() == (32, 3, 4, 4)
 
 
 def test_ae():

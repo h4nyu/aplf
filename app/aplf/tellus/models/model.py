@@ -5,9 +5,6 @@ import torch
 import torch.nn.functional as F
 
 
-
-
-
 class UNet(nn.Module):
     def __init__(self,
                  in_ch,
@@ -64,7 +61,6 @@ class UNet(nn.Module):
         for d, layer in zip(d_outs, self.up_layers):
             x = layer(x, [d])
         return x
-
 
 
 class AE(nn.Module):
