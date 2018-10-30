@@ -153,8 +153,13 @@ def train_multi(model_dir,
         list
     )
 
+    pos_set = pipe(
+        range(150//num_ensamble),
+        map(lambda _: sets['train_pos']),
+        reduce(lambda x, y: x+y)
+    )
     train_pos_loader = DataLoader(
-        sets['train_pos'],
+        pos_set,
         batch_size=batch_size // 2,
         shuffle=True,
         pin_memory=True,
@@ -166,8 +171,8 @@ def train_multi(model_dir,
             batch_size=batch_size//2,
             pin_memory=True,
             sampler=ChunkSampler(
-                epoch_size=len(sets['train_pos']),
-                len_indices=len(sets['train_neg']),
+                epoch_size=len(pos_set),
+                len_indices=len(pos_set),
                 shuffle=True,
                 start_at=x,
             ),

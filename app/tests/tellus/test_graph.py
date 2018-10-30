@@ -27,7 +27,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id="ensamble-0",
+        id="ensamble-1",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,

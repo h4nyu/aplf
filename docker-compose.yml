@@ -50,6 +50,7 @@ services:
     volumes:
       - ./app:/srv
       - ./store:/store
+    restart: always
 
   front:
     build:
