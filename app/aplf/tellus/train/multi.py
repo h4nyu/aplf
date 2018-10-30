@@ -1,4 +1,5 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
+from sklearn.metrics import confusion_matrix
 import random
 import torchvision.utils as vutils
 from pathlib import Path
@@ -23,27 +24,77 @@ from aplf.optimizers import Eve
 from ..data import ChunkSampler
 
 
-def get_current_consistency_weight(epoch, weight, rampup):
-    return weight * linear_rampup(epoch, rampup)
-
-
-def update_ema_variables(model, ema_model, alpha):
+def extract_sample(pos_sample, neg_sample):
     with torch.no_grad():
-        for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-            ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
-        return ema_model
+        palser_pos_x = torch.cat(
+            [pos_sample['palser_before'], pos_sample['palser_after']],
+            dim=1,
+        )
+
+        palser_neg_x = torch.cat(
+            [neg_sample['palser_before'], neg_sample['palser_after']],
+            dim=1,
+        )
+        palser_x = torch.cat(
+            [palser_pos_x, palser_neg_x],
+            dim=0,
+        )
+        labels = torch.cat(
+            [pos_sample['label'], neg_sample['label']],
+            dim=0
+        )
+
+        landsat_pos_x = torch.cat(
+            [pos_sample['landsat_before'], pos_sample['landsat_after']],
+            dim=1
+        )
+
+        landsat_neg_x = torch.cat(
+            [neg_sample['landsat_before'], neg_sample['landsat_after']],
+            dim=1
+        )
+        landsat_x = torch.cat(
+            [landsat_pos_x, landsat_neg_x],
+            dim=0,
+        )
+        return palser_x, landsat_x, labels
 
 
-def get_learning_rate(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group['lr']
+def validate(model,
+             loader,
+             class_criterion,
+             device):
+    y_preds = []
+    y_trues = []
+    sum_loss = 0
+    batch_len = len(loader)
+    for sample in loader:
+        with torch.no_grad():
+            palser_x = sample['palsar'].to(device)
+            labels = sample['label'].to(device)
+            logit_out, _, _, _, _, = model(
+                palser_x,
+            )
 
+            loss = class_criterion(
+                logit_out,
+                labels
+            )
+            sum_loss += val_loss.item()
+            y_preds += logit_out.argmax(dim=1).cpu().detach().tolist()
+            y_trues = labels.cpu().detach().tolist()
 
-def validate(prob, label):
-    return iou(
-        prob,
-        label
+    score = iou(
+        val_prob,
+        val_label,
     )
+    mean_loss = sum_loss / batch_len
+
+    return {
+        'loss': mean_loss,
+        'score': score,
+        'confusion': confusion_matrix(y_trues, y_preds)
+    }
 
 
 @skip_if_exists('model_path')
@@ -65,7 +116,7 @@ def train_multi(model_path,
 
     train_pos_loader = DataLoader(
         sets['train_pos'],
-        batch_size=batch_size// 2,
+        batch_size=batch_size // 2,
         shuffle=True,
         pin_memory=True,
     )
@@ -125,7 +176,7 @@ def train_multi(model_path,
         val_labels = []
         train_probs = []
         train_labels = []
-        for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
+        for pos_sample, neg_sample in zip(train_pos_loader, train_neg_loader):
             start = random.randint(0, batch_size//2 - 1)
             end = random.randint(batch_size//2, batch_size - 1)
 
@@ -149,8 +200,6 @@ def train_multi(model_path,
                 [pos_sample['landsat_after'], neg_sample['landsat_after']],
                 dim=0
             ).to(device)
-
-
 
             logit_out, _, _, _, _ = model(
                 p_before,
@@ -186,63 +235,12 @@ def train_multi(model_path,
             optimizer.step()
 
             sum_train_loss += loss.item()
-            #
-            #  p_mean = (p_before[(batch_size//4 * 3):] +
-            #            p_after[(batch_size//4 * 3):])/2
-            #  p_before_loss = image_criterion(
-            #      p_before_out[(batch_size//4 * 3):],
-            #      p_mean,
-            #  )
-            #
-            #  p_after_loss = image_criterion(
-            #      p_after_out[(batch_size//4 * 3):],
-            #      p_mean,
-            #  )
             train_score = validate(
                 logit_out.argmax(dim=1).cpu().detach().tolist(),
                 label.cpu().detach().tolist()
 
             )
             sum_train_score += train_score
-
-            with torch.no_grad():
-                p_before = torch.cat(
-                    [val_pos_sample['palser_before'], val_neg_sample['palser_before']],
-                    dim=0
-                ).to(device)
-
-                p_after = torch.cat(
-                    [val_pos_sample['palser_after'], val_neg_sample['palser_after']],
-                    dim=0
-                ).to(device)
-                label = torch.cat(
-                    [val_pos_sample['label'], val_neg_sample['label']],
-                    dim=0
-                ).to(device)
-
-
-                logit_out, _, _, _, _, = model(
-                    p_before,
-                    p_after,
-                )
-
-                val_loss = class_criterion(
-                    logit_out,
-                    label
-                )
-                sum_val_loss += val_loss.item()
-
-                val_prob = logit_out.argmax(dim=1).cpu().detach().tolist()
-                val_label = label.cpu().detach().tolist()
-                val_score = validate(
-                    val_prob,
-                    val_label,
-                )
-                sum_val_score += val_score
-                print(val_prob)
-                print(val_label)
-                print(val_score)
-                batch_len += 1
 
         mean_train_score = sum_train_score / batch_len
         mean_train_loss = sum_train_loss / batch_len

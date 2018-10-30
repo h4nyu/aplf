@@ -33,3 +33,7 @@ def skip_if_exists(key):
         wrapper.__name__ = func.__name__
         return wrapper
     return _skip
+
+def get_learning_rate(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']

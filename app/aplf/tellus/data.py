@@ -62,7 +62,6 @@ def get_train_row(base_path, label_dir, label):
     return rows
 
 
-
 def get_test_row(base_path):
     rows = pipe(
         [
@@ -161,6 +160,11 @@ class TellusDataset(Dataset):
             row['palser_before'],
         )
 
+        palsar = torch.cat(
+            [palser_before, palser_after],
+            dim=0,
+        )
+
         if self.has_y:
 
             landsat_after = image_to_tensor(
@@ -170,6 +174,11 @@ class TellusDataset(Dataset):
                 row['landsat_before']
             )
 
+            landsat = torch.cat(
+                [landsat_before, landsat_after],
+                dim=0,
+            )
+
             transform = Compose([
                 ToPILImage(),
                 random.choice(self.transforms),
@@ -177,10 +186,8 @@ class TellusDataset(Dataset):
             ])
             return {
                 'id': id,
-                'palser_before': transform(palser_before),
-                'palser_after': transform(palser_after),
-                'landsat_before': transform(landsat_after),
-                'landsat_after': transform(landsat_before),
+                'palsar': transform(palser),
+                'landsat': transform(landsat),
                 'label': row['label'],
             }
         else:
