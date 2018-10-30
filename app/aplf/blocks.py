@@ -139,7 +139,7 @@ class DownSample(nn.Module):
             ),
             SCSE(out_ch),
             ResBlock(
-                in_ch=in_ch,
+                in_ch=out_ch,
                 out_ch=out_ch,
             ),
             SCSE(out_ch),
@@ -170,11 +170,10 @@ class UpSample(nn.Module):
             SCSE(out_ch),
         )
 
-    def forward(self, x, others):
-        up_size = others[-1].size()[2:]
+    def forward(self, x, others, size):
         out = pipe(
             [x, *others],
-            map(lambda x: F.interpolate(x, mode='bilinear', size=up_size)),
+            map(lambda x: F.interpolate(x, mode='bilinear', size=size)),
             list
         )
         out = torch.cat([*out], 1)

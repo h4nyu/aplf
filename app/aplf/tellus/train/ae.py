@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
-from .. import model as mdl
+from .. import models as mdl
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
@@ -69,14 +69,14 @@ def train_ae(model_path,
 
     train_pos_loader = DataLoader(
         sets['train_pos'],
-        batch_size=batch_size//2,
+        batch_size=batch_size//10,
         shuffle=True,
         pin_memory=True,
     )
 
     train_neg_loader = DataLoader(
         sets['train_neg'],
-        batch_size=batch_size//2,
+        batch_size=batch_size,
         pin_memory=True,
         sampler=ChunkSampler(
             epoch_size=len(sets['train_pos']),
@@ -89,7 +89,7 @@ def train_ae(model_path,
 
     val_pos_loader = DataLoader(
         sets['val_pos'],
-        batch_size=batch_size//50,
+        batch_size=batch_size//10,
         shuffle=True,
         pin_memory=True,
     )
@@ -127,51 +127,28 @@ def train_ae(model_path,
         train_neg_center_loss = 0
         sum_train_neg_center_loss = 0
         for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
-            train_palser_neg = torch.cat(
-                [
-                    neg_sample['palser_before'], neg_sample['palser_after']
-                ],
-                dim=1
-            ).to(device)
-            train_landsat_neg = torch.cat(
-                [
-                    neg_sample['landsat_before'], neg_sample['landsat_after']
-                ],
-                dim=1
-            ).to(device)
+            train_palser_neg_before = neg_sample['palser_before'].to(device)
+            train_palser_neg_after = neg_sample['palser_after'].to(device)
+            train_landsat_neg_before = neg_sample['landsat_before'].to(device)
+            train_landsat_neg_after = neg_sample['landsat_after'].to(device)
 
             train_palser_neg_out, train_landsat_neg_out = model(
-                train_palser_neg,
+                train_palser_neg_before,
             )
             train_neg_loss = image_criterion(
                 train_palser_neg_out,
-                train_palser_neg
+                train_palser_neg_after
             )
 
             sum_train_neg_loss += train_neg_loss.item()
 
             train_neg_center_loss = rgb_loss_weight * image_criterion(
                 train_landsat_neg_out,
-                train_landsat_neg,
+                train_landsat_neg_after,
             )
             sum_train_neg_center_loss += train_neg_center_loss.item()
 
-            train_palser_pos = torch.cat(
-                [
-                    pos_sample['palser_before'], pos_sample['palser_after']
-                ],
-                dim=1
-            ).to(device)
-            train_palser_pos_out, _ = model(
-                train_palser_pos,
-            )
-            train_pos_loss = image_criterion(
-                train_palser_pos_out,
-                train_palser_pos
-            )
-            sum_train_pos_loss += train_pos_loss.item()
-
-            loss = train_neg_loss + train_neg_center_loss -pos_loss_weight * train_pos_loss
+            loss = train_neg_loss + train_neg_center_loss
 
             sum_train_loss += loss.item()
 
@@ -180,43 +157,54 @@ def train_ae(model_path,
             optimizer.step()
 
             with torch.no_grad():
-                val_palser_neg = torch.cat(
-                    [
-                        val_neg_sample['palser_before'], val_neg_sample['palser_after']
-                    ],
-                    dim=1
-                ).to(device)
+                train_palser_pos_before = pos_sample['palser_before'].to(
+                    device)
+                train_palser_pos_after = pos_sample['palser_after'].to(device)
+                train_palser_pos_out, _ = model(
+                    train_palser_pos_before,
+                )
+                train_pos_loss = image_criterion(
+                    train_palser_pos_out,
+                    train_palser_pos_after
+                )
+                sum_train_pos_loss += train_pos_loss.item()
+
+                val_palser_neg_before = val_neg_sample['palser_before'].to(device)
+                val_palser_neg_after = val_neg_sample['palser_after'].to(device)
                 val_palser_neg_out, _ = model(
-                    val_palser_neg,
+                    val_palser_neg_before,
                 )
                 val_neg_loss = image_criterion(
                     val_palser_neg_out,
-                    val_palser_neg
+                    val_palser_neg_after
                 )
+
                 sum_val_neg_loss += val_neg_loss.item()
 
-                val_palser_pos = torch.cat(
-                    [
-                        val_pos_sample['palser_before'], val_pos_sample['palser_after']
-                    ],
-                    dim=1
-                ).to(device)
-
+                val_palser_pos_before = val_pos_sample['palser_before'].to(device)
+                val_palser_pos_after = val_pos_sample['palser_after'].to(device)
                 val_palser_pos_out, _ = model(
-                    val_palser_pos,
+                    val_palser_pos_before,
                 )
                 val_pos_loss = image_criterion(
                     val_palser_pos_out,
-                    val_palser_pos
+                    val_palser_pos_after
                 )
                 sum_val_pos_loss += val_pos_loss.item()
 
-                val_palser = torch.cat(
+                val_palser_before = torch.cat(
                     [
-                        val_palser_pos, val_palser_neg
+                        val_palser_pos_before, val_palser_neg_before
                     ],
                     dim=0
                 ).to(device)
+                val_palser_after = torch.cat(
+                    [
+                        val_palser_pos_after, val_palser_neg_after
+                    ],
+                    dim=0
+                ).to(device)
+
                 val_label = torch.cat(
                     [
                         val_pos_sample['label'], val_neg_sample['label']
@@ -224,20 +212,21 @@ def train_ae(model_path,
                     dim=0
                 ).to(device)
                 val_out, _ = model(
-                    val_palser
+                    val_palser_before
                 )
 
                 val_out = pipe(
-                    zip(val_out, val_palser),
+                    zip(val_out, val_palser_after),
                     map(lambda x: F.mse_loss(*x).item()),
                     list,
                     np.array
                 )
 
                 threshold = pipe(
-                    zip(val_palser_pos_out, val_palser_pos),
+                    zip(val_palser_pos_out, val_palser_pos_after),
                     map(lambda x: F.mse_loss(*x).item()),
-                    min
+                    list,
+                    np.mean
                 )
 
                 print(val_out)

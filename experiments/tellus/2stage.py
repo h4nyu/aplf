@@ -1,11 +1,11 @@
 from sacred import Experiment
 from sacred.observers import MongoObserver
 from distributed import Client
-from aplf.tellus.graph import Graph
+from aplf.tellus.multi_stage import Graph
 import os
 
 
-EXPERIMENT_ID = "ae-6"
+EXPERIMENT_ID = "multi-stage-0"
 MASTER_IP = os.environ['MASTER_IP']
 MONGO_PORT = os.environ['MONGO_PORT']
 
@@ -22,23 +22,17 @@ def cfg():
         "id": EXPERIMENT_ID,
         "dataset_dir": '/store/tellus',
         "output_dir": '/store/tellus/output/',
-        'train_method': 'ae',
         "base_train_config": {
             'epochs': 1000,
-            'batch_size': 256,
+            'batch_size': 128,
             'model_type': 'AE',
             'model_kwargs': {
-                'feature_size': 32,
-                'in_size': (1, 40, 40),
-                'out_size': (1, 40, 40),
-                'center_out_size': (3, 4, 4),
+                'feature_size': 64,
+                'depth': 3,
                 'resize': 80,
-                'pad': 4
+                'pad': 10
             },
-            'rgb_loss_weight': 0.1,
-            'pos_loss_weight': 0.01,
             'lr': 0.001,
-            'ratio': 10,
         },
         "n_splits": 8,
         "folds": [0],

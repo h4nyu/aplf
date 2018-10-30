@@ -1,4 +1,4 @@
-from aplf.tellus.model import MultiEncoder, DownSample, AE, UNet, Encoder
+from aplf.tellus.models import FusionNet
 import torch
 import pytest
 
@@ -65,3 +65,16 @@ def test_ae():
         pl, la = model(image)
         assert pl.size() == (32, 2, 40, 40)
         assert la.size() == (32, 6, 4, 4)
+
+
+def test_fnet():
+    with torch.no_grad():
+        model = FusionNet(
+            feature_size=16,
+            resize=80,
+            depth=3,
+        )
+        landsat_x = torch.empty(32, 2, 4, 4)
+        palsar_x = torch.empty(32, 6, 40, 40)
+        out = model(palsar_x, landsat_x)
+        assert out.size() == (32, 2)

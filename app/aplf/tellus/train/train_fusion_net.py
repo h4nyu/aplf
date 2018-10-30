@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
-from .. import models as mdl
+from ..models import FusionNet
 from aplf.utils import EarlyStop
 from aplf import config
 from tensorboardX import SummaryWriter
@@ -46,26 +46,59 @@ def validate(prob, label):
     )
 
 
+def extract_sample(pos_sample, neg_sample):
+    with torch.no_grad():
+        palser_pos_x = torch.cat(
+            [pos_sample['palser_before'], pos_sample['palser_after']],
+            dim=1,
+        )
+
+        palser_neg_x = torch.cat(
+            [neg_sample['palser_before'], neg_sample['palser_after']],
+            dim=1,
+        )
+        palser_x = torch.cat(
+            [palser_pos_x, palser_neg_x],
+            dim=0,
+        )
+        labels = torch.cat(
+            [pos_sample['label'], neg_sample['label']],
+            dim=0
+        )
+
+        landsat_pos_x = torch.cat(
+            [pos_sample['landsat_before'], pos_sample['landsat_after']],
+            dim=1
+        )
+
+        landsat_neg_x = torch.cat(
+            [neg_sample['landsat_before'], neg_sample['landsat_after']],
+            dim=1
+        )
+        landsat_x = torch.cat(
+            [landsat_pos_x, landsat_neg_x],
+            dim=0,
+        )
+        return palser_x, landsat_x, labels
+
+
 @skip_if_exists('model_path')
-def train_multi(model_path,
-                sets,
-                model_type,
-                model_kwargs,
-                epochs,
-                batch_size,
-                log_dir,
-                rgb_loss_weight,
-                lr,
-                ):
+def train(model_path,
+          sets,
+          model_type,
+          model_kwargs,
+          epochs,
+          batch_size,
+          log_dir,
+          lr,
+          ):
 
     device = torch.device("cuda")
-    Model = getattr(mdl, model_type)
-
-    model = Model(**model_kwargs).to(device).train()
+    model = FusionNet(**model_kwargs).to(device).train()
 
     train_pos_loader = DataLoader(
         sets['train_pos'],
-        batch_size=batch_size// 2,
+        batch_size=batch_size // 2,
         shuffle=True,
         pin_memory=True,
     )
@@ -100,10 +133,8 @@ def train_multi(model_path,
             shuffle=True
         ),
     )
-    print(len(sets['val_pos']))
 
     class_criterion = lovasz_softmax_flat
-    image_criterion = nn.MSELoss(size_average=True)
     optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(train_pos_loader)
 
@@ -128,119 +159,57 @@ def train_multi(model_path,
         for pos_sample, neg_sample, val_pos_sample, val_neg_sample in zip(train_pos_loader, train_neg_loader, val_pos_loader, val_neg_loader):
             start = random.randint(0, batch_size//2 - 1)
             end = random.randint(batch_size//2, batch_size - 1)
-
-            p_before = torch.cat(
-                [pos_sample['palser_before'], neg_sample['palser_before']],
-                dim=0
-            ).to(device)
-            p_after = torch.cat(
-                [pos_sample['palser_after'], neg_sample['palser_after']],
-                dim=0
-            ).to(device)
-            label = torch.cat(
-                [pos_sample['label'], neg_sample['label']],
-                dim=0
-            ).to(device)
-            l_before = torch.cat(
-                [pos_sample['landsat_before'], neg_sample['landsat_before']],
-                dim=0
-            ).to(device)
-            l_after = torch.cat(
-                [pos_sample['landsat_after'], neg_sample['landsat_after']],
-                dim=0
-            ).to(device)
-
-
-
-            logit_out, _, _, _, _ = model(
-                p_before,
-                p_after
+            palser_x, landsat_x, labels = pipe(
+                extract_sample(pos_sample, neg_sample),
+                map(lambda x: x.to(device)),
+                tuple
+            )
+            logit_out = model(
+                palser_x,
+                landsat_x
             )
             logit_loss = class_criterion(
                 logit_out,
-                label
+                labels
             )
-
             loss = logit_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            _, _, _, l_before_out, l_after_out = model(
-                p_before,
-                p_after
-            )
-            l_before_loss = image_criterion(
-                l_before_out,
-                l_before,
-            )
-
-            l_after_loss = image_criterion(
-                l_after_out,
-                l_after,
-            )
-
-            loss = (l_before_loss + l_after_loss)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
             sum_train_loss += loss.item()
-            #
-            #  p_mean = (p_before[(batch_size//4 * 3):] +
-            #            p_after[(batch_size//4 * 3):])/2
-            #  p_before_loss = image_criterion(
-            #      p_before_out[(batch_size//4 * 3):],
-            #      p_mean,
-            #  )
-            #
-            #  p_after_loss = image_criterion(
-            #      p_after_out[(batch_size//4 * 3):],
-            #      p_mean,
-            #  )
             train_score = validate(
                 logit_out.argmax(dim=1).cpu().detach().tolist(),
-                label.cpu().detach().tolist()
-
+                labels.cpu().detach().tolist()
             )
             sum_train_score += train_score
 
             with torch.no_grad():
-                p_before = torch.cat(
-                    [val_pos_sample['palser_before'], val_neg_sample['palser_before']],
-                    dim=0
-                ).to(device)
-
-                p_after = torch.cat(
-                    [val_pos_sample['palser_after'], val_neg_sample['palser_after']],
-                    dim=0
-                ).to(device)
-                label = torch.cat(
-                    [val_pos_sample['label'], val_neg_sample['label']],
-                    dim=0
-                ).to(device)
-
-
-                logit_out, _, _, _, _, = model(
-                    p_before,
-                    p_after,
+                palser_x, landsat_x, labels = pipe(
+                    extract_sample(val_pos_sample, val_neg_sample),
+                    map(lambda x: x.to(device)),
+                    tuple
+                )
+                logit_out = model(
+                    palser_x,
+                    landsat_x,
                 )
 
                 val_loss = class_criterion(
                     logit_out,
-                    label
+                    labels
                 )
                 sum_val_loss += val_loss.item()
 
-                val_prob = logit_out.argmax(dim=1).cpu().detach().tolist()
-                val_label = label.cpu().detach().tolist()
+                val_probs = logit_out.argmax(dim=1).cpu().detach().tolist()
+                val_labels = labels.cpu().detach().tolist()
                 val_score = validate(
-                    val_prob,
-                    val_label,
+                    val_probs,
+                    val_labels,
                 )
                 sum_val_score += val_score
-                print(val_prob)
-                print(val_label)
+                print(val_probs)
+                print(val_labels)
                 print(val_score)
                 batch_len += 1
 
