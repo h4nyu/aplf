@@ -132,6 +132,9 @@ def train_multi(model_dir,
 
     model_dir = Path(model_dir)
     model_dir.mkdir()
+    (model_dir / 'checkpoint').mkdir()
+
+
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
@@ -146,6 +149,7 @@ def train_multi(model_dir,
         map(lambda x: model_dir / f'{x}.pt'),
         list,
     )
+
 
     pipe(
         zip(models, model_paths),
@@ -263,5 +267,11 @@ def train_multi(model_dir,
                     f'val: {iou}, epoch: {epoch}',
                     epoch
                 )
+                models = pipe(
+                    model_paths,
+                    map(torch.load),
+                    list
+                )
+
 
     return model_path

@@ -13,8 +13,8 @@ from . import train as tra
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
 import torch
+import os
 
-from os.path import join
 
 
 class Graph(object):
@@ -37,7 +37,7 @@ class Graph(object):
         )
 
         train_df_path = delayed(load_train_df)(
-            dataset_dir=join(dataset_dir, 'train'),
+            dataset_dir=os.path.join(dataset_dir, 'train'),
             output=join(output_dir, 'train.pqt')
         )
 
@@ -55,7 +55,7 @@ class Graph(object):
             list
         )
 
-        model_paths = pipe(
+        model_dirs = pipe(
             zip(ids, train_sets),
             map(lambda x: delayed(getattr(tra, train_method))(
                 **base_train_config,
@@ -78,7 +78,7 @@ class Graph(object):
 
 
         submission_df_path = delayed(predict)(
-            model_paths=model_paths,
+            model_dirs=model_dirs,
             log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
             dataset=test_dataset,
             log_interval=10,

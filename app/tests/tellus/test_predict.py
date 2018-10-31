@@ -1,7 +1,6 @@
 from aplf import config
 from aplf.tellus.predict import predict
 import pandas as pd
-from aplf.tellus.model import Net
 from aplf.tellus.data import load_test_df, TellusDataset
 import pytest
 import torch
@@ -12,24 +11,15 @@ def test_predict():
         dataset_dir='/store/tellus/test',
         output='/store/tmp/test.pqt'
     )
-    df = pd.read_parquet(df_path)[:100]
+    df = pd.read_parquet(df_path)
     dataset = TellusDataset(
         df,
         has_y=False
     )
-    model = Net(
-        feature_size=64,
-        resize=120,
-        pad=4,
-    )
-    model_paths = ['/store/tmp/model.pt']
-    torch.save(model, model_paths[0])
+    model_dirs = ['/store/tellus/output/0082']
     predicted_df = predict(
-        model_paths=model_paths,
-        log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/test',
+        model_dirs=model_dirs,
         dataset=dataset,
-        out_path="/store/tmp/submission.tsv",
-        log_interval=1
+        out_path="/store/tmp/submission-mean.tsv",
     )
-    #  print(predicted_df)
-    #  assert len(predicted_df) == len(dataset_df)
+    assert len(predicted_df) == len(df)
