@@ -30,7 +30,8 @@ from ..data import ChunkSampler
 def validate(model_paths,
              loader,
              criterion,
-             device):
+             ):
+    device = torch.device("cuda")
     models = pipe(
         model_paths,
         map(torch.load),
@@ -60,8 +61,15 @@ def validate(model_paths,
         y_preds,
         y_trues,
     )
-
-    return confusion_matrix(y_trues, y_preds).ravel()
+    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
+    return {
+        'TPR': tp/(tp+fn),
+        'FNR': fn/(tp+fn),
+        'FPR': fp/(fp+tn),
+        'acc': (tp+tn) / (tp+tn+fp+fn),
+        'pre': tp / (tp + fp),
+        'iou': tp / (fn+tp+fp),
+    }
 
 
 def train_epoch(model_path,
@@ -69,9 +77,10 @@ def train_epoch(model_path,
                 pos_loader,
                 neg_loader,
                 landsat_weight,
-                device,
                 lr,
                 ):
+
+    device = torch.device("cuda")
     model = torch.load(model_path)
     optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(pos_loader)
@@ -116,7 +125,8 @@ def criterion(x, y, landsat_weight):
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
     labels, landsat_y = y
-    loss = class_cri(logit, labels) + landsat_weight*image_cri(landsat_x, landsat_y)
+    loss = class_cri(logit, labels) + landsat_weight * \
+        image_cri(landsat_x, landsat_y)
     return loss
 
 
@@ -128,6 +138,7 @@ def train_multi(model_dir,
                 epochs,
                 batch_size,
                 log_dir,
+                val_batch_size,
                 landsat_weight,
                 lr,
                 num_ensamble,
@@ -136,10 +147,9 @@ def train_multi(model_dir,
     model_dir = Path(model_dir)
     model_dir.mkdir()
 
-
-    device = torch.device("cuda")
     Model = getattr(mdl, model_type)
 
+    device = torch.device("cuda")
     models = pipe(
         range(num_ensamble),
         map(lambda _: Model(**model_kwargs).to(device).train()),
@@ -157,7 +167,6 @@ def train_multi(model_dir,
         list,
     )
 
-
     pipe(
         zip(models, model_paths),
         map(lambda x: torch.save(*x)),
@@ -165,7 +174,7 @@ def train_multi(model_dir,
     )
 
     pos_set = pipe(
-        range(150//(num_ensamble + 1)),
+        range(150 // (num_ensamble + 1)),
         map(lambda _: sets['train_pos']),
         reduce(lambda x, y: x+y)
     )
@@ -193,7 +202,7 @@ def train_multi(model_dir,
 
     val_loader = DataLoader(
         sets['val_neg']+sets['val_pos'],
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         pin_memory=True,
         shuffle=True,
     )
@@ -219,17 +228,15 @@ def train_multi(model_dir,
 
         traineds = pipe(
             zip(model_paths, train_neg_loaders),
-            map(lambda x: delayed(train_epoch)(
+            map(lambda x: train_epoch(
                 model_path=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
                 landsat_weight=landsat_weight,
                 criterion=criterion,
-                device=device,
                 lr=lr
             )),
             list,
-            lambda x: dask.compute(*x)
         )
 
         train_loss = pipe(
@@ -239,11 +246,10 @@ def train_multi(model_dir,
             np.mean
         )
 
-        tn, fp, fn, tp = validate(
+        metrics = validate(
             model_paths=model_paths,
             loader=val_loader,
             criterion=criterion,
-            device=device
         )
 
         with SummaryWriter(log_dir) as w:
@@ -254,17 +260,11 @@ def train_multi(model_dir,
                 },
                 epoch
             )
-            iou = tp / (fn+tp+fp)
-            print(iou)
+            iou = metrics['iou']
             w.add_scalars(
                 'score',
                 {
-                    'TPR': tp/(tp+fn),
-                    'FNR': fn/(tp+fn),
-                    'FPR': fp/(fp+tn),
-                    'acc': (tp+tn) / (tp+tn+fp+fn),
-                    'pre': tp / (tp + fp),
-                    'iou': tp / (fn+tp+fp),
+                    **metrics
                 },
                 epoch
             )
@@ -280,7 +280,7 @@ def train_multi(model_dir,
                     model_paths,
                     map(torch.load),
                     lambda x: zip(x, check_model_paths),
-                    map(torch.save(x[0], x[1])),
+                    map(lambda x: torch.save(x[0], x[1])),
                     list
                 )
     return model_dir

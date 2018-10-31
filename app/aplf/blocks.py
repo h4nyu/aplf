@@ -145,6 +145,7 @@ class ResBlock(nn.Module):
                 out_ch,
                 kernel_size=1,
             )
+
         self.block = nn.Sequential(
             nn.Conv2d(
                 in_ch,
@@ -173,6 +174,7 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
+            CBAM(out_ch, r=r),
         )
         self.activation = nn.ReLU(inplace=True)
 
@@ -203,12 +205,10 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            CBAM(out_ch, r=r),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            CBAM(out_ch, r=r),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -234,7 +234,6 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            CBAM(out_ch, r=r),
         )
 
     def forward(self, x, others, size):

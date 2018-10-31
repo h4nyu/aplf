@@ -12,17 +12,18 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 1000,
-        'batch_size': 64,
+        'batch_size': 128,
+        'val_batch_size': 1024,
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 32,
+            'feature_size': 16,
             'resize': 80,
             'pad': 4,
             'depth': 1
         },
         'landsat_weight': 0.5,
-        'num_ensamble': 3,
+        'num_ensamble': 4,
         'lr': 0.0001,
     }
 
@@ -36,10 +37,10 @@ def test_graph():
     )
 
     g(scheduler='single-threaded')
-
+    #
     #  with Client('dask-scheduler:8786') as c:
     #      try:
     #          result = g()
     #      finally:
     #          c.restart()
-    #
+    #  #  #
