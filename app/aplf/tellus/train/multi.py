@@ -49,7 +49,7 @@ def validate(model_paths,
             label_preds = pipe(
                 models,
                 map(lambda x: x(palsar_x)[0].softmax(dim=1)),
-                reduce(lambda x, y: torch.max(x, y))
+                reduce(lambda x, y: (x+y)/2)
             )
             y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
@@ -108,12 +108,12 @@ def aug(x):
     pass
 
 
-def criterion(x, y):
+def criterion(x, y, landsat_weight):
     image_cri = nn.MSELoss(size_average=True)
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
     labels, landsat_y = y
-    loss = class_cri(logit, labels) + 0.5*image_cri(landsat_x, landsat_y)
+    loss = class_cri(logit, labels) + landsat_weight*image_cri(landsat_x, landsat_y)
     return loss
 
 
@@ -125,14 +125,14 @@ def train_multi(model_dir,
                 epochs,
                 batch_size,
                 log_dir,
-                rgb_loss_weight,
+                landsat_weight,
                 lr,
+                landsat_weight,
                 num_ensamble=2,
                 ):
 
     model_dir = Path(model_dir)
     model_dir.mkdir()
-    (model_dir / 'checkpoint').mkdir()
 
 
     device = torch.device("cuda")
@@ -147,6 +147,11 @@ def train_multi(model_dir,
     model_paths = pipe(
         range(num_ensamble),
         map(lambda x: model_dir / f'{x}.pt'),
+        list,
+    )
+    check_model_paths = pipe(
+        range(num_ensamble),
+        map(lambda x: model_dir / f'{x}_check.pt'),
         list,
     )
 
@@ -267,9 +272,11 @@ def train_multi(model_dir,
                     f'val: {iou}, epoch: {epoch}',
                     epoch
                 )
-                models = pipe(
+                pipe(
                     model_paths,
                     map(torch.load),
+                    lambda x: zip(x, check_model_paths),
+                    map(torch.save(x[0], x[1])),
                     list
                 )
 

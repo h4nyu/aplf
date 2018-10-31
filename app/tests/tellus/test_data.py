@@ -110,7 +110,7 @@ def test_kfold():
 
 def test_esampler():
 
-    output = load_dataset_df(
+    output = load_train_df(
         dataset_dir='/store/tellus/train',
         output='/store/tmp/train.pqt'
     )
@@ -124,25 +124,28 @@ def test_esampler():
         list(range(1500, 1600))
     )
 
+    epoch_size = 10
     s = ChunkSampler(
-        epoch_size=10,
+        epoch_size=epoch_size,
         len_indices=len(subset),
         shuffle=True,
     )
 
+    batch_size = 2
     train_loader = DataLoader(
         subset,
         sampler=s,
-        batch_size=2,
+        batch_size=batch_size,
         pin_memory=True,
     )
     for i in range(11):
         samples = pipe(
             train_loader,
             map(lambda x: x['id']),
+            filter(lambda x: len(x) == batch_size),
             list
         )
-        assert len(samples) == 5
+        assert len(samples) == epoch_size//batch_size
 
 
 @pytest.mark.parametrize("idx", range(1524, 1536))
