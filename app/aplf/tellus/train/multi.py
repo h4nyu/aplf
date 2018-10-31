@@ -154,7 +154,7 @@ def train_multi(model_dir,
     )
 
     pos_set = pipe(
-        range(150//num_ensamble),
+        range(150//(num_ensamble + 1)),
         map(lambda _: sets['train_pos']),
         reduce(lambda x, y: x+y)
     )
@@ -172,7 +172,7 @@ def train_multi(model_dir,
             pin_memory=True,
             sampler=ChunkSampler(
                 epoch_size=len(pos_set),
-                len_indices=len(pos_set),
+                len_indices=len(sets['train_neg']),
                 shuffle=True,
                 start_at=x,
             ),

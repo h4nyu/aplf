@@ -46,7 +46,7 @@ services:
         - https_proxy
     environment:
       - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-worker ${MASTER_IP}:${DASKSCHEDULER_PORT} --local-directory=/dask-worker-space --nprocs=1  --nthreads=1 --memory-limit=80e8
+    command: dask-worker ${MASTER_IP}:${DASKSCHEDULER_PORT} --local-directory=/dask-worker-space
     volumes:
       - ./app:/srv
       - ./store:/store
