@@ -12,23 +12,23 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 1000,
-        'batch_size': 128,
+        'batch_size': 64,
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 8,
+            'feature_size': 32,
             'resize': 80,
             'pad': 4,
             'depth': 1
         },
         'landsat_weight': 0.5,
-        'num_ensamble': 2,
+        'num_ensamble': 3,
         'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="ensamble-1",
+        id="ensamble-cbam-0",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,

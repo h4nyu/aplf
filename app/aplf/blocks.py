@@ -65,22 +65,31 @@ class SCSE(nn.Module):
 
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_ch, out_ch, r=16):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 r=16,
+                 bias=False,
+                 has_activate=True):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.mpl = nn.Sequential(
-            nn.Conv2d(in_ch, in_ch // r, 1, bias=False),
+            nn.Conv2d(in_ch, in_ch // r, 1, bias=bias),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_ch // r, out_ch, 1, bias=False),
+            nn.Conv2d(in_ch // r, out_ch, 1, bias=bias),
         )
+        self.has_activate = has_activate
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         avg_out = self.mpl(self.avg_pool(x))
         max_out = self.mpl(self.max_pool(x))
         out = avg_out + max_out
-        return self.sigmoid(out)
+        if self.has_activate:
+            return self.sigmoid(out)
+        else:
+            return out
 
 
 class SpatialAttention(nn.Module):
@@ -183,6 +192,7 @@ class DownSample(nn.Module):
                  out_ch,
                  kernel_size=3,
                  padding=1,
+                 r=2,
                  ):
         super().__init__()
         self.in_ch = in_ch
@@ -193,12 +203,12 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            CBAM(out_ch),
+            CBAM(out_ch, r=r),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            CBAM(out_ch),
+            CBAM(out_ch, r=r),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -216,6 +226,7 @@ class UpSample(nn.Module):
                  out_ch,
                  kernel_size=3,
                  padding=1,
+                 r=2,
                  ):
         super().__init__()
         self.block = nn.Sequential(
@@ -223,7 +234,7 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            CBAM(out_ch),
+            CBAM(out_ch, r=r),
         )
 
     def forward(self, x, others, size):

@@ -1,6 +1,6 @@
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, tail, take
 import torch.nn as nn
-from aplf.blocks import SEBlock, ResBlock, SCSE, UpSample, DownSample
+from aplf.blocks import SEBlock, ResBlock, SCSE, UpSample, DownSample, ChannelAttention 
 import torch
 import torch.nn.functional as F
 
@@ -69,14 +69,14 @@ class MultiEncoder(nn.Module):
             depth=depth,
         )
         self.logit_out = nn.Sequential(
-            nn.Conv2d(
-                in_channels=self.fusion_enc.out_ch,
-                out_channels=2,
-                kernel_size=3,
+            ChannelAttention(
+                in_ch=self.fusion_enc.out_ch,
+                out_ch=2,
+                bias=True,
+                has_activate=False,
             ),
-            nn.AdaptiveAvgPool2d(1)
+            nn.ReLU(inplace=True),
         )
-
         self.pad = nn.ReflectionPad2d(pad)
 
     def forward(self, x):

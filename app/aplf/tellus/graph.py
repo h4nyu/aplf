@@ -38,7 +38,7 @@ class Graph(object):
 
         train_df_path = delayed(load_train_df)(
             dataset_dir=os.path.join(dataset_dir, 'train'),
-            output=join(output_dir, 'train.pqt')
+            output=os.path.join(output_dir, 'train.pqt')
         )
 
         train_df = delayed(pd.read_parquet)(train_df_path)
@@ -59,7 +59,7 @@ class Graph(object):
             zip(ids, train_sets),
             map(lambda x: delayed(getattr(tra, train_method))(
                 **base_train_config,
-                model_dir=join(output_dir, f"{id}-fold-{x[0]}"),
+                model_dir=os.path.join(output_dir, f"{id}-fold-{x[0]}"),
                 sets=x[1],
                 log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
             )),
@@ -68,7 +68,7 @@ class Graph(object):
 
         test_df_path = load_test_df(
             dataset_dir='/store/tellus/test',
-            output=join(output_dir, 'test.pqt')
+            output=os.path.join(output_dir, 'test.pqt')
         )
         test_df = delayed(pd.read_parquet)(test_df_path)
         test_dataset = delayed(TellusDataset)(
@@ -79,14 +79,12 @@ class Graph(object):
 
         submission_df_path = delayed(predict)(
             model_dirs=model_dirs,
-            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
             dataset=test_dataset,
-            log_interval=10,
             out_path=f'{output_dir}/{id}_submission.tsv',
         )
 
         self.output = delayed(lambda x: x)((
-            model_paths,
+            model_dirs,
             submission_df_path,
         ))
 

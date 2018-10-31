@@ -49,9 +49,10 @@ def validate(model_paths,
             label_preds = pipe(
                 models,
                 map(lambda x: x(palsar_x)[0].softmax(dim=1)),
-                reduce(lambda x, y: (x+y)/2)
+                reduce(lambda x, y: (x+y)/2),
+                lambda x: x.argmax(dim=1),
             )
-            y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
+            y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             batch_len += 1
 
@@ -67,6 +68,7 @@ def train_epoch(model_path,
                 criterion,
                 pos_loader,
                 neg_loader,
+                landsat_weight,
                 device,
                 lr,
                 ):
@@ -90,7 +92,8 @@ def train_epoch(model_path,
 
         logit_loss = criterion(
             model(palsar_x),
-            (labels, landsat_x)
+            (labels, landsat_x),
+            landsat_weight,
         )
 
         loss = logit_loss
@@ -127,8 +130,7 @@ def train_multi(model_dir,
                 log_dir,
                 landsat_weight,
                 lr,
-                landsat_weight,
-                num_ensamble=2,
+                num_ensamble,
                 ):
 
     model_dir = Path(model_dir)
@@ -221,6 +223,7 @@ def train_multi(model_dir,
                 model_path=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
+                landsat_weight=landsat_weight,
                 criterion=criterion,
                 device=device,
                 lr=lr
@@ -252,6 +255,7 @@ def train_multi(model_dir,
                 epoch
             )
             iou = tp / (fn+tp+fp)
+            print(iou)
             w.add_scalars(
                 'score',
                 {
@@ -279,6 +283,4 @@ def train_multi(model_dir,
                     map(torch.save(x[0], x[1])),
                     list
                 )
-
-
-    return model_path
+    return model_dir
