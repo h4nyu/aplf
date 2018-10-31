@@ -178,7 +178,6 @@ class ResBlock(nn.Module):
 
 
 class DownSample(nn.Module):
-
     def __init__(self,
                  in_ch,
                  out_ch,
@@ -194,12 +193,12 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            SCSE(out_ch),
+            CBAM(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            SCSE(out_ch),
+            CBAM(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -224,7 +223,7 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            SCSE(out_ch),
+            CBAM(out_ch),
         )
 
     def forward(self, x, others, size):
