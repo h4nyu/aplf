@@ -170,17 +170,21 @@ def train_multi(model_dir,
         list
     )
 
+
+    divides = int(len(sets['train_neg']) / len(sets['train_pos']) / num_ensamble)
     pos_set = pipe(
-        range(150 // (num_ensamble + 1)),
+        range(divides),
         map(lambda _: sets['train_pos']),
         reduce(lambda x, y: x+y)
     )
+
     train_pos_loader = DataLoader(
         pos_set,
         batch_size=batch_size // 2,
         shuffle=True,
         pin_memory=True,
     )
+
     train_neg_loaders = pipe(
         range(num_ensamble),
         map(lambda x: DataLoader(
