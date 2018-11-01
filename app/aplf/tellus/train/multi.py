@@ -27,34 +27,15 @@ from aplf.optimizers import Eve
 from ..data import ChunkSampler
 
 
-def validate(model_paths,
-             loader,
-             ):
-    device = torch.device("cuda")
-    models = pipe(
-        model_paths,
-        map(torch.load),
-        map(lambda x: x.eval().to(device)),
-        list
+def validate(predicts, loader):
+
+    y_preds = np.array(predicts).mean(axis=0).argmax(axis=1)
+    y_trues = pipe(
+        loader,
+        map(lambda x: x['label'].cpu().detach().tolist()),
+        reduce(lambda x, y: x+y),
+        np.array,
     )
-    y_preds = []
-    y_trues = []
-    sum_loss = 0
-    batch_len = 0
-    for sample in loader:
-        with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            landsat_y = sample['landsat'].to(device)
-            labels = sample['label'].to(device)
-            label_preds = pipe(
-                models,
-                map(lambda x: x(palsar_x)[0].softmax(dim=1)),
-                reduce(lambda x, y: (x+y)/2),
-                lambda x: x.argmax(dim=1),
-            )
-            y_preds += label_preds.cpu().detach().tolist()
-            y_trues += labels.cpu().detach().tolist()
-            batch_len += 1
 
     score = iou(
         y_preds,
@@ -71,7 +52,21 @@ def validate(model_paths,
     }
 
 
-def train_epoch(model_path,
+def validate_epoch(model,
+            loader,
+            ):
+    y_preds = []
+    device = torch.device('cuda')
+    for sample in loader:
+        with torch.no_grad():
+            palsar_x = sample['palsar'].to(device)
+            label_preds = model(palsar_x)[0].softmax(dim=1)
+            y_preds += label_preds.cpu().detach().tolist()
+
+    return y_preds
+
+
+def train_epoch(model,
                 criterion,
                 pos_loader,
                 neg_loader,
@@ -79,7 +74,6 @@ def train_epoch(model_path,
                 ):
 
     device = torch.device("cuda")
-    model = torch.load(model_path)
     optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(pos_loader)
     sum_train_loss = 0
@@ -109,8 +103,7 @@ def train_epoch(model_path,
 
         sum_train_loss += loss.item()
     mean_loss = sum_train_loss / batch_len
-    torch.save(model, model_path)
-    return model_path, mean_loss
+    return model, mean_loss
 
 
 def aug(x):
@@ -158,11 +151,6 @@ def train_multi(model_dir,
         map(lambda x: model_dir / f'{x}.pt'),
         list,
     )
-    check_model_paths = pipe(
-        range(num_ensamble),
-        map(lambda x: model_dir / f'{x}_check.pt'),
-        list,
-    )
 
     pipe(
         zip(models, model_paths),
@@ -170,19 +158,19 @@ def train_multi(model_dir,
         list
     )
 
-
-    divides = int(len(sets['train_neg']) / len(sets['train_pos']) / num_ensamble)
-    pos_set = pipe(
-        range(divides),
-        map(lambda _: sets['train_pos']),
-        reduce(lambda x, y: x+y)
-    )
+    divides = int(len(sets['train_neg']) /
+                  len(sets['train_pos']) / num_ensamble)
+    #  pos_set = pipe(
+    #      range(divides),
+    #      map(lambda _: sets['train_pos']),
+    #      reduce(lambda x, y: x+y)
+    #  )
+    pos_set = sets['train_pos']
 
     train_pos_loader = DataLoader(
         pos_set,
         batch_size=batch_size // 2,
         shuffle=True,
-        pin_memory=True,
     )
 
     train_neg_loaders = pipe(
@@ -190,7 +178,6 @@ def train_multi(model_dir,
         map(lambda x: DataLoader(
             sets['train_neg'],
             batch_size=batch_size//2,
-            pin_memory=True,
             sampler=ChunkSampler(
                 epoch_size=len(pos_set),
                 len_indices=len(sets['train_neg']),
@@ -204,8 +191,7 @@ def train_multi(model_dir,
     val_loader = DataLoader(
         sets['val_neg']+sets['val_pos'],
         batch_size=val_batch_size,
-        pin_memory=True,
-        shuffle=True,
+        shuffle=False,
     )
     batch_len = len(train_pos_loader)
 
@@ -226,30 +212,46 @@ def train_multi(model_dir,
         val_labels = []
         train_probs = []
         train_labels = []
-
-        traineds = pipe(
-            zip(model_paths, train_neg_loaders),
-            map(lambda x: train_epoch(
-                model_path=x[0],
-                neg_loader=x[1],
-                pos_loader=train_pos_loader,
-                criterion=criterion(landsat_weight),
-                lr=lr
+        #  traineds = pipe(
+        #      zip(models, train_neg_loaders),
+        #      map(lambda x: delayed(train_epoch)(
+        #          model=x[0],
+        #          neg_loader=x[1],
+        #          pos_loader=train_pos_loader,
+        #          criterion=criterion(landsat_weight),
+        #          lr=lr
+        #      )),
+        #      list,
+        #  )
+        #
+        #  train_loss = pipe(
+        #      traineds,
+        #      map(delayed(lambda x: x[1])),
+        #      list,
+        #      delayed(np.mean)
+        #  )
+        #
+        #  models = pipe(
+        #      traineds,
+        #      map(delayed(lambda x: x[0])),
+        #      list,
+        #  )
+        metrics = pipe(
+            models,
+            map(lambda x: delayed(validate_epoch)(
+                model=x,
+                loader=val_loader,
             )),
             list,
+            lambda x: delayed(validate)(
+                predicts=x,
+                loader=val_loader
+            )
         )
 
-        train_loss = pipe(
-            traineds,
-            map(lambda x: x[1]),
-            list,
-            np.mean
-        )
-
-        metrics = validate(
-            model_paths=model_paths,
-            loader=val_loader
-        )
+        models, metrics = dask.compute(models, metrics)
+        train_loss = 0
+        print(metrics)
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(
@@ -276,9 +278,7 @@ def train_multi(model_dir,
                     epoch
                 )
                 pipe(
-                    model_paths,
-                    map(torch.load),
-                    lambda x: zip(x, check_model_paths),
+                    zip(models, model_paths),
                     map(lambda x: torch.save(x[0], x[1])),
                     list
                 )

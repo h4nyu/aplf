@@ -13,7 +13,7 @@ def test_graph():
     base_train_config = {
         'epochs': 1000,
         'batch_size': 128,
-        'val_batch_size': 1024,
+        'val_batch_size': 512,
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
@@ -37,10 +37,9 @@ def test_graph():
     )
 
     #  g(scheduler='single-threaded')
-    #
+
     with Client('dask-scheduler:8786') as c:
         try:
             result = g()
         finally:
             c.restart()
-    #  #

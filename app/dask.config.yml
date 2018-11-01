@@ -10,14 +10,12 @@ pdb-on-err: False       # enter debug mode on scheduling error
 transition-log-length: 100000
 
 # Worker options
-multiprocessing-method: fork
+multiprocessing-method: forkserver
 
 # Communication options
 compression: auto
-tcp-timeout: 60         # seconds delay before calling an unresponsive connection dead
+tcp-timeout: 600       # seconds delay before calling an unresponsive connection dead
 default-scheme: tcp
 require-encryption: False   # whether to require encryption on non-local comms
 
-# Bokeh web dashboard
-bokeh-export-tool: False
 

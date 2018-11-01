@@ -57,3 +57,4 @@ def test_graph():
             print(result[0])
         finally:
             c.restart()
+
