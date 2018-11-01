@@ -138,14 +138,6 @@ class TellusDataset(Dataset):
         self.has_y = has_y
         self.df = df
 
-        self.transforms = [
-            lambda x:x,
-            hflip,
-            vflip,
-            lambda x: rotate(x, 90),
-            lambda x: rotate(x, -90),
-            lambda x: rotate(x, -180),
-        ]
 
     def __len__(self):
         return len(self.df)
@@ -157,7 +149,7 @@ class TellusDataset(Dataset):
             row['palsar_after'],
         )
         palsar_before = image_to_tensor(
-            row['palsar_before'],
+            row['palsar_after'],
         )
 
         palsar = torch.cat(
@@ -238,3 +230,24 @@ def kfold(df, n_splits, random_state=0):
     )
 
     return splieted
+
+class Augment(object):
+    def __init__(self):
+        augs = [
+            hflip,
+            vflip,
+            lambda x: rotate(x, 90),
+        ]
+        self.augs = pipe(
+            augs,
+            map(lambda a: random.choice([lambda x: x, a])),
+            list,
+        )
+        self.transform = Compose([
+            ToPILImage(),
+            *self.augs,
+            ToTensor(),
+        ])
+
+    def __call__(self, t):
+        return self.transform(t)
