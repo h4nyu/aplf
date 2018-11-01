@@ -29,7 +29,6 @@ from ..data import ChunkSampler
 
 def validate(model_paths,
              loader,
-             criterion,
              ):
     device = torch.device("cuda")
     models = pipe(
@@ -245,7 +244,7 @@ def train_multi(model_dir,
 
         metrics = validate(
             model_paths=model_paths,
-            loader=val_loader,
+            loader=val_loader
         )
 
         with SummaryWriter(log_dir) as w:
