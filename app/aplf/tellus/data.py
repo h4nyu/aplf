@@ -146,7 +146,7 @@ class TellusDataset(Dataset):
         row = self.df.iloc[idx]
         id = row['id']
         palsar_after = image_to_tensor(
-            row['palsar_after'],
+            row['palsar_before'],
         )
         palsar_before = image_to_tensor(
             row['palsar_after'],
