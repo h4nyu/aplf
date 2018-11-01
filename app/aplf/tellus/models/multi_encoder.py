@@ -68,15 +68,16 @@ class MultiEncoder(nn.Module):
             feature_size=feature_size,
             depth=depth,
         )
+
         self.logit_out = nn.Sequential(
-            ChannelAttention(
-                in_ch=self.fusion_enc.out_ch,
-                out_ch=2,
-                bias=True,
-                has_activate=False,
+            nn.Conv2d(
+                in_channels=self.fusion_enc.out_ch,
+                out_channels=2,
+                kernel_size=3,
             ),
-            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d(1)
         )
+
         self.pad = nn.ReflectionPad2d(pad)
 
     def forward(self, x):

@@ -134,6 +134,7 @@ def train_multi(model_dir,
                 landsat_weight,
                 lr,
                 num_ensamble,
+                divides,
                 ):
 
     model_dir = Path(model_dir)
@@ -159,8 +160,6 @@ def train_multi(model_dir,
         list
     )
 
-    divides = int(len(sets['train_neg']) /
-                  len(sets['train_pos']) / num_ensamble)
     pos_set = pipe(
         range(divides),
         map(lambda _: sets['train_pos']),
@@ -171,6 +170,7 @@ def train_multi(model_dir,
         pos_set,
         batch_size=batch_size // 2,
         shuffle=True,
+        pin_memory=True,
     )
 
     train_neg_loaders = pipe(
@@ -184,6 +184,7 @@ def train_multi(model_dir,
                 shuffle=True,
                 start_at=x,
             ),
+            pin_memory=True,
         )),
         list,
     )
@@ -192,6 +193,7 @@ def train_multi(model_dir,
         sets['val_neg']+sets['val_pos'],
         batch_size=val_batch_size,
         shuffle=False,
+        pin_memory=True,
     )
     batch_len = len(train_pos_loader)
 
