@@ -218,7 +218,7 @@ def get_segment_indices(dataset, filter_indcies):
 def batch_aug(aug, batch):
     return pipe(
         batch,
-        map(lambda x: [aug(x[0:1, :, :]), aug(x[1:2, :, :)]]),
+        map(lambda x: [aug(x[0:1, :, :]), aug(x[1:2, :, :])]),
         map(lambda x: torch.cat(x, dim=0)),
         list,
         torch.stack
