@@ -24,6 +24,7 @@ def test_graph():
         'landsat_weight': 0.5,
         'num_ensamble': 2,
         'lr': 0.0001,
+        'neg_scale': 10,
     }
 
     g = Graph(
@@ -35,11 +36,11 @@ def test_graph():
         folds=[0],
     )
 
-    g(scheduler='single-threaded')
+    #  g(scheduler='single-threaded')
 
-    #  with Client('dask-scheduler:8786') as c:
-    #      try:
-    #          result = g()
-    #      finally:
-    #          c.restart()
+    with Client('dask-scheduler:8786') as c:
+        try:
+            result = g()
+        finally:
+            c.restart()
     #

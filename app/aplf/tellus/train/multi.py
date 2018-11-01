@@ -27,40 +27,43 @@ from aplf.optimizers import Eve
 from ..data import ChunkSampler
 
 
-def validate(model_paths,
-             loader,
-             criterion,
-             device):
-    models = pipe(
-        model_paths,
-        map(torch.load),
-        map(lambda x: x.eval().to(device)),
-        list
+def validate(predicts, loader):
+
+    y_preds = np.array(predicts).mean(axis=0).argmax(axis=1)
+    y_trues = pipe(
+        loader,
+        map(lambda x: x['label'].cpu().detach().tolist()),
+        reduce(lambda x, y: x+y),
+        np.array,
     )
-    y_preds = []
-    y_trues = []
-    sum_loss = 0
-    batch_len = 0
-    for sample in loader:
-        with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            landsat_y = sample['landsat'].to(device)
-            labels = sample['label'].to(device)
-            label_preds = pipe(
-                models,
-                map(lambda x: x(palsar_x)[0].softmax(dim=1)),
-                reduce(lambda x, y: (x+y)/2)
-            )
-            y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
-            y_trues += labels.cpu().detach().tolist()
-            batch_len += 1
 
     score = iou(
         y_preds,
         y_trues,
     )
+    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
+    return {
+        'TPR': tp/(tp+fn),
+        'FNR': fn/(tp+fn),
+        'FPR': fp/(fp+tn),
+        'acc': (tp+tn) / (tp+tn+fp+fn),
+        'pre': tp / (tp + fp),
+        'iou': tp / (fn+tp+fp),
+    }
 
-    return confusion_matrix(y_trues, y_preds).ravel()
+
+def validate_epoch(model,
+                   loader,
+                   ):
+    y_preds = []
+    device = torch.device('cuda')
+    for sample in loader:
+        with torch.no_grad():
+            palsar_x = sample['palsar'].to(device)
+            label_preds = model(palsar_x)[0].softmax(dim=1)
+            y_preds += label_preds.cpu().detach().tolist()
+
+    return y_preds
 
 
 def train_epoch(model_path,
@@ -104,16 +107,14 @@ def train_epoch(model_path,
     return model_path, mean_loss
 
 
-def aug(x):
-    pass
-
-
-def criterion(x, y, landsat_weight):
+@curry
+def criterion(landsat_weight, x, y):
     image_cri = nn.MSELoss(size_average=True)
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
     labels, landsat_y = y
-    loss = class_cri(logit, labels) + landsat_weight*image_cri(landsat_x, landsat_y)
+    loss = class_cri(logit, labels) + landsat_weight * \
+        image_cri(landsat_x, landsat_y)
     return loss
 
 
@@ -128,12 +129,12 @@ def train_multi(model_dir,
                 landsat_weight,
                 lr,
                 landsat_weight,
-                num_ensamble=2,
+                num_ensamble,
+                neg_scale,
                 ):
 
     model_dir = Path(model_dir)
     model_dir.mkdir()
-
 
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -155,7 +156,6 @@ def train_multi(model_dir,
         list,
     )
 
-
     pipe(
         zip(models, model_paths),
         map(lambda x: torch.save(*x)),
@@ -163,7 +163,7 @@ def train_multi(model_dir,
     )
 
     pos_set = pipe(
-        range(150//(num_ensamble + 1)),
+        range(neg_scale),
         map(lambda _: sets['train_pos']),
         reduce(lambda x, y: x+y)
     )
@@ -228,19 +228,30 @@ def train_multi(model_dir,
             list,
             lambda x: dask.compute(*x)
         )
-
         train_loss = pipe(
             traineds,
             map(lambda x: x[1]),
             list,
             np.mean
         )
+        models = pipe(
+            traineds,
+            map(lambda x: x[0]),
+            list,
+        )
 
-        tn, fp, fn, tp = validate(
-            model_paths=model_paths,
-            loader=val_loader,
-            criterion=criterion,
-            device=device
+        metrics = pipe(
+            models,
+            map(lambda x: delayed(validate_epoch)(
+                model=x,
+                loader=val_loader,
+            )),
+            list,
+            lambda x: dask.compute(*x),
+            lambda x: validate(
+                predicts=x,
+                loader=val_loader
+            )
         )
 
         with SummaryWriter(log_dir) as w:
@@ -255,12 +266,7 @@ def train_multi(model_dir,
             w.add_scalars(
                 'score',
                 {
-                    'TPR': tp/(tp+fn),
-                    'FNR': fn/(tp+fn),
-                    'FPR': fp/(fp+tn),
-                    'acc': (tp+tn) / (tp+tn+fp+fn),
-                    'pre': tp / (tp + fp),
-                    'iou': tp / (fn+tp+fp),
+                    *metrics
                 },
                 epoch
             )
@@ -269,16 +275,13 @@ def train_multi(model_dir,
                 max_val_score = iou
                 w.add_text(
                     'iou',
-                    f'val: {iou}, epoch: {epoch}',
+                    f"val: {metrics['iou']}, epoch: {epoch}",
                     epoch
                 )
                 pipe(
-                    model_paths,
-                    map(torch.load),
-                    lambda x: zip(x, check_model_paths),
+                    zip(models, model_paths),
                     map(torch.save(x[0], x[1])),
                     list
                 )
 
-
-    return model_path
+    return model_dir
