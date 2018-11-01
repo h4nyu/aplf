@@ -55,8 +55,8 @@ def validate(predicts, loader):
 
 
 def validate_epoch(model,
-            loader,
-            ):
+                   loader,
+                   ):
     y_preds = []
     device = torch.device('cuda')
     for sample in loader:
@@ -69,6 +69,7 @@ def validate_epoch(model,
 
 
 def train_epoch(model,
+                optimizer,
                 criterion,
                 pos_loader,
                 neg_loader,
@@ -76,7 +77,6 @@ def train_epoch(model,
                 ):
 
     device = torch.device("cuda")
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(pos_loader)
     sum_train_loss = 0
     aug = batch_aug(Augment())
@@ -108,7 +108,7 @@ def train_epoch(model,
 
         sum_train_loss += loss.item()
     mean_loss = sum_train_loss / batch_len
-    return model, mean_loss
+    return model, optimizer, mean_loss
 
 
 @curry
@@ -146,6 +146,11 @@ def train_multi(model_dir,
         range(num_ensamble),
         map(lambda _: Model(**model_kwargs).to(device).train()),
         list
+    )
+    optimizers = pipe(
+        models,
+        map(lambda x: optim.Adam(x.parameters(), amsgrad=True, lr=lr)),
+        list,
     )
 
     model_paths = pipe(
@@ -215,10 +220,11 @@ def train_multi(model_dir,
         train_probs = []
         train_labels = []
         traineds = pipe(
-            zip(models, train_neg_loaders),
+            zip(models, optimizers, train_neg_loaders),
             map(lambda x: delayed(train_epoch)(
                 model=x[0],
-                neg_loader=x[1],
+                optimizer=x[1],
+                neg_loader=x[2],
                 pos_loader=train_pos_loader,
                 criterion=criterion(landsat_weight),
                 lr=lr
@@ -226,18 +232,25 @@ def train_multi(model_dir,
             list,
         )
 
-        train_loss = pipe(
-            traineds,
-            map(delayed(lambda x: x[1])),
-            list,
-            delayed(np.mean)
-        )
 
         models = pipe(
             traineds,
             map(delayed(lambda x: x[0])),
             list,
         )
+        optimizers = pipe(
+            traineds,
+            map(delayed(lambda x: x[1])),
+            list,
+        )
+
+        train_loss = pipe(
+            traineds,
+            map(delayed(lambda x: x[2])),
+            list,
+            delayed(np.mean)
+        )
+
         metrics = pipe(
             models,
             map(lambda x: delayed(validate_epoch)(

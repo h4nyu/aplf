@@ -22,7 +22,7 @@ def test_graph():
             'pad': 4,
             'depth': 1
         },
-        'divides': 10,
+        'divides': 1,
         'landsat_weight': 0.5,
         'num_ensamble': 3,
         'lr': 0.0001,
