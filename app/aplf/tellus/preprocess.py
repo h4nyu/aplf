@@ -5,6 +5,7 @@ from sklearn.metrics import jaccard_similarity_score
 from sklearn.model_selection import KFold
 import numpy as np
 import pandas as pd
+from cytoolz import curry
 from skimage import io
 import torch.nn.functional as F
 import torch.nn as nn
@@ -211,4 +212,14 @@ def get_segment_indices(dataset, filter_indcies):
         filtered[filtered['is_empty'] == False].index,
         map(df.index.get_loc),
         list
+    )
+
+@curry
+def batch_aug(aug, batch):
+    return pipe(
+        batch,
+        map(lambda x: [aug(x[0:1, :, :]), aug(x[1:2, :, :)]]),
+        map(lambda x: torch.cat(x, dim=0)),
+        list,
+        torch.stack
     )
