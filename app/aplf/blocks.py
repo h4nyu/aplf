@@ -129,6 +129,7 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 r=2,
                  ):
         super().__init__()
         if in_ch == out_ch:
@@ -167,6 +168,7 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
+            CBAM(out_ch, r=r),
         )
         self.activation = nn.ReLU(inplace=True)
 
@@ -196,12 +198,10 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            CBAM(out_ch),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
             ),
-            CBAM(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -226,7 +226,6 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            CBAM(out_ch),
         )
 
     def forward(self, x, others, size):

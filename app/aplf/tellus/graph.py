@@ -79,14 +79,12 @@ class Graph(object):
 
         submission_df_path = delayed(predict)(
             model_dirs=model_dirs,
-            log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/sub',
             dataset=test_dataset,
-            log_interval=10,
             out_path=f'{output_dir}/{id}_submission.tsv',
         )
 
         self.output = delayed(lambda x: x)((
-            model_paths,
+            model_dirs,
             submission_df_path,
         ))
 

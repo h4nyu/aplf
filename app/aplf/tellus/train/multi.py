@@ -90,7 +90,7 @@ def train_epoch(model_path,
 
         logit_loss = criterion(
             model(palsar_x),
-            (labels, landsat_x)
+            (labels, landsat_x),
         )
 
         loss = logit_loss
@@ -108,7 +108,8 @@ def aug(x):
     pass
 
 
-def criterion(x, y, landsat_weight):
+@curry
+def criterion(landsat_weight, x, y):
     image_cri = nn.MSELoss(size_average=True)
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
@@ -220,7 +221,7 @@ def train_multi(model_dir,
                 model_path=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
-                criterion=criterion,
+                criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),
@@ -238,7 +239,6 @@ def train_multi(model_dir,
         tn, fp, fn, tp = validate(
             model_paths=model_paths,
             loader=val_loader,
-            criterion=criterion,
             device=device
         )
 
