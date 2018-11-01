@@ -1,4 +1,4 @@
-from aplf.blocks import ChannelAttention, SpatialAttention, CBAM, SEBlock
+from aplf.blocks import ChannelAttention, SpatialAttention, CBAM, SEBlock, ResBlock
 import torch.nn as nn
 import torch
 import pytest
@@ -49,6 +49,19 @@ def test_cbam():
     ).train()
     image = torch.empty(32, 64, 40, 40)
     ansewer = torch.empty(32, 64, 40, 40)
+    out = model(image)
+    assert out.size() == ansewer.size()
+    loss = nn.MSELoss(size_average=True)(out, ansewer)
+    loss.backward()
+
+def test_res():
+    model = ResBlock(
+        in_ch=64,
+        out_ch=32,
+        r=16,
+    ).train()
+    image = torch.empty(32, 64, 40, 40)
+    ansewer = torch.empty(32, 32, 40, 40)
     out = model(image)
     assert out.size() == ansewer.size()
     loss = nn.MSELoss(size_average=True)(out, ansewer)

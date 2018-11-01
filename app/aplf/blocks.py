@@ -75,19 +75,18 @@ class ChannelAttention(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.out_ch = out_ch
-        self.mpl = nn.Sequential(
-            nn.Linear(in_ch, in_ch//r),
+        self.fc = nn.Sequential(
+            nn.Conv2d(in_ch, in_ch//r, kernel_size=1, bias=bias),
             nn.ReLU(inplace=True),
-            nn.Linear(in_ch//r, out_ch),
+            nn.Conv2d(in_ch//r, out_ch, kernel_size=1, bias=bias),
         )
         self.has_activate = has_activate
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        b, c, _, _ = x.size()
-        avg_out = self.mpl(self.avg_pool(x).view(b, c))
-        max_out = self.mpl(self.max_pool(x).view(b, c))
-        out = (avg_out + max_out).view(b, self.out_ch, 1, 1)
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
         if self.has_activate:
             return self.sigmoid(out)
         else:
@@ -95,14 +94,9 @@ class ChannelAttention(nn.Module):
 
 
 class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
+    def __init__(self):
         super().__init__()
-
-        assert kernel_size in (3, 7)
-        padding = 3 if kernel_size == 7 else 1
-
-        self.conv = nn.Conv2d(2, 1, kernel_size,
-                              padding=padding, bias=False)
+        self.conv = nn.Conv2d(2, 1, 3, padding=1, bias=False)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
@@ -123,8 +117,9 @@ class CBAM(nn.Module):
             in_ch,
             out_ch=in_ch,
             r=r,
+            has_activate=True,
         )
-        self.sa = SpatialAttention(kernel_size=kernel_size)
+        self.sa = SpatialAttention()
 
     def forward(self, x):
         x = self.ca(x) * x
@@ -153,8 +148,8 @@ class ResBlock(nn.Module):
             nn.Conv2d(
                 in_ch,
                 out_ch,
-                kernel_size=3,
-                padding=1,
+                kernel_size=7,
+                padding=3,
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
@@ -162,8 +157,8 @@ class ResBlock(nn.Module):
             nn.Conv2d(
                 out_ch,
                 out_ch,
-                kernel_size=3,
-                padding=1,
+                kernel_size=5,
+                padding=2,
                 stride=1,
                 groups=2 - (out_ch % 2),
             ),
