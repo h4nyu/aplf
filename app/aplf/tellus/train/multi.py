@@ -22,9 +22,11 @@ from tensorboardX import SummaryWriter
 from ..metric import iou
 from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
+
+from ..preprocess import batch_aug
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
-from ..data import ChunkSampler
+from ..data import ChunkSampler, Augment
 
 
 def validate(predicts, loader):
@@ -77,15 +79,18 @@ def train_epoch(model,
     optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(pos_loader)
     sum_train_loss = 0
+    aug = batch_aug(Augment())
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
-        ).to(device)
+        )
+        palsar_x = aug(palsar_x, ch=1).to(device)
         landsat_x = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
-        ).to(device)
+        )
+        landsat_x = aug(landsat_x, ch=3).to(device)
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0
@@ -104,10 +109,6 @@ def train_epoch(model,
         sum_train_loss += loss.item()
     mean_loss = sum_train_loss / batch_len
     return model, mean_loss
-
-
-def aug(x):
-    pass
 
 
 @curry

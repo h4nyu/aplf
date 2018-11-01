@@ -29,14 +29,13 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id="ensamble-3-cbam-0",
+        id="ensamble-3-cbam-aug-0",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
         folds=[0],
     )
 
-    #  g(scheduler='single-threaded')
 
     with Client('dask-scheduler:8786') as c:
         try:
