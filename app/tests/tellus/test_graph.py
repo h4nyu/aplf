@@ -23,7 +23,7 @@ def test_graph():
             'depth': 1
         },
         'landsat_weight': 0.5,
-        'num_ensamble': 4,
+        'num_ensamble': 2,
         'lr': 0.0001,
     }
 
