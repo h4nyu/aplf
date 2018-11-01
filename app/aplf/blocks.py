@@ -79,7 +79,6 @@ class ChannelAttention(nn.Module):
             nn.Linear(in_ch, in_ch//r),
             nn.ReLU(inplace=True),
             nn.Linear(in_ch//r, out_ch),
-            nn.Sigmoid()
         )
         self.has_activate = has_activate
         self.sigmoid = nn.Sigmoid()
@@ -88,8 +87,11 @@ class ChannelAttention(nn.Module):
         b, c, _, _ = x.size()
         avg_out = self.mpl(self.avg_pool(x).view(b, c))
         max_out = self.mpl(self.max_pool(x).view(b, c))
-        out = avg_out + max_out
-        return self.sigmoid(out).view(b, self.out_ch, 1, 1)
+        out = (avg_out + max_out).view(b, self.out_ch, 1, 1)
+        if self.has_activate:
+            return self.sigmoid(out)
+        else:
+            return out
 
 
 class SpatialAttention(nn.Module):

@@ -1,33 +1,55 @@
-from aplf.blocks import ChannelAttention, SpatialAttention, CBAM
+from aplf.blocks import ChannelAttention, SpatialAttention, CBAM, SEBlock
+import torch.nn as nn
 import torch
 import pytest
 
 
+
+def test_se():
+    model = SEBlock(
+        in_ch=64,
+        out_ch=32,
+        r=2,
+    ).train()
+    criterion = nn.MSELoss()
+    image = torch.randn(32, 64, 40, 40)
+    ansewer = torch.randn(32, 32, 1, 1)
+    out = model(image)
+    assert out.size() == ansewer.size()
+    loss = criterion(out, ansewer)
+    loss.backward()
+
 def test_ca():
-    with torch.no_grad():
-        model = ChannelAttention(
-            in_ch=64,
-            out_ch=32,
-            r=16,
-        )
-        image = torch.empty(32, 64, 40, 40)
-        out = model(image)
-        assert out.size() == (32, 32, 1, 1)
+    model = ChannelAttention(
+        in_ch=64,
+        out_ch=32,
+        r=2,
+    ).train()
+    image = torch.randn(32, 64, 40, 40)
+    ansewer = torch.randn(32, 32, 1, 1)
+    out = model(image)
+    assert out.size() == ansewer.size()
+    loss = nn.MSELoss()(out, ansewer)
+    loss.backward()
 
 def test_sa():
-    with torch.no_grad():
-        model = SpatialAttention()
-        image = torch.empty(32, 64, 40, 40)
-        out = model(image)
-        assert out.size() == (32, 1, 40, 40)
+    model = SpatialAttention().train()
+    image = torch.empty(32, 64, 40, 40)
+    ansewer = torch.empty(32, 1, 40, 40)
+    out = model(image)
+    assert out.size() == ansewer.size()
+    loss = nn.MSELoss(size_average=True)(out, ansewer)
+    loss.backward()
 
 
 def test_cbam():
-    with torch.no_grad():
-        model = CBAM(
-            in_ch=64,
-            r=16,
-        )
-        image = torch.empty(32, 64, 40, 40)
-        out = model(image)
-        assert out.size() == (32, 64, 40, 40)
+    model = CBAM(
+        in_ch=64,
+        r=16,
+    ).train()
+    image = torch.empty(32, 64, 40, 40)
+    ansewer = torch.empty(32, 64, 40, 40)
+    out = model(image)
+    assert out.size() == ansewer.size()
+    loss = nn.MSELoss(size_average=True)(out, ansewer)
+    loss.backward()
