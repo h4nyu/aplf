@@ -172,9 +172,9 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
-            CBAM(out_ch, r=r),
         )
         self.activation = nn.ReLU(inplace=True)
+        self.cbam = CBAM(out_ch, r=r)
 
     def forward(self, x):
         residual = x
@@ -182,6 +182,7 @@ class ResBlock(nn.Module):
         if self.projection:
             residual = self.projection(residual)
         out += residual
+        out = self.cbam(out)
         out = self.activation(out)
         return out
 

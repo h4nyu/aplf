@@ -24,13 +24,13 @@ def test_graph():
         },
         'divides': 10,
         'landsat_weight': 0.5,
-        'num_ensamble': 2,
+        'num_ensamble': 3,
         'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="ensamble-2-cbam-aug-conavg-lr-0.0001-lw-0.5-fs-8-dp-1",
+        id="esm-3-cbam-resout-aug-conavg-lr-0.0001-lw-0.5-fs-8-dp-1",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
