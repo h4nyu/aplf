@@ -179,10 +179,10 @@ class ResBlock(nn.Module):
     def forward(self, x):
         residual = x
         out = self.block(x)
+        out = self.cbam(out)
         if self.projection:
             residual = self.projection(residual)
         out += residual
-        out = self.cbam(out)
         out = self.activation(out)
         return out
 

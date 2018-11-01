@@ -30,7 +30,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id="esm-3-cbam-resout-aug-conavg-lr-0.0001-lw-0.5-fs-8-dp-1",
+        id="esm-3-cbam-resin-aug-conavg-lr-0.0001-lw-0.5-fs-8-dp-1",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
