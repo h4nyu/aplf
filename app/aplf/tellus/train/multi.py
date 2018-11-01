@@ -101,8 +101,14 @@ def train_epoch(model_path,
 
         logit_loss = criterion(
             model(palsar_x),
+<<<<<<< HEAD
             (labels, landsat_x),
             landsat_weight,
+||||||| merged common ancestors
+            (labels, landsat_x)
+=======
+            (labels, landsat_x),
+>>>>>>> f00fca2c78f359ef94ef9b5673e5456fc35500a8
         )
 
         loss = logit_loss
@@ -120,7 +126,8 @@ def aug(x):
     pass
 
 
-def criterion(x, y, landsat_weight):
+@curry
+def criterion(landsat_weight, x, y):
     image_cri = nn.MSELoss(size_average=True)
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
@@ -138,8 +145,13 @@ def train_multi(model_dir,
                 epochs,
                 batch_size,
                 log_dir,
+<<<<<<< HEAD
                 val_batch_size,
                 landsat_weight,
+||||||| merged common ancestors
+                landsat_weight,
+=======
+>>>>>>> f00fca2c78f359ef94ef9b5673e5456fc35500a8
                 lr,
                 num_ensamble,
                 ):
@@ -232,8 +244,16 @@ def train_multi(model_dir,
                 model_path=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
+<<<<<<< HEAD
                 landsat_weight=landsat_weight,
                 criterion=criterion,
+||||||| merged common ancestors
+                criterion=criterion,
+                device=device,
+=======
+                criterion=criterion(landsat_weight),
+                device=device,
+>>>>>>> f00fca2c78f359ef94ef9b5673e5456fc35500a8
                 lr=lr
             )),
             list,
@@ -249,7 +269,14 @@ def train_multi(model_dir,
         metrics = validate(
             model_paths=model_paths,
             loader=val_loader,
+<<<<<<< HEAD
             criterion=criterion,
+||||||| merged common ancestors
+            criterion=criterion,
+            device=device
+=======
+            device=device
+>>>>>>> f00fca2c78f359ef94ef9b5673e5456fc35500a8
         )
 
         with SummaryWriter(log_dir) as w:
