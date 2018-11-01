@@ -69,18 +69,21 @@ class ChannelAttention(nn.Module):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.out_ch = out_ch
         self.mpl = nn.Sequential(
-            nn.Conv2d(in_ch, in_ch // r, 1, bias=False),
+            nn.Linear(in_ch, in_ch//r),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_ch // r, out_ch, 1, bias=False),
+            nn.Linear(in_ch//r, out_ch),
+            nn.Sigmoid()
         )
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        avg_out = self.mpl(self.avg_pool(x))
-        max_out = self.mpl(self.max_pool(x))
+        b, c, _, _ = x.size()
+        avg_out = self.mpl(self.avg_pool(x).view(b, c))
+        max_out = self.mpl(self.max_pool(x).view(b, c))
         out = avg_out + max_out
-        return self.sigmoid(out)
+        return self.sigmoid(out).view(b, self.out_ch, 1, 1)
 
 
 class SpatialAttention(nn.Module):
