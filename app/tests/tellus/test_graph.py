@@ -18,19 +18,19 @@ def test_graph():
         'num_ensamble': 2,
         'model_kwargs': {
             'feature_size': 8,
-            'resize': 40,
+            'resize': 80,
             'pad': 4,
             'depth': 1
         },
         'divides': 10,
         'landsat_weight': 0.5,
         'num_ensamble': 2,
-        'lr': 0.001,
+        'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="ensamble-3-cbam-aug-conavg-0",
+        id="ensamble-2-cbam-aug-conavg-lr-0.0001-lw-0.5-fs-8-dp-1",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
