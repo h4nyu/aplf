@@ -160,12 +160,11 @@ def train_multi(model_dir,
 
     divides = int(len(sets['train_neg']) /
                   len(sets['train_pos']) / num_ensamble)
-    #  pos_set = pipe(
-    #      range(divides),
-    #      map(lambda _: sets['train_pos']),
-    #      reduce(lambda x, y: x+y)
-    #  )
-    pos_set = sets['train_pos']
+    pos_set = pipe(
+        range(divides),
+        map(lambda _: sets['train_pos']),
+        reduce(lambda x, y: x+y)
+    )
 
     train_pos_loader = DataLoader(
         pos_set,
@@ -212,30 +211,30 @@ def train_multi(model_dir,
         val_labels = []
         train_probs = []
         train_labels = []
-        #  traineds = pipe(
-        #      zip(models, train_neg_loaders),
-        #      map(lambda x: delayed(train_epoch)(
-        #          model=x[0],
-        #          neg_loader=x[1],
-        #          pos_loader=train_pos_loader,
-        #          criterion=criterion(landsat_weight),
-        #          lr=lr
-        #      )),
-        #      list,
-        #  )
-        #
-        #  train_loss = pipe(
-        #      traineds,
-        #      map(delayed(lambda x: x[1])),
-        #      list,
-        #      delayed(np.mean)
-        #  )
-        #
-        #  models = pipe(
-        #      traineds,
-        #      map(delayed(lambda x: x[0])),
-        #      list,
-        #  )
+        traineds = pipe(
+            zip(models, train_neg_loaders),
+            map(lambda x: delayed(train_epoch)(
+                model=x[0],
+                neg_loader=x[1],
+                pos_loader=train_pos_loader,
+                criterion=criterion(landsat_weight),
+                lr=lr
+            )),
+            list,
+        )
+
+        train_loss = pipe(
+            traineds,
+            map(delayed(lambda x: x[1])),
+            list,
+            delayed(np.mean)
+        )
+
+        models = pipe(
+            traineds,
+            map(delayed(lambda x: x[0])),
+            list,
+        )
         metrics = pipe(
             models,
             map(lambda x: delayed(validate_epoch)(
@@ -249,9 +248,7 @@ def train_multi(model_dir,
             )
         )
 
-        models, metrics = dask.compute(models, metrics)
-        train_loss = 0
-        print(metrics)
+        models, train_loss, metrics = dask.compute(models, train_loss, metrics)
 
         with SummaryWriter(log_dir) as w:
             w.add_scalars(

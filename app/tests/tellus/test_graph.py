@@ -17,19 +17,19 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 16,
+            'feature_size': 8,
             'resize': 80,
             'pad': 4,
             'depth': 1
         },
         'landsat_weight': 0.5,
-        'num_ensamble': 2,
+        'num_ensamble': 3,
         'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="ensamble-cbam-0",
+        id="ensamble-3-cbam-0",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
