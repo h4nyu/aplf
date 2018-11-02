@@ -58,7 +58,7 @@ def validate(models,
             )
             logit = pipe(
                 outs,
-                map(lambda x: x[0].softmax(dim=1)),
+                map(lambda x: x[0]),
                 reduce(lambda x, y: (x+y)/2),
             )
 
@@ -73,7 +73,7 @@ def validate(models,
             )
             sum_loss += loss.item()
 
-        y_preds += y_pred.argmax(dim=1).cpu().detach().tolist()
+        y_preds += logit.argmax(dim=1).cpu().detach().tolist()
         y_trues += sample['label'].cpu().detach().tolist()
 
     score = iou(

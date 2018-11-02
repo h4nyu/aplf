@@ -17,15 +17,15 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 16,
+            'feature_size': 8,
             'resize': 80,
             'pad': 4,
-            'depth': 1
+            'depth': 2
         },
         'divides': 10,
-        'landsat_weight': 0.5,
+        'landsat_weight': 0.1,
         'num_ensamble': 2,
-        'lr': 0.0001,
+        'lr': 0.001,
     }
 
     g = Graph(
