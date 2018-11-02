@@ -58,7 +58,7 @@ def validate(models,
             )
             logit = pipe(
                 outs,
-                map(lambda x: x[0]),
+                map(lambda x: x[0].softmax(dim=1)),
                 reduce(lambda x, y: (x+y)/2),
             )
 
