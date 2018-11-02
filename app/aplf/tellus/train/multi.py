@@ -40,15 +40,16 @@ def validate(models,
              loader,
              criterion,
              ):
+    device = torch.device('cuda')
     y_preds = []
     y_trues = []
     sum_loss = 0
     len_batch = len(loader)
     for sample in loader:
         with torch.no_grad():
-            palsar_x = sample['palsar']
-            labels = sample['label']
-            landsat_x = sample['landsat']
+            palsar_x = sample['palsar'].to(device)
+            labels = sample['label'].to(device)
+            landsat_x = sample['landsat'].to(device)
             outs = pipe(
                 models,
                 map(lambda x: delayed(calc_batch)(x, palsar_x)),
