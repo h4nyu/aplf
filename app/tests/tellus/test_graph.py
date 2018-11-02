@@ -18,7 +18,7 @@ def test_graph():
         'num_ensamble': 2,
         'model_kwargs': {
             'feature_size': 8,
-            'resize': 80,
+            'resize': 120,
             'pad': 4,
             'depth': 2
         },
@@ -30,7 +30,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id="repo-0",
+        id="repo-1",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=10,
