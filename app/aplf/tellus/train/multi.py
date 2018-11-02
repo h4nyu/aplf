@@ -8,7 +8,7 @@ import torchvision.utils as vutils
 from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
@@ -29,21 +29,58 @@ from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment
 
 
-def validate(predicts, loader):
+def calc_batch(model, sample):
+    with torch.no_grad():
+        device = torch.device('cuda')
+        sample = sample.to(device)
+        return model(sample)
 
-    y_preds = np.array(predicts).mean(axis=0).argmax(axis=1)
-    y_trues = pipe(
-        loader,
-        map(lambda x: x['label'].cpu().detach().tolist()),
-        reduce(lambda x, y: x+y),
-        np.array,
-    )
+
+def validate(models,
+             loader,
+             criterion,
+             ):
+    y_preds = []
+    y_trues = []
+    sum_loss = 0
+    len_batch = len(loader)
+    for sample in loader:
+        with torch.no_grad():
+            palsar_x = sample['palsar']
+            labels = sample['label']
+            landsat_x = sample['landsat']
+            outs = pipe(
+                models,
+                map(lambda x: delayed(calc_batch)(x, palsar_x)),
+                list,
+                lambda x: delayed(x).compute(),
+            )
+            logit = pipe(
+                outs,
+                map(lambda x: x[0].softmax(dim=1)),
+                reduce(lambda x, y: (x+y)/2),
+            )
+
+            landsat_out = pipe(
+                outs,
+                map(lambda x: x[1]),
+                reduce(lambda x, y: (x+y)/2),
+            )
+            loss = criterion(
+                (logit, landsat_out),
+                (labels, landsat_x),
+            )
+            sum_loss += loss.item()
+
+        y_preds += y_pred.argmax(dim=1).cpu().detach().tolist()
+        y_trues += sample['label'].cpu().detach().tolist()
 
     score = iou(
         y_preds,
         y_trues,
     )
     tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
+    mean_loss = sum_loss / len_batch
     return {
         'TPR': tp/(tp+fn),
         'FNR': fn/(tp+fn),
@@ -51,25 +88,11 @@ def validate(predicts, loader):
         'acc': (tp+tn) / (tp+tn+fp+fn),
         'pre': tp / (tp + fp),
         'iou': tp / (fn+tp+fp),
+        'loss': mean_loss
     }
 
 
-def validate_epoch(model,
-                   loader,
-                   ):
-    y_preds = []
-    device = torch.device('cuda')
-    for sample in loader:
-        with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            label_preds = model(palsar_x)[0].softmax(dim=1)
-            y_preds += label_preds.cpu().detach().tolist()
-
-    return y_preds
-
-
 def train_epoch(model,
-                optimizer,
                 criterion,
                 pos_loader,
                 neg_loader,
@@ -80,6 +103,7 @@ def train_epoch(model,
     batch_len = len(pos_loader)
     sum_train_loss = 0
     aug = batch_aug(Augment())
+    optimizer = optim.Adam(model.parameters(), amsgrad=True)
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
@@ -108,7 +132,7 @@ def train_epoch(model,
 
         sum_train_loss += loss.item()
     mean_loss = sum_train_loss / batch_len
-    return model, optimizer, mean_loss
+    return model, mean_loss
 
 
 @curry
@@ -147,11 +171,6 @@ def train_multi(model_dir,
         map(lambda _: Model(**model_kwargs).to(device).train()),
         list
     )
-    optimizers = pipe(
-        models,
-        map(lambda x: optim.Adam(x.parameters(), amsgrad=True, lr=lr)),
-        list,
-    )
 
     model_paths = pipe(
         range(num_ensamble),
@@ -178,27 +197,19 @@ def train_multi(model_dir,
         pin_memory=True,
     )
 
-    train_neg_loaders = pipe(
-        range(num_ensamble),
-        map(lambda x: DataLoader(
-            sets['train_neg'],
-            batch_size=batch_size//2,
-            sampler=ChunkSampler(
-                epoch_size=len(pos_set),
-                len_indices=len(sets['train_neg']),
-                shuffle=True,
-                start_at=x,
-            ),
-            pin_memory=True,
-        )),
-        list,
+    train_neg_loader = DataLoader(
+        sets['train_neg'],
+        batch_size=batch_size//2,
+        sampler=RandomSampler(
+            data_source=sets['train_neg'],
+        ),
+        pin_memory=True,
     )
 
     val_loader = DataLoader(
         sets['val_neg']+sets['val_pos'],
         batch_size=val_batch_size,
         shuffle=False,
-        pin_memory=True,
     )
     batch_len = len(train_pos_loader)
 
@@ -220,11 +231,10 @@ def train_multi(model_dir,
         train_probs = []
         train_labels = []
         traineds = pipe(
-            zip(models, optimizers, train_neg_loaders),
+            models,
             map(lambda x: delayed(train_epoch)(
-                model=x[0],
-                optimizer=x[1],
-                neg_loader=x[2],
+                model=x,
+                neg_loader=train_neg_loader,
                 pos_loader=train_pos_loader,
                 criterion=criterion(landsat_weight),
                 lr=lr
@@ -232,36 +242,23 @@ def train_multi(model_dir,
             list,
         )
 
-
         models = pipe(
             traineds,
             map(delayed(lambda x: x[0])),
             list,
         )
-        optimizers = pipe(
-            traineds,
-            map(delayed(lambda x: x[1])),
-            list,
-        )
 
         train_loss = pipe(
             traineds,
-            map(delayed(lambda x: x[2])),
+            map(delayed(lambda x: x[1])),
             list,
             delayed(np.mean)
         )
 
-        metrics = pipe(
+        metrics = delayed(validate)(
             models,
-            map(lambda x: delayed(validate_epoch)(
-                model=x,
-                loader=val_loader,
-            )),
-            list,
-            lambda x: delayed(validate)(
-                predicts=x,
-                loader=val_loader
-            )
+            val_loader,
+            criterion=criterion(landsat_weight),
         )
 
         models, train_loss, metrics = dask.compute(models, train_loss, metrics)
@@ -270,6 +267,7 @@ def train_multi(model_dir,
             w.add_scalars(
                 'loss',
                 {
+                    'val': metrics['loss'],
                     'train': train_loss,
                 },
                 epoch

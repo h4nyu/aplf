@@ -204,10 +204,6 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            ResBlock(
-                in_ch=out_ch,
-                out_ch=out_ch,
-            ),
         )
         self.pool = nn.MaxPool2d(2, 2)
 

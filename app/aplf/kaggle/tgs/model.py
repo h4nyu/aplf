@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
+
 class SEBlock(nn.Module):
     def __init__(self, in_ch, out_ch, r=1):
         super().__init__()
@@ -14,7 +15,6 @@ class SEBlock(nn.Module):
             nn.Sigmoid()
         )
         self.out_ch = out_ch
-
 
     def forward(self, x):
         b, c, _, _ = x.size()
@@ -62,52 +62,6 @@ class SCSE(nn.Module):
         sSE = self.sSE(x)
         x = cSE + sSE
         return x
-
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-
-        self.fc1   = nn.Conv2d(in_planes, in_planes // 16, 1, bias=False)
-        self.relu1 = nn.ReLU()
-        self.fc2   = nn.Conv2d(in_planes // 16, in_planes, 1, bias=False)
-
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
-        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
-        out = avg_out + max_out
-        return self.sigmoid(out)
-
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
-
-        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
-        padding = 3 if kernel_size == 7 else 1
-
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
-        x = self.conv1(x)
-        return self.sigmoid(x)
-
-class CAM(nn.Module):
-    def __init__(self, in_ch, r=2 / 3):
-        super().__init__()
-        self.cSE = CSE(in_ch, r)
-        self.sSE = SSE(in_ch)
-
-class CBAM()
-def __init__(self, in_ch, r=2):
-    self.cam = CAM(in_ch, r=r)
-    self.sam = CAM(in_ch, r=r)
 
 
 class ResBlock(nn.Module):
@@ -166,7 +120,6 @@ class ResBlock(nn.Module):
         return out
 
 
-
 class DownSample(nn.Module):
 
     def __init__(self,
@@ -193,6 +146,7 @@ class DownSample(nn.Module):
         conv = out
         down = self.pool(conv)
         return down, conv
+
 
 class UpSample(nn.Module):
 
@@ -306,7 +260,7 @@ class RUNet(UNet):
         self.center = SEBlock(
             in_ch=feature_size,
             out_ch=feature_size,
-            r= 1/2
+            r=1/2
         )
 
         self.up_layers = nn.ModuleList([
@@ -326,7 +280,6 @@ class RUNet(UNet):
             2,
             kernel_size=3
         )
-
 
 
 class DUNet(UNet):
@@ -351,7 +304,6 @@ class DUNet(UNet):
             in_ch=feature_size * 2 ** depth,
             out_ch=feature_size * 2 ** depth,
         )
-
 
         self.up_layers = nn.ModuleList([
             *pipe(
@@ -378,7 +330,6 @@ class DUNet(UNet):
             2,
             kernel_size=3
         )
-
 
 
 class EUNet(UNet):
@@ -432,9 +383,6 @@ class EUNet(UNet):
         )
 
 
-
-
-
 class HUNet(UNet):
     def __init__(self, feature_size=64):
         super().__init__()
@@ -454,7 +402,7 @@ class HUNet(UNet):
         self._cetner_output = SEBlock(
             feature_size * 2 ** 3,
             2,
-            r = 1/2
+            r=1/2
         )
 
         self.up_layers = nn.ModuleList([

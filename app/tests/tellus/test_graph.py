@@ -17,23 +17,23 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 8,
+            'feature_size': 16,
             'resize': 80,
             'pad': 4,
             'depth': 1
         },
-        'divides': 1,
+        'divides': 10,
         'landsat_weight': 0.5,
-        'num_ensamble': 3,
+        'num_ensamble': 2,
         'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="esm-3-cbam-resout-aug-conavg-lr-0.0001-lw-0.5-fs-8-dp-1",
+        id="repo-0",
         train_method='multi',
         base_train_config=base_train_config,
-        n_splits=8,
+        n_splits=10,
         folds=[0],
     )
 

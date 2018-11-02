@@ -34,7 +34,6 @@ services:
       - ./store:/store
     ports:
       - ${DASKBOARD_PORT}:8787
-      - ${DASKSCHEDULER_PORT}:8786
     depends_on:
       - nfs
 
