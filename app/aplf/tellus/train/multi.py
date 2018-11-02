@@ -193,14 +193,14 @@ def train_multi(model_dir,
 
     train_pos_loader = DataLoader(
         pos_set,
-        batch_size=batch_size // 2,
+        batch_size=batch_size // 4,
         shuffle=True,
         pin_memory=True,
     )
 
     train_neg_loader = DataLoader(
         sets['train_neg'],
-        batch_size=batch_size//2,
+        batch_size=(batch_size * 3)//4,
         sampler=RandomSampler(
             data_source=sets['train_neg'],
         ),

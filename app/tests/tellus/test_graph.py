@@ -17,27 +17,26 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 8,
-            'resize': 120,
+            'feature_size': 16,
+            'resize': 40,
             'pad': 4,
             'depth': 2
         },
         'divides': 10,
         'landsat_weight': 0.1,
         'num_ensamble': 2,
-        'lr': 0.001,
+        'lr': 0.0001,
     }
 
     g = Graph(
         **base_param,
-        id="repo-1",
+        id="repo-2",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=10,
         folds=[0],
     )
-
-
+    #  g(scheduler="single-threaded")
     with Client('dask-scheduler:8786') as c:
         try:
             result = g()

@@ -143,42 +143,62 @@ class ResBlock(nn.Module):
                 out_ch,
                 kernel_size=1,
             )
+        print(out_ch)
 
-        self.block = nn.Sequential(
+        self.conv3bn = nn.Sequential(
             nn.Conv2d(
                 in_ch,
-                out_ch,
-                kernel_size=7,
-                padding=3,
-                stride=1,
-            ),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(
-                out_ch,
-                out_ch,
-                kernel_size=5,
-                padding=2,
-                stride=1,
-                groups=2 - (out_ch % 2),
-            ),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(
-                out_ch,
-                out_ch,
+                out_ch//2,
                 kernel_size=3,
                 padding=1,
                 stride=1,
             ),
-            nn.BatchNorm2d(out_ch),
-            CBAM(out_ch, r=r)
+            nn.BatchNorm2d(out_ch // 2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(
+                out_ch//2,
+                out_ch//2,
+                kernel_size=3,
+                padding=1,
+                stride=1,
+            ),
+            nn.BatchNorm2d(out_ch // 2),
         )
+
+        self.conv5bn = nn.Sequential(
+            nn.Conv2d(
+                in_ch,
+                out_ch//2,
+                kernel_size=5,
+                padding=2,
+                stride=1,
+            ),
+            nn.BatchNorm2d(out_ch//2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(
+                out_ch//2,
+                out_ch//2,
+                kernel_size=5,
+                padding=2,
+                stride=1,
+            ),
+            nn.BatchNorm2d(out_ch // 2),
+        )
+        self.ca = ChannelAttention(
+            in_ch=out_ch,
+            out_ch=out_ch,
+        )
+        self.sa = SpatialAttention()
+
         self.activation = nn.ReLU(inplace=True)
 
     def forward(self, x):
         residual = x
-        out = self.block(x)
+        out3 = self.conv3bn(x)
+        out5 = self.conv5bn(x)
+        out = torch.cat([out5, out3], dim=1)
+        out = self.ca(out) * out
+        out = self.sa(out) * out
         if self.projection:
             residual = self.projection(residual)
         out += residual
