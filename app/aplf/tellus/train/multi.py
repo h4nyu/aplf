@@ -2,13 +2,12 @@ from pathlib import Path
 import dask
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
 from sklearn.metrics import confusion_matrix
-from dask import delayed
 import random
 import torchvision.utils as vutils
 from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
@@ -27,16 +26,9 @@ from aplf.optimizers import Eve
 from ..data import ChunkSampler
 
 
-def validate(model_paths,
+def validate(models,
              loader,
-             criterion,
              device):
-    models = pipe(
-        model_paths,
-        map(torch.load),
-        map(lambda x: x.eval().to(device)),
-        list
-    )
     y_preds = []
     y_trues = []
     sum_loss = 0
@@ -59,19 +51,26 @@ def validate(model_paths,
         y_preds,
         y_trues,
     )
+    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
 
-    return confusion_matrix(y_trues, y_preds).ravel()
+    return {
+        'TPR': tp/(tp+fn),
+        'FNR': fn/(tp+fn),
+        'FPR': fp/(fp+tn),
+        'acc': (tp+tn) / (tp+tn+fp+fn),
+        'pre': tp / (tp + fp),
+        'iou': tp / (fn+tp+fp),
+    }
 
 
-def train_epoch(model_path,
+def train_epoch(model,
                 criterion,
                 pos_loader,
                 neg_loader,
+                optimizer,
                 device,
                 lr,
                 ):
-    model = torch.load(model_path)
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(pos_loader)
     sum_train_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
@@ -100,8 +99,7 @@ def train_epoch(model_path,
 
         sum_train_loss += loss.item()
     mean_loss = sum_train_loss / batch_len
-    torch.save(model, model_path)
-    return model_path, mean_loss
+    return model, mean_loss
 
 
 def aug(x):
@@ -114,7 +112,8 @@ def criterion(landsat_weight, x, y):
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
     labels, landsat_y = y
-    loss = class_cri(logit, labels) + landsat_weight*image_cri(landsat_x, landsat_y)
+    loss = class_cri(logit, labels) + landsat_weight * \
+        image_cri(landsat_x, landsat_y)
     return loss
 
 
@@ -125,15 +124,16 @@ def train_multi(model_dir,
                 model_kwargs,
                 epochs,
                 batch_size,
+                val_batch_size,
                 log_dir,
                 landsat_weight,
+                validate_interval,
                 lr,
                 num_ensamble=2,
                 ):
 
     model_dir = Path(model_dir)
     model_dir.mkdir()
-
 
     device = torch.device("cuda")
     Model = getattr(mdl, model_type)
@@ -143,27 +143,20 @@ def train_multi(model_dir,
         map(lambda _: Model(**model_kwargs).to(device).train()),
         list
     )
+    optimizers = pipe(
+        models,
+        map(lambda x: optim.Adam(x.parameters(), amsgrad=True, lr=lr)),
+        list
+    )
 
     model_paths = pipe(
         range(num_ensamble),
         map(lambda x: model_dir / f'{x}.pt'),
         list,
     )
-    check_model_paths = pipe(
-        range(num_ensamble),
-        map(lambda x: model_dir / f'{x}_check.pt'),
-        list,
-    )
-
-
-    pipe(
-        zip(models, model_paths),
-        map(lambda x: torch.save(*x)),
-        list
-    )
 
     pos_set = pipe(
-        range(150//(num_ensamble + 1)),
+        range(validate_interval),
         map(lambda _: sets['train_pos']),
         reduce(lambda x, y: x+y)
     )
@@ -173,25 +166,18 @@ def train_multi(model_dir,
         shuffle=True,
         pin_memory=True,
     )
-    train_neg_loaders = pipe(
-        range(num_ensamble),
-        map(lambda x: DataLoader(
-            sets['train_neg'],
-            batch_size=batch_size//2,
-            pin_memory=True,
-            sampler=ChunkSampler(
-                epoch_size=len(pos_set),
-                len_indices=len(sets['train_neg']),
-                shuffle=True,
-                start_at=x,
-            ),
-        )),
-        list,
+    train_neg_loader = DataLoader(
+        sets['train_neg'],
+        batch_size=batch_size//2,
+        pin_memory=True,
+        sampler=RandomSampler(
+            data_source=sets['train_neg'],
+        )
     )
 
     val_loader = DataLoader(
         sets['val_neg']+sets['val_pos'],
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         pin_memory=True,
         shuffle=True,
     )
@@ -216,17 +202,17 @@ def train_multi(model_dir,
         train_labels = []
 
         traineds = pipe(
-            zip(model_paths, train_neg_loaders),
-            map(lambda x: delayed(train_epoch)(
-                model_path=x[0],
-                neg_loader=x[1],
+            zip(models, optimizers),
+            map(lambda x: train_epoch(
+                model=x[0],
+                optimizer=x[1],
+                neg_loader=train_neg_loader,
                 pos_loader=train_pos_loader,
                 criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),
             list,
-            lambda x: dask.compute(*x)
         )
 
         train_loss = pipe(
@@ -236,10 +222,16 @@ def train_multi(model_dir,
             np.mean
         )
 
-        tn, fp, fn, tp = validate(
-            model_paths=model_paths,
+        models = pipe(
+            traineds,
+            map(lambda x: x[0]),
+            list,
+        )
+
+
+        metrics = validate(
+            models=models,
             loader=val_loader,
-            criterion=criterion(landsat_weight),
             device=device
         )
 
@@ -251,27 +243,20 @@ def train_multi(model_dir,
                 },
                 epoch
             )
-            iou = tp / (fn+tp+fp)
             w.add_scalars(
                 'score',
                 {
-                    'TPR': tp/(tp+fn),
-                    'FNR': fn/(tp+fn),
-                    'FPR': fp/(fp+tn),
-                    'acc': (tp+tn) / (tp+tn+fp+fn),
-                    'pre': tp / (tp + fp),
-                    'iou': tp / (fn+tp+fp),
+                    **metrics
                 },
                 epoch
             )
 
-            if max_val_score <= iou:
-                max_val_score = iou
+            if max_val_score <= metrics['iou']:
+                max_val_score = metrics['iou']
                 w.add_text(
                     'iou',
-                    f'val: {iou}, epoch: {epoch}',
+                    f"val: {metrics['iou']}, epoch: {epoch}",
                     epoch
                 )
-
 
     return model_path

@@ -64,11 +64,75 @@ class SCSE(nn.Module):
         return x
 
 
+class ChannelAttention(nn.Module):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 r=16,
+                 bias=False,
+                 has_activate=True):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.out_ch = out_ch
+        self.fc = nn.Sequential(
+            nn.Conv2d(in_ch, in_ch//r, kernel_size=1, bias=bias),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_ch//r, out_ch, kernel_size=1, bias=bias),
+        )
+        self.has_activate = has_activate
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
+        if self.has_activate:
+            return self.sigmoid(out)
+        else:
+            return out
+
+
+class SpatialAttention(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(2, 1, 3, padding=1, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        x = torch.cat([avg_out, max_out], dim=1)
+        x = self.conv(x)
+        return self.sigmoid(x)
+
+
+class CBAM(nn.Module):
+    def __init__(self,
+                 in_ch,
+                 r=16,
+                 kernel_size=7):
+        super().__init__()
+        self.ca = ChannelAttention(
+            in_ch,
+            out_ch=in_ch,
+            r=r,
+            has_activate=True,
+        )
+        self.sa = SpatialAttention()
+
+    def forward(self, x):
+        x = self.ca(x) * x
+        x = self.sa(x) * x
+        return x
+
+
 class ResBlock(nn.Module):
 
     def __init__(self,
                  in_ch,
                  out_ch,
+                 r=2,
                  ):
         super().__init__()
         if in_ch == out_ch:
@@ -79,40 +143,60 @@ class ResBlock(nn.Module):
                 out_ch,
                 kernel_size=1,
             )
-        self.block = nn.Sequential(
+        self.conv3bn = nn.Sequential(
             nn.Conv2d(
                 in_ch,
-                out_ch,
+                out_ch//2,
                 kernel_size=3,
                 padding=1,
                 stride=1,
             ),
-            nn.BatchNorm2d(out_ch),
+            nn.BatchNorm2d(out_ch // 2),
             nn.ReLU(inplace=True),
             nn.Conv2d(
-                out_ch,
-                out_ch,
-                kernel_size=3,
-                padding=1,
-                stride=1,
-                groups=2 - (out_ch % 2),
-            ),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(
-                out_ch,
-                out_ch,
+                out_ch//2,
+                out_ch//2,
                 kernel_size=3,
                 padding=1,
                 stride=1,
             ),
-            nn.BatchNorm2d(out_ch),
+            nn.BatchNorm2d(out_ch // 2),
         )
+
+        self.conv5bn = nn.Sequential(
+            nn.Conv2d(
+                in_ch,
+                out_ch//2,
+                kernel_size=5,
+                padding=2,
+                stride=1,
+            ),
+            nn.BatchNorm2d(out_ch//2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(
+                out_ch//2,
+                out_ch//2,
+                kernel_size=5,
+                padding=2,
+                stride=1,
+            ),
+            nn.BatchNorm2d(out_ch // 2),
+        )
+        self.ca = ChannelAttention(
+            in_ch=(out_ch // 2)*2,
+            out_ch=out_ch,
+        )
+        self.sa = SpatialAttention()
+
         self.activation = nn.ReLU(inplace=True)
 
     def forward(self, x):
         residual = x
-        out = self.block(x)
+        out3 = self.conv3bn(x)
+        out5 = self.conv5bn(x)
+        out = torch.cat([out5, out3], dim=1)
+        out = self.ca(out) * out
+        out = self.sa(out) * out
         if self.projection:
             residual = self.projection(residual)
         out += residual
@@ -121,12 +205,12 @@ class ResBlock(nn.Module):
 
 
 class DownSample(nn.Module):
-
     def __init__(self,
                  in_ch,
                  out_ch,
                  kernel_size=3,
                  padding=1,
+                 r=2,
                  ):
         super().__init__()
         self.in_ch = in_ch
@@ -137,12 +221,6 @@ class DownSample(nn.Module):
                 in_ch=in_ch,
                 out_ch=out_ch,
             ),
-            SCSE(out_ch),
-            ResBlock(
-                in_ch=out_ch,
-                out_ch=out_ch,
-            ),
-            SCSE(out_ch),
         )
         self.pool = nn.MaxPool2d(2, 2)
 
@@ -160,6 +238,7 @@ class UpSample(nn.Module):
                  out_ch,
                  kernel_size=3,
                  padding=1,
+                 r=2,
                  ):
         super().__init__()
         self.block = nn.Sequential(
@@ -167,7 +246,6 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            SCSE(out_ch),
         )
 
     def forward(self, x, others, size):
