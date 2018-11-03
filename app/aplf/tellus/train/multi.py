@@ -23,7 +23,7 @@ from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
-from ..data import ChunkSampler
+from ..data import ChunkSampler, batch_aug, Augment
 
 
 def validate(models,
@@ -73,26 +73,30 @@ def train_epoch(model,
                 ):
     batch_len = len(pos_loader)
     sum_train_loss = 0
+    aug = Augment()
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        aug = aug.shuffle()
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
-        ).to(device)
+        )
+        palsar_x = batch_aug(aug, palsar_x, ch=1).to(device)
         landsat_x = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
-        ).to(device)
+        )
+        landsat_x = batch_aug(aug, landsat_x, ch=3).to(device)
+
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
 
-        logit_loss = criterion(
+        loss = criterion(
             model(palsar_x),
             (labels, landsat_x)
         )
 
-        loss = logit_loss
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -100,10 +104,6 @@ def train_epoch(model,
         sum_train_loss += loss.item()
     mean_loss = sum_train_loss / batch_len
     return model, mean_loss
-
-
-def aug(x):
-    pass
 
 
 @curry
@@ -227,7 +227,6 @@ def train_multi(model_dir,
             map(lambda x: x[0]),
             list,
         )
-
 
         metrics = validate(
             models=models,

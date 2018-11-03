@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, valmap
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, valmap, curry
 import random
 from torch.utils.data import Subset, Sampler
 from skimage import img_as_float
@@ -238,3 +238,40 @@ def kfold(df, n_splits, random_state=0):
     )
 
     return splieted
+
+
+class Augment(object):
+    def __init__(self):
+        self.augs = [
+            hflip,
+            vflip,
+            lambda x: rotate(x, 90),
+        ]
+        self.shuffle()
+
+    def shuffle(self):
+        self.transform = Compose([
+            ToPILImage(),
+            *pipe(
+                self.augs,
+                map(lambda a: random.choice([lambda x: x, a])),
+                list,
+            ),
+            ToTensor(),
+        ])
+        return self
+
+
+    def __call__(self, t):
+        return self.transform(t)
+
+
+@curry
+def batch_aug(aug, batch, ch=3):
+    return pipe(
+        batch,
+        map(lambda x: [aug(x[0:ch, :, :]), aug(x[ch:2*ch, :, :])]),
+        map(lambda x: torch.cat(x, dim=0)),
+        list,
+        torch.stack
+    )

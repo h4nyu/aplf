@@ -24,14 +24,14 @@ def test_graph():
             'pad': 4,
             'depth': 1
         },
-        'landsat_weight': 0.5,
-        'num_ensamble': 2,
+        'landsat_weight': 1,
+        'num_ensamble': 1,
         'lr': 0.001,
     }
 
     g = Graph(
         **base_param,
-        id=f"{uuid.uuid4()}_bag_1_lr_1e-3_cbam_fs_16",
+        id=f"{uuid.uuid4()}_bag_1_lr_1e-3_cbam_fs_16_aug_lsw_1",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=10,
