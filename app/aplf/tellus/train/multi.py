@@ -108,7 +108,8 @@ def aug(x):
     pass
 
 
-def criterion(x, y, landsat_weight):
+@curry
+def criterion(landsat_weight, x, y):
     image_cri = nn.MSELoss(size_average=True)
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
@@ -127,7 +128,6 @@ def train_multi(model_dir,
                 log_dir,
                 landsat_weight,
                 lr,
-                landsat_weight,
                 num_ensamble=2,
                 ):
 
@@ -221,7 +221,7 @@ def train_multi(model_dir,
                 model_path=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
-                criterion=criterion,
+                criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),
@@ -239,7 +239,7 @@ def train_multi(model_dir,
         tn, fp, fn, tp = validate(
             model_paths=model_paths,
             loader=val_loader,
-            criterion=criterion,
+            criterion=criterion(landsat_weight),
             device=device
         )
 
@@ -271,13 +271,6 @@ def train_multi(model_dir,
                     'iou',
                     f'val: {iou}, epoch: {epoch}',
                     epoch
-                )
-                pipe(
-                    model_paths,
-                    map(torch.load),
-                    lambda x: zip(x, check_model_paths),
-                    map(torch.save(x[0], x[1])),
-                    list
                 )
 
 
