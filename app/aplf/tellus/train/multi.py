@@ -36,13 +36,15 @@ def validate(models,
     for sample in loader:
         with torch.no_grad():
             palsar_x = sample['palsar'].to(device)
-            landsat_y = sample['landsat'].to(device)
             labels = sample['label'].to(device)
             label_preds = pipe(
                 models,
                 map(lambda x: x(palsar_x)[0].softmax(dim=1)),
+                #  reduce(lambda x, y: torch.max(x, y)),
                 reduce(lambda x, y: (x+y)/2)
             )
+            print(label_preds.argmax(dim=1).cpu().detach().tolist())
+            print(labels.cpu().detach().tolist())
             y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             batch_len += 1
@@ -73,29 +75,36 @@ def train_epoch(model,
                 ):
     batch_len = len(pos_loader)
     sum_train_loss = 0
-    aug = Augment()
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
-        aug = aug.shuffle()
         palsar_x = torch.cat(
-            [pos_sample['palsar'], neg_sample['palsar']],
+            [
+                pos_sample['palsar'],
+                neg_sample['palsar']
+            ],
             dim=0
-        )
-        palsar_x = batch_aug(aug, palsar_x, ch=1).to(device)
+        ).to(device)
         landsat_x = torch.cat(
-            [pos_sample['landsat'], neg_sample['landsat']],
+            [
+                pos_sample['landsat'],
+                neg_sample['landsat']
+            ],
             dim=0
-        )
-        landsat_x = batch_aug(aug, landsat_x, ch=3).to(device)
+        ).to(device)
 
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
 
+
+        label_pred, landsat_pred = model(palsar_x)
         loss = criterion(
-            model(palsar_x),
+            (label_pred, landsat_pred),
             (labels, landsat_x)
         )
+        print('-----------train------------')
+        print(label_pred.argmax(dim=1).cpu().detach().tolist())
+        print(labels.cpu().detach().tolist())
 
         optimizer.zero_grad()
         loss.backward()
@@ -106,15 +115,18 @@ def train_epoch(model,
     return model, mean_loss
 
 
-@curry
-def criterion(landsat_weight, x, y):
-    image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
-    logit, landsat_x = x
-    labels, landsat_y = y
-    loss = class_cri(logit, labels) + landsat_weight * \
-        image_cri(landsat_x, landsat_y)
-    return loss
+class Criterion(object):
+    def __init__(self, landsat_weight):
+        self.landsat_weight = landsat_weight
+        self.image_cri = nn.MSELoss(size_average=True)
+        self.class_cri = nn.CrossEntropyLoss(size_average=True)
+
+    def __call__(self, x, y):
+        logit, landsat_x = x
+        labels, landsat_y = y
+        loss = self.class_cri(logit, labels) + self.landsat_weight * \
+            self.image_cri(landsat_x, landsat_y)
+        return loss
 
 
 @skip_if_exists('model_dir')
@@ -172,14 +184,14 @@ def train_multi(model_dir,
         pin_memory=True,
         sampler=RandomSampler(
             data_source=sets['train_neg'],
-        )
+        ),
     )
 
     val_loader = DataLoader(
         sets['val_neg']+sets['val_pos'],
         batch_size=val_batch_size,
         pin_memory=True,
-        shuffle=True,
+        shuffle=False,
     )
     batch_len = len(train_pos_loader)
 
@@ -191,6 +203,7 @@ def train_multi(model_dir,
     mean_val_pos_loss = 0
     mean_val_neg_loss = 0
     min_train_pos_loss = 1
+    criterion = Criterion(landsat_weight)
     for epoch in range(epochs):
         sum_train_loss = 0
         sum_val_loss = 0
@@ -208,7 +221,7 @@ def train_multi(model_dir,
                 optimizer=x[1],
                 neg_loader=train_neg_loader,
                 pos_loader=train_pos_loader,
-                criterion=criterion(landsat_weight),
+                criterion=criterion,
                 device=device,
                 lr=lr
             )),

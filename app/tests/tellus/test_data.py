@@ -18,9 +18,9 @@ def test_get_train_row():
         label=1
     )
     for r in rows:
-        assert Path(rows[0]['palser_after']).name == Path(
-            rows[0]['palser_before']).name
-        assert Path(rows[0]['palser_before']).name == Path(
+        assert Path(rows[0]['palsar_after']).name == Path(
+            rows[0]['palsar_before']).name
+        assert Path(rows[0]['palsar_before']).name == Path(
             rows[0]['landsat_after']).name
         assert Path(rows[0]['landsat_after']).name == Path(
             rows[0]['landsat_before']).name
@@ -33,8 +33,8 @@ def test_get_test_row():
         base_path='/store/tellus/test',
     )
     for r in rows:
-        assert Path(rows[0]['palser_after']).name == Path(
-            rows[0]['palser_before']).name
+        assert Path(rows[0]['palsar_after']).name == Path(
+            rows[0]['palsar_before']).name
 
     assert len(rows) == 133520
 

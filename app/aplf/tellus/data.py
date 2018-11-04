@@ -133,64 +133,6 @@ def image_to_tensor(path):
     return tensor
 
 
-class TellusDataset(Dataset):
-    def __init__(self, df, has_y=True):
-        self.has_y = has_y
-        self.df = df
-
-        self.transforms = [
-            lambda x:x,
-            hflip,
-            vflip,
-            lambda x: rotate(x, 90),
-            lambda x: rotate(x, -90),
-            lambda x: rotate(x, -180),
-        ]
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        id = row['id']
-        palsar_after = image_to_tensor(
-            row['palsar_after'],
-        )
-        palsar_before = image_to_tensor(
-            row['palsar_before'],
-        )
-
-        palsar = torch.cat(
-            [palsar_before, palsar_after],
-            dim=0,
-        )
-
-        if self.has_y:
-
-            landsat_after = image_to_tensor(
-                row['landsat_after']
-            )
-            landsat_before = image_to_tensor(
-                row['landsat_before']
-            )
-            landsat = torch.cat(
-                [landsat_before, landsat_after],
-                dim=0,
-            )
-
-            return {
-                'id': id,
-                'palsar': palsar,
-                'landsat': landsat,
-                'label': row['label'],
-            }
-        else:
-            return {
-                'id': id,
-                'palsar': palsar,
-            }
-
-
 class ChunkSampler(Sampler):
     def __init__(self,  epoch_size, len_indices, shuffle=True, start_at=0):
         self.shuffle = shuffle
@@ -261,7 +203,6 @@ class Augment(object):
         ])
         return self
 
-
     def __call__(self, t):
         return self.transform(t)
 
@@ -275,3 +216,58 @@ def batch_aug(aug, batch, ch=3):
         list,
         torch.stack
     )
+
+
+class TellusDataset(Dataset):
+    def __init__(self, df, has_y=True):
+        self.has_y = has_y
+        self.df = df
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        id = row['id']
+
+        palsar_before = image_to_tensor(
+            row['palsar_before'],
+        )
+        palsar_after = image_to_tensor(
+            row['palsar_after'],
+        )
+
+        if self.has_y:
+            aug = Augment()
+            palsar = torch.cat(
+                [aug(palsar_before), aug(palsar_after)],
+                dim=0,
+            )
+
+            landsat_before = image_to_tensor(
+                row['landsat_before']
+            )
+            landsat_after = image_to_tensor(
+                row['landsat_after']
+            )
+            landsat = torch.cat(
+                [aug(landsat_before), aug(landsat_after)],
+                dim=0,
+            )
+
+            return {
+                'id': id,
+                'palsar': palsar,
+                'landsat': landsat,
+                'label': row['label'],
+            }
+        else:
+            palsar = torch.cat(
+                [palsar_before, palsar_after],
+                dim=0,
+            )
+
+            return {
+                'id': id,
+                'palsar': palsar,
+            }
