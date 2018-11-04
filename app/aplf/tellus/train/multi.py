@@ -40,7 +40,6 @@ def validate(models,
             label_preds = pipe(
                 models,
                 map(lambda x: x(palsar_x)[0].softmax(dim=1)),
-                #  reduce(lambda x, y: torch.max(x, y)),
                 reduce(lambda x, y: (x+y)/2)
             )
             print(label_preds.argmax(dim=1).cpu().detach().tolist())

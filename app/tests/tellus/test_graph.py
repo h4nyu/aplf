@@ -25,8 +25,8 @@ def test_graph():
             'fusion_depht': 1,
             'landsat_depth': 1,
         },
-        'landsat_weight': 10,
-        'num_ensamble': 1,
+        'landsat_weight': 0.5,
+        'num_ensamble': 3,
         'lr': 0.001,
     }
 
