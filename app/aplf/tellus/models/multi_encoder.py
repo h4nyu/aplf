@@ -72,7 +72,7 @@ class MultiEncoder(nn.Module):
             nn.Conv2d(
                 in_channels=self.fusion_enc.out_ch,
                 out_channels=2,
-                kernel_size=3,
+                kernel_size=1,
             ),
             nn.AdaptiveAvgPool2d(1)
         )

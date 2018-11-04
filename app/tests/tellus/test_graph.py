@@ -12,7 +12,7 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 1000,
-        'batch_size': 128,
+        'batch_size': 64,
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
@@ -29,7 +29,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id="ensamble-1",
+        id="repro-ems-3",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
