@@ -23,13 +23,13 @@ def test_graph():
         },
         'landsat_weight': 0.5,
         'num_ensamble': 2,
-        'lr': 0.0001,
+        'lr': 0.001,
         'neg_scale': 10,
     }
 
     g = Graph(
         **base_param,
-        id=f"{uuid.uuid4()}-scse-in-res",
+        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
