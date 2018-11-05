@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class SEBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, r=1):
+    def __init__(self, in_ch, out_ch, r=2):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
@@ -166,7 +166,6 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            SCSE(out_ch),
         )
 
     def forward(self, x, others, size):

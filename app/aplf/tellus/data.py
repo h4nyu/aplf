@@ -250,9 +250,9 @@ def kfold(df, n_splits, random_state=0):
 class Augment(object):
     def __init__(self):
         augs = [
-            hflip,
-            vflip,
-            lambda x: rotate(x, 90),
+            #  hflip,
+            #  vflip,
+            #  lambda x: rotate(x, 90),
             #  lambda x: adjust_brightness(x, 2),
             #  lambda x: adjust_contrast(x, 2),
 
