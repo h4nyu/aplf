@@ -87,6 +87,7 @@ def validate(models,
         map(lambda x: x.eval()),
         list
     )
+
     device = torch.device("cuda")
     y_preds = []
     y_trues = []
@@ -127,11 +128,10 @@ def train_epoch(model,
                 criterion,
                 pos_loader,
                 neg_loader,
+                optimizer,
                 device,
-                lr,
                 ):
     model = model.train()
-    optimizer = optim.Adam(model.parameters(), amsgrad=True, lr=lr)
     batch_len = len(pos_loader)
     sum_train_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
@@ -198,6 +198,12 @@ def train_multi(model_dir,
         range(num_ensamble),
         map(lambda _: Model(**model_kwargs).to(device).train()),
         list
+    )
+
+    optimizers = pipe(
+        models,
+        map(lambda x: optim.Adam(x.parameters(), amsgrad=True, lr=lr)),
+        list,
     )
 
     model_paths = pipe(
@@ -273,17 +279,16 @@ def train_multi(model_dir,
         train_labels = []
 
         traineds = pipe(
-            zip(models, train_neg_loaders),
-            map(lambda x: delayed(train_epoch)(
+            zip(models, optimizers, train_neg_loaders),
+            map(lambda x: train_epoch(
                 model=x[0],
-                neg_loader=x[1],
+                optimizer=x[1],
+                neg_loader=x[2],
                 pos_loader=train_pos_loader,
                 criterion=criterion(landsat_weight),
                 device=device,
-                lr=lr
             )),
             list,
-            lambda x: dask.compute(*x)
         )
         train_loss = pipe(
             traineds,
