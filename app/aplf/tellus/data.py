@@ -15,6 +15,12 @@ from torchvision.transforms import (
     RandomVerticalFlip,
     RandomResizedCrop,
 )
+
+from torchvision.transforms.functional import (
+    adjust_brightness,
+    adjust_contrast,
+    adjust_gamma
+)
 import random
 from skimage import io
 import torch
@@ -247,6 +253,9 @@ class Augment(object):
             hflip,
             vflip,
             lambda x: rotate(x, 90),
+            #  lambda x: adjust_brightness(x, 2),
+            #  lambda x: adjust_contrast(x, 2),
+
         ]
         self.augs = pipe(
             augs,
