@@ -144,7 +144,7 @@ def train_epoch(model,
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
         )
-        palsar_x = batch_aug(aug, landsat_x, ch=3).to(device)
+        landsat_x = batch_aug(aug, landsat_x, ch=3).to(device)
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0
