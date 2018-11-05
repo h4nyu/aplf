@@ -24,7 +24,7 @@ from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
-from ..data import ChunkSampler
+from ..data import ChunkSampler, Augment, batch_aug
 
 
 def validate(predicts, dataset, batch_size):
@@ -123,7 +123,6 @@ def validate(models,
     }
 
 
-
 def train_epoch(model,
                 criterion,
                 pos_loader,
@@ -135,14 +134,17 @@ def train_epoch(model,
     batch_len = len(pos_loader)
     sum_train_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        aug = Augment()
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
-        ).to(device)
+        )
+        palsar_x = batch_aug(aug, palsar_x, ch=1).to(device)
         landsat_x = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
-        ).to(device)
+        )
+        palsar_x = batch_aug(aug, landsat_x, ch=3).to(device)
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0

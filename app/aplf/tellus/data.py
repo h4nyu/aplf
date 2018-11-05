@@ -1,4 +1,4 @@
-from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, valmap
+from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, first, valmap, curry
 import random
 from torch.utils.data import Subset, Sampler
 from skimage import img_as_float
@@ -164,10 +164,9 @@ class TellusDataset(Dataset):
             aug = Augment()
 
             palsar = torch.cat(
-                [aug(palsar_before), aug(palsar_after)],
+                [palsar_before), palsar_after],
                 dim=0,
             )
-
 
             landsat_after = image_to_tensor(
                 row['landsat_after']
@@ -176,7 +175,7 @@ class TellusDataset(Dataset):
                 row['landsat_before']
             )
             landsat = torch.cat(
-                [aug(landsat_before), aug(landsat_after)],
+                [landsat_before), landsat_after],
                 dim=0,
             )
 
@@ -266,3 +265,14 @@ class Augment(object):
 
     def __call__(self, t):
         return self.transform(t)
+
+
+@curry
+def batch_aug(aug, batch, ch=3):
+    return pipe(
+        batch,
+        map(lambda x: [aug(x[0:ch, :, :]), aug(x[ch:2*ch, :, :])]),
+        map(lambda x: torch.cat(x, dim=0)),
+        list,
+        torch.stack
+    )
