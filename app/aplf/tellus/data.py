@@ -160,13 +160,13 @@ class TellusDataset(Dataset):
             row['palsar_before'],
         )
 
+        palsar = torch.cat(
+            [palsar_before, palsar_after],
+            dim=0,
+        )
+
         if self.has_y:
             aug = Augment()
-
-            palsar = torch.cat(
-                [palsar_before), palsar_after],
-                dim=0,
-            )
 
             landsat_after = image_to_tensor(
                 row['landsat_after']
@@ -175,7 +175,7 @@ class TellusDataset(Dataset):
                 row['landsat_before']
             )
             landsat = torch.cat(
-                [landsat_before), landsat_after],
+                [landsat_before, landsat_after],
                 dim=0,
             )
 
@@ -186,10 +186,6 @@ class TellusDataset(Dataset):
                 'label': row['label'],
             }
         else:
-            palsar = torch.cat(
-                [palsar_before, palsar_after],
-                dim=0,
-            )
             return {
                 'id': id,
                 'palsar': palsar,
