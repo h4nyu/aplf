@@ -8,19 +8,22 @@ class SEBlock(nn.Module):
     def __init__(self, in_ch, out_ch, r=1):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+
         self.fc = nn.Sequential(
-            nn.Linear(in_ch, in_ch//r),
+            nn.Conv2d(in_ch*2, (in_ch*2)//r, kernel_size=1),
             nn.ReLU(inplace=True),
-            nn.Linear(in_ch//r, out_ch),
+            nn.Conv2d((in_ch*2)//r, out_ch, kernel_size=1),
             nn.Sigmoid()
         )
         self.out_ch = out_ch
 
     def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, self.out_ch, 1, 1)
-        return y
+        avg_out = self.avg_pool(x)
+        max_out = self.max_pool(x)
+        x = torch.cat([avg_out, max_out], dim=1)
+        x = self.fc(x)
+        return x
 
 
 class CSE(nn.Module):
@@ -69,6 +72,7 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 r=2,
                  ):
         super().__init__()
         if in_ch == out_ch:
@@ -79,7 +83,13 @@ class ResBlock(nn.Module):
                 out_ch,
                 kernel_size=1,
             )
-        self.block = nn.Sequential(
+
+        self.conv_projection = nn.Conv2d(
+            out_ch * 2,
+            out_ch,
+            kernel_size=1,
+        )
+        self.conv3bn = nn.Sequential(
             nn.Conv2d(
                 in_ch,
                 out_ch,
@@ -95,25 +105,42 @@ class ResBlock(nn.Module):
                 kernel_size=3,
                 padding=1,
                 stride=1,
-                groups=2 - (out_ch % 2),
+            ),
+            nn.BatchNorm2d(out_ch),
+        )
+
+        self.conv5bn = nn.Sequential(
+            nn.Conv2d(
+                in_ch,
+                out_ch,
+                kernel_size=5,
+                padding=2,
+                stride=1,
             ),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 out_ch,
                 out_ch,
-                kernel_size=3,
-                padding=1,
+                kernel_size=5,
+                padding=2,
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
-            SCSE(out_ch),
         )
+        self.scse = SCSE(
+            in_ch=out_ch,
+        )
+
         self.activation = nn.ReLU(inplace=True)
 
     def forward(self, x):
         residual = x
-        out = self.block(x)
+        out3 = self.conv3bn(x)
+        out5 = self.conv5bn(x)
+        out = torch.cat([out5, out3], dim=1)
+        out = self.conv_projection(out)
+        out = self.scse(out)
         if self.projection:
             residual = self.projection(residual)
         out += residual
