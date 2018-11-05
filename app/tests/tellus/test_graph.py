@@ -29,18 +29,18 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id="repro-ems-3",
+        id=f"{uuid.uuid4()}-scse-in-res",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
         folds=[0],
     )
 
-    #  g(scheduler='single-threaded')
-
-    with Client('dask-scheduler:8786') as c:
-        try:
-            result = g()
-        finally:
-            c.restart()
+    g(scheduler='single-threaded')
+    #
+    #  with Client('dask-scheduler:8786') as c:
+    #      try:
+    #          result = g()
+    #      finally:
+    #          c.restart()
     #
