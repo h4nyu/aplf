@@ -193,7 +193,6 @@ class UpSample(nn.Module):
                 in_ch,
                 out_ch,
             ),
-            SCSE(out_ch),
         )
 
     def forward(self, x, others, size):
