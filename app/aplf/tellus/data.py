@@ -160,12 +160,14 @@ class TellusDataset(Dataset):
             row['palsar_before'],
         )
 
-        palsar = torch.cat(
-            [palsar_before, palsar_after],
-            dim=0,
-        )
-
         if self.has_y:
+            aug = Augment()
+
+            palsar = torch.cat(
+                [aug(palsar_before), aug(palsar_after)],
+                dim=0,
+            )
+
 
             landsat_after = image_to_tensor(
                 row['landsat_after']
@@ -174,7 +176,7 @@ class TellusDataset(Dataset):
                 row['landsat_before']
             )
             landsat = torch.cat(
-                [landsat_before, landsat_after],
+                [aug(landsat_before), aug(landsat_after)],
                 dim=0,
             )
 
@@ -185,6 +187,10 @@ class TellusDataset(Dataset):
                 'label': row['label'],
             }
         else:
+            palsar = torch.cat(
+                [palsar_before, palsar_after],
+                dim=0,
+            )
             return {
                 'id': id,
                 'palsar': palsar,
@@ -238,3 +244,25 @@ def kfold(df, n_splits, random_state=0):
     )
 
     return splieted
+
+
+class Augment(object):
+    def __init__(self):
+        augs = [
+            hflip,
+            vflip,
+            lambda x: rotate(x, 90),
+        ]
+        self.augs = pipe(
+            augs,
+            map(lambda a: random.choice([lambda x: x, a])),
+            list,
+        )
+        self.transform = Compose([
+            ToPILImage(),
+            *self.augs,
+            ToTensor(),
+        ])
+
+    def __call__(self, t):
+        return self.transform(t)
