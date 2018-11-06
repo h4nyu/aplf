@@ -244,7 +244,7 @@ def train_multi(model_dir,
             pin_memory=True,
             sampler=RandomSampler(
                 data_source=sets['train_neg']
-            )),
+            ),
         )),
         list,
     )
