@@ -23,7 +23,7 @@ from ..metric import iou
 from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists
-from aplf.optimizers import Eve
+from aplf.preprocess import RandomErasing
 from ..data import ChunkSampler, Augment, batch_aug
 
 
@@ -133,8 +133,10 @@ def train_epoch(model,
     model = model.train()
     batch_len = len(pos_loader)
     sum_train_loss = 0
+    aug = RandomErasing()
+
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
-        aug = Augment()
+        aug_pos = (random.randint(0, 1), random.randint(0, 1))
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
@@ -143,8 +145,7 @@ def train_epoch(model,
         landsat_x = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
-        )
-        landsat_x = batch_aug(aug, landsat_x, ch=3).to(device)
+        ).to(device)
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0

@@ -19,7 +19,7 @@ def test_graph():
             'feature_size': 8,
             'resize': 80,
             'pad': 4,
-            'depth': 1
+            'depth': 1,
         },
         'landsat_weight': 0.5,
         'num_ensamble': 3,
@@ -29,7 +29,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-3",
+        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-3-erase",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,

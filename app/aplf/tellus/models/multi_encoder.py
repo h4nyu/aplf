@@ -44,6 +44,7 @@ class MultiEncoder(nn.Module):
                  resize=120,
                  depth=3,
                  pad=4,
+                 landsat_size=(4, 4),
                  ):
         super().__init__()
         self.resize = resize
@@ -59,7 +60,7 @@ class MultiEncoder(nn.Module):
                 out_channels=6,
                 kernel_size=3,
             ),
-            nn.Upsample(size=(4, 4), mode='bilinear'),
+            nn.Upsample(size=landsat_size, mode='bilinear'),
             nn.Sigmoid(),
         )
 
