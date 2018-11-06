@@ -144,15 +144,6 @@ class TellusDataset(Dataset):
         self.has_y = has_y
         self.df = df
 
-        self.transforms = [
-            lambda x:x,
-            hflip,
-            vflip,
-            lambda x: rotate(x, 90),
-            lambda x: rotate(x, -90),
-            lambda x: rotate(x, -180),
-        ]
-
     def __len__(self):
         return len(self.df)
 
@@ -251,7 +242,7 @@ class Augment(object):
     def __init__(self):
         augs = [
             #  hflip,
-            #  vflip,
+            vflip,
             #  lambda x: rotate(x, 90),
             #  lambda x: adjust_brightness(x, 2),
             #  lambda x: adjust_contrast(x, 2),
