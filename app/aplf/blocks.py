@@ -13,8 +13,8 @@ class SEBlock(nn.Module):
             nn.Conv2d(in_ch, in_ch//r, kernel_size=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_ch//r, out_ch, kernel_size=1),
-            nn.Sigmoid()
         )
+        self.sigmoid = nn.Sigmoid()
 
         self.out_ch = out_ch
 
@@ -22,7 +22,7 @@ class SEBlock(nn.Module):
         avg_out = self.fc(self.avg_pool(x))
         max_out = self.fc(self.max_pool(x))
         out = avg_out + max_out
-        return out
+        return self.sigmoid(out)
 
 
 class CSE(nn.Module):
