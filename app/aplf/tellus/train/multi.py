@@ -168,7 +168,7 @@ def train_epoch(model,
 @curry
 def criterion(landsat_weight, x, y):
     image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
+    class_cri = lovasz_softmax_flat
     logit, landsat_x = x
     labels, landsat_y = y
     loss = class_cri(logit, labels) + landsat_weight * \
