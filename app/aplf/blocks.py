@@ -64,6 +64,70 @@ class SCSE(nn.Module):
         return x
 
 
+class ChannelAttention(nn.Module):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 r=16):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.out_ch = out_ch
+        self.fc = nn.Sequential(
+            nn.Conv2d(in_ch, in_ch//r, kernel_size=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_ch//r, out_ch, kernel_size=1, bias=False),
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
+        return self.sigmoid(out)
+
+
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super().__init__()
+        assert kernel_size in (3, 7)
+        padding = 3 if kernel_size == 7 else 1
+        self.conv = nn.Conv2d(
+            2,
+            1,
+            kernel_size,
+            padding=padding,
+            bias=False
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        x = torch.cat([avg_out, max_out], dim=1)
+        x = self.conv(x)
+        return self.sigmoid(x)
+
+
+class CBAM(nn.Module):
+    def __init__(self,
+                 in_ch,
+                 r=2,
+                 kernel_size=7):
+        super().__init__()
+        self.ca = ChannelAttention(
+            in_ch,
+            out_ch=in_ch,
+            r=r,
+        )
+        self.sa = SpatialAttention()
+
+    def forward(self, x):
+        x = self.ca(x) * x
+        x = self.sa(x) * x
+        return x
+
+
 class ResBlock(nn.Module):
 
     def __init__(self,
@@ -107,7 +171,7 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
-            SCSE(out_ch),
+            CBAM(out_ch),
         )
         self.activation = nn.ReLU(inplace=True)
 
