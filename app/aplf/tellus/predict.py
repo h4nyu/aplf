@@ -55,20 +55,8 @@ def predict(model_dirs,
                 map(lambda x: x(palser_x)[0]),
                 list,
             )
-
-            hflip_outputs = pipe(
-                models,
-                map(lambda x: x(palser_x.flip([3]))[0]),
-                list,
-            )
-
-            vflip_outputs = pipe(
-                models,
-                map(lambda x: x(palser_x.flip([2]))[0]),
-                list,
-            )
             output = pipe(
-                [*normal_outputs, *hflip_outputs, *vflip_outputs],
+                [*normal_outputs],
                 map(lambda x: x.softmax(dim=1)),
                 reduce(lambda x, y: (x+y)/2),
                 lambda x: x.argmax(dim=1),
