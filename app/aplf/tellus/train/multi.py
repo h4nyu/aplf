@@ -134,17 +134,17 @@ def train_epoch(model,
     batch_len = len(pos_loader)
     sum_train_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
-        aug = Augment()
+        aug_pos = (random.randint(0, 1), random.randint(0, 1))
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
         )
-        palsar_x = batch_aug(aug, palsar_x, ch=1).to(device)
+        palsar_x = batch_aug(palsar_x, aug_pos).to(device)
         landsat_x = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
         )
-        landsat_x = batch_aug(aug, landsat_x, ch=3).to(device)
+        landsat_x = batch_aug(landsat_x, aug_pos).to(device)
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0

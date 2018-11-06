@@ -14,6 +14,7 @@ from torchvision.transforms import (
     RandomHorizontalFlip,
     RandomVerticalFlip,
     RandomResizedCrop,
+    RandomCrop,
 )
 
 from torchvision.transforms.functional import (
@@ -241,12 +242,6 @@ def kfold(df, n_splits, random_state=0):
 class Augment(object):
     def __init__(self):
         augs = [
-            #  hflip,
-            vflip,
-            #  lambda x: rotate(x, 90),
-            #  lambda x: adjust_brightness(x, 2),
-            #  lambda x: adjust_contrast(x, 2),
-
         ]
         self.augs = pipe(
             augs,
@@ -264,11 +259,12 @@ class Augment(object):
 
 
 @curry
-def batch_aug(aug, batch, ch=3):
-    return pipe(
-        batch,
-        map(lambda x: [aug(x[0:ch, :, :]), aug(x[ch:2*ch, :, :])]),
-        map(lambda x: torch.cat(x, dim=0)),
-        list,
-        torch.stack
-    )
+def batch_aug(batch, position=(0, 0)):
+    _, _, h, w = batch.size()
+    crop_h = (h * 3) // 4
+    crop_w = (w * 3) // 4
+    start_h = position[0] * w//4
+    end_h = start_h + crop_h
+    start_w = position[1] * w//4
+    end_w = start_w + crop_w
+    return batch[:, :, start_h:end_h, start_w:end_w]
