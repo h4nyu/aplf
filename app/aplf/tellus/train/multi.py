@@ -219,12 +219,6 @@ def train_multi(model_dir,
         list,
     )
 
-    pipe(
-        zip(models, model_paths),
-        map(lambda x: torch.save(*x)),
-        list
-    )
-
     pos_set = pipe(
         range(neg_scale),
         map(lambda _: sets['train_pos']),
