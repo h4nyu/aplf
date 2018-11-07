@@ -38,6 +38,72 @@ class Encoder(nn.Module):
         return x
 
 
+class LandsatEnc(nn.Module):
+
+    def __init__(self,
+                 in_ch,
+                 feature_size=64,
+                 depth=3,
+                 ):
+        super().__init__()
+
+        self.enc = Encoder(
+            in_ch=in_ch,
+            feature_size=feature_size,
+            depth=depth,
+        )
+
+        self.out = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.enc.out_ch,
+                out_channels=6,
+                kernel_size=3,
+            ),
+            nn.Upsample(size=(4, 4), mode='bilinear'),
+            nn.Sigmoid(),
+        )
+        self.out_ch = 6
+        self.before_out_ch = self.enc.out_ch
+
+    def forward(self, x):
+        before_out = self.enc(x)
+        out = self.out(before_out)
+        return out, before_out
+
+
+class FusionEnc(nn.Module):
+
+    def __init__(self,
+                 in_ch,
+                 feature_size=64,
+                 depth=3,
+                 ):
+        super().__init__()
+
+        self.enc = Encoder(
+            in_ch=in_ch,
+            feature_size=feature_size,
+            depth=depth,
+        )
+
+        self.out = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.enc.out_ch,
+                out_channels=2,
+                kernel_size=1,
+            ),
+            nn.AdaptiveAvgPool2d(1)
+        )
+
+        self.out_ch = 2
+        self.before_out_ch = self.enc.out_ch
+
+    def forward(self, x):
+        before_out = self.enc(x)
+        out = self.out(before_out).view(-1, 2)
+        return out, before_out
+
+
 class MultiEncoder(nn.Module):
     def __init__(self,
                  feature_size=64,
@@ -48,33 +114,15 @@ class MultiEncoder(nn.Module):
         super().__init__()
         self.resize = resize
 
-        self.landsat_enc = Encoder(
+        self.landsat_enc = LandsatEnc(
             in_ch=2,
-            feature_size=feature_size,
-            depth=1,
-        )
-        self.landsat_out = nn.Sequential(
-            nn.Conv2d(
-                in_channels=self.landsat_enc.out_ch,
-                out_channels=6,
-                kernel_size=3,
-            ),
-            nn.Upsample(size=(4, 4), mode='bilinear'),
-            nn.Sigmoid(),
-        )
-
-        self.fusion_enc = Encoder(
-            in_ch=8,
             feature_size=feature_size,
             depth=depth,
         )
-        self.logit_out = nn.Sequential(
-            nn.Conv2d(
-                in_channels=self.fusion_enc.out_ch,
-                out_channels=2,
-                kernel_size=1,
-            ),
-            nn.AdaptiveAvgPool2d(1)
+        self.fusion_enc = FusionEnc(
+            in_ch=self.landsat_enc.before_out_ch + 2,
+            feature_size=feature_size,
+            depth=depth,
         )
 
         self.pad = nn.ReflectionPad2d(pad)
@@ -85,18 +133,15 @@ class MultiEncoder(nn.Module):
             mode='bilinear',
             size=(self.resize, self.resize)
         )
-        x = self.pad(x)
-        palser_x = self.pad(x)
-        landsat_x = self.landsat_enc(x)
-        landsat_x = self.landsat_out(landsat_x)
+        palser = self.pad(x)
+        landsat_x, before_landsat = self.landsat_enc(palser)
 
         x = pipe(
-            [landsat_x, palser_x],
+            [before_landsat, palser],
             map(lambda x: F.interpolate(x, mode='bilinear',
                                         size=(self.resize, self.resize))),
             list,
             lambda x: torch.cat(x, dim=1)
         )
-        x = self.fusion_enc(x)
-        x = self.logit_out(x).view(-1, 2)
+        x, _ = self.fusion_enc(x)
         return x, landsat_x

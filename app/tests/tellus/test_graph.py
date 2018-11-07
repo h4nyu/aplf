@@ -14,22 +14,22 @@ def test_graph():
         'epochs': 1000,
         'batch_size': 64,
         'model_type': 'MultiEncoder',
-        'num_ensamble': 2,
+        'num_ensamble': 1,
         'model_kwargs': {
             'feature_size': 8,
             'resize': 80,
             'pad': 4,
-            'depth': 1
+            'depth': 2
         },
         'landsat_weight': 0.5,
-        'num_ensamble': 3,
+        'num_ensamble': 1,
         'lr': 0.001,
         'neg_scale': 10,
     }
 
     g = Graph(
         **base_param,
-        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-3",
+        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-1-fs-16-dp-2-dual-optim",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,

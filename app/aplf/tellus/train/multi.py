@@ -127,13 +127,29 @@ def train_epoch(model,
                 criterion,
                 pos_loader,
                 neg_loader,
-                optimizer,
                 device,
+                lr
                 ):
     model = model.train()
     batch_len = len(pos_loader)
-    sum_train_loss = 0
+    landstat_optim = optim.Adam(
+        model.landsat_enc.parameters(),
+        amsgrad=True,
+        lr=lr
+    )
+    fusion_optim = optim.Adam(
+        model.fusion_enc.parameters(),
+        amsgrad=True,
+        lr=lr
+    )
+
+    image_cri = nn.MSELoss(size_average=True)
+    class_cri = nn.CrossEntropyLoss(size_average=True)
+
+    sum_fusion_loss = 0
+    sum_landsat_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+
         aug = Augment()
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
@@ -150,19 +166,21 @@ def train_epoch(model,
             dim=0
         ).to(device)
 
-        logit_loss = criterion(
-            model(palsar_x),
-            (labels, landsat_x)
-        )
+        landsat_loss = image_cri(model(palsar_x)[1], landsat_x)
+        landstat_optim.zero_grad()
+        landsat_loss.backward()
+        landstat_optim.step()
 
-        loss = logit_loss
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        fusion_loss = class_cri(model(palsar_x)[0], labels)
+        fusion_optim.zero_grad()
+        fusion_loss.backward()
+        fusion_optim.step()
 
-        sum_train_loss += loss.item()
-    mean_loss = sum_train_loss / batch_len
-    return model, mean_loss
+        sum_fusion_loss += fusion_loss.item()
+        sum_landsat_loss += landsat_loss.item()
+    mean_fusion_loss = sum_fusion_loss / batch_len
+    mean_landsat_loss = sum_landsat_loss / batch_len
+    return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
 
 
 @curry
@@ -171,9 +189,7 @@ def criterion(landsat_weight, x, y):
     class_cri = nn.CrossEntropyLoss(size_average=True)
     logit, landsat_x = x
     labels, landsat_y = y
-    loss = class_cri(logit, labels) + landsat_weight * \
-        image_cri(landsat_x, landsat_y)
-    return loss
+    return class_cri(logit, labels), image_cri(landsat_x, landsat_y)
 
 
 @skip_if_exists('model_dir')
@@ -200,12 +216,6 @@ def train_multi(model_dir,
         range(num_ensamble),
         map(lambda _: Model(**model_kwargs).to(device).train()),
         list
-    )
-
-    optimizers = pipe(
-        models,
-        map(lambda x: optim.Adam(x.parameters(), amsgrad=True, lr=lr)),
-        list,
     )
 
     model_paths = pipe(
@@ -275,22 +285,24 @@ def train_multi(model_dir,
         train_labels = []
 
         traineds = pipe(
-            zip(models, optimizers, train_neg_loaders),
+            zip(models, train_neg_loaders),
             map(lambda x: train_epoch(
                 model=x[0],
-                optimizer=x[1],
-                neg_loader=x[2],
+                neg_loader=x[1],
                 pos_loader=train_pos_loader,
                 criterion=criterion(landsat_weight),
                 device=device,
+                lr=lr
             )),
             list,
         )
-        train_loss = pipe(
+        train_metrics = pipe(
             traineds,
             map(lambda x: x[1]),
-            list,
-            np.mean
+            reduce(lambda x, y: {
+                'landsat': (x['landsat'] + y['landsat'])/2,
+                'fusion': (x['fusion'] + y['fusion'])/2,
+            }),
         )
         models = pipe(
             traineds,
@@ -298,32 +310,27 @@ def train_multi(model_dir,
             list,
         )
 
-        metrics = validate(
+        val_metrics = validate(
             models=models,
             loader=val_loader,
         )
 
         with SummaryWriter(log_dir) as w:
-            w.add_scalars(
-                'loss',
-                {
-                    'train': train_loss,
-                },
-                epoch
-            )
+            w.add_scalar('loss/fusion', train_metrics['fusion'], epoch)
+            w.add_scalar('loss/landsat', train_metrics['landsat'], epoch)
             w.add_scalars(
                 'score',
                 {
-                    **metrics
+                    **val_metrics
                 },
                 epoch
             )
 
-            if max_val_score <= metrics['iou']:
-                max_val_score = metrics['iou']
+            if max_val_score <= val_metrics['iou']:
+                max_val_score = val_metrics['iou']
                 w.add_text(
                     'iou',
-                    f"val: {metrics['iou']}, epoch: {epoch}",
+                    f"val: {val_metrics['iou']}, epoch: {epoch}",
                     epoch
                 )
                 pipe(
