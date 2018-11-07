@@ -16,7 +16,7 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 2,
         'model_kwargs': {
-            'feature_size': 8,
+            'feature_size': 16,
             'resize': 80,
             'pad': 4,
             'depth': 1,
