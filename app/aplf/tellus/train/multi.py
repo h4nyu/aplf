@@ -124,7 +124,6 @@ def validate(models,
 
 
 def train_epoch(model,
-                criterion,
                 pos_loader,
                 neg_loader,
                 device,
@@ -183,15 +182,6 @@ def train_epoch(model,
     return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
 
 
-@curry
-def criterion(landsat_weight, x, y):
-    image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
-    logit, landsat_x = x
-    labels, landsat_y = y
-    return class_cri(logit, labels), image_cri(landsat_x, landsat_y)
-
-
 @skip_if_exists('model_dir')
 def train_multi(model_dir,
                 sets,
@@ -200,7 +190,6 @@ def train_multi(model_dir,
                 epochs,
                 batch_size,
                 log_dir,
-                landsat_weight,
                 lr,
                 num_ensamble,
                 neg_scale,
@@ -290,7 +279,6 @@ def train_multi(model_dir,
                 model=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
-                criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),

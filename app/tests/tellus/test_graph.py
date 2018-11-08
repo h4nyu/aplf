@@ -16,12 +16,13 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 1,
         'model_kwargs': {
-            'feature_size': 8,
             'resize': 80,
             'pad': 4,
-            'depth': 2
+            'landsat_fs': 16,
+            'landsat_dp': 3,
+            'fusion_dp': 2,
+            'fusion_fs': 8,
         },
-        'landsat_weight': 0.5,
         'num_ensamble': 1,
         'lr': 0.001,
         'neg_scale': 10,
@@ -29,7 +30,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-1-fs-16-dp-2-dual-optim",
+        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-1-ldfs-16-lddp-3-fsfs-8-fsdp-2-dual-optim",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,

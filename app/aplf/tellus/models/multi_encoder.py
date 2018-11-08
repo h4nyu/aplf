@@ -106,23 +106,25 @@ class FusionEnc(nn.Module):
 
 class MultiEncoder(nn.Module):
     def __init__(self,
-                 feature_size=64,
-                 resize=120,
-                 depth=3,
-                 pad=4,
+                 resize,
+                 pad,
+                 landsat_fs,
+                 landsat_dp,
+                 fusion_fs,
+                 fusion_dp,
                  ):
         super().__init__()
         self.resize = resize
 
         self.landsat_enc = LandsatEnc(
             in_ch=2,
-            feature_size=feature_size,
-            depth=depth,
+            feature_size=landsat_fs,
+            depth=landsat_dp,
         )
         self.fusion_enc = FusionEnc(
             in_ch=self.landsat_enc.before_out_ch + 2,
-            feature_size=feature_size,
-            depth=depth,
+            feature_size=fusion_fs,
+            depth=fusion_dp,
         )
 
         self.pad = nn.ReflectionPad2d(pad)
