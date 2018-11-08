@@ -59,7 +59,7 @@ class LandsatEnc(nn.Module):
                 out_channels=6,
                 kernel_size=3,
             ),
-            nn.Upsample(size=landsat_size, mode='bilinear'),
+            nn.Upsample(size=(4, 4), mode='bilinear'),
             nn.Sigmoid(),
         )
         self.out_ch = 6

@@ -275,7 +275,6 @@ class FocalLoss(nn.Module):
             return loss.sum()
 
 
-
 class SigmoidLossSwitcher(object):
     def __init__(self,
                  first,
@@ -287,7 +286,7 @@ class SigmoidLossSwitcher(object):
         self.rampup = rampup
 
     def __call__(self, input_logits, labels, epoch):
-        alpha =  sigmoid_rampup(epoch, self.rampup)
+        alpha = sigmoid_rampup(epoch, self.rampup)
         return (1 - alpha) * self.first(input_logits, labels) + alpha * self.second(input_logits, labels)
 
 
@@ -302,9 +301,8 @@ class LinearLossSwitcher(object):
         self.rampup = rampup
 
     def __call__(self, input_logits, labels, epoch):
-        alpha =  linear_rampup(epoch, self.rampup)
+        alpha = linear_rampup(epoch, self.rampup)
         return (1 - alpha) * self.first(input_logits, labels) + alpha * self.second(input_logits, labels)
-
 
 
 class LossSwitcher(object):
@@ -322,5 +320,3 @@ class LossSwitcher(object):
             return self.second(input_logits, labels)
         else:
             return self.first(input_logits, labels)
-
-
