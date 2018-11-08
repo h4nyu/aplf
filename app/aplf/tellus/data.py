@@ -14,6 +14,7 @@ from torchvision.transforms import (
     RandomHorizontalFlip,
     RandomVerticalFlip,
     RandomResizedCrop,
+    RandomCrop,
 )
 
 from torchvision.transforms.functional import (
@@ -144,15 +145,6 @@ class TellusDataset(Dataset):
         self.has_y = has_y
         self.df = df
 
-        self.transforms = [
-            lambda x:x,
-            hflip,
-            vflip,
-            lambda x: rotate(x, 90),
-            lambda x: rotate(x, -90),
-            lambda x: rotate(x, -180),
-        ]
-
     def __len__(self):
         return len(self.df)
 
@@ -250,12 +242,6 @@ def kfold(df, n_splits, random_state=0):
 class Augment(object):
     def __init__(self):
         augs = [
-            #  hflip,
-            #  vflip,
-            #  lambda x: rotate(x, 90),
-            #  lambda x: adjust_brightness(x, 2),
-            #  lambda x: adjust_contrast(x, 2),
-
         ]
         self.augs = pipe(
             augs,
@@ -281,3 +267,17 @@ def batch_aug(aug, batch, ch=3):
         list,
         torch.stack
     )
+
+
+
+@curry
+def batch_crop(position, batch):
+    _, _, h, w = batch.size()
+    crop_h = (h * 3) // 4
+    crop_w = (w * 3) // 4
+    start_h = position[0] * w//4
+    end_h = start_h + crop_h
+    start_w = position[1] * w//4
+    end_w = start_w + crop_w
+
+    return batch[:, :, start_h:end_h, start_w:end_w]

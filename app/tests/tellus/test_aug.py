@@ -1,5 +1,6 @@
 from pathlib import Path
-from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler, get_test_row, load_test_df, Augment, batch_aug
+import random
+from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler, get_test_row, load_test_df, Augment, batch_aug, batch_crop
 from torch.utils.data import DataLoader
 import numpy as np
 import cv2
@@ -27,9 +28,10 @@ from torchvision.transforms import (
 from torchvision.transforms.functional import (
     adjust_brightness
 )
+from aplf.preprocess import RandomErasing
 
 
-def test_test_dataset():
+def test_aug():
     output = load_train_df(
         dataset_dir='/store/tellus/train',
         output='/store/tmp/train.pqt'
@@ -74,3 +76,17 @@ def test_test_dataset():
             ]
         ),
     )
+
+    aug = RandomErasing()
+    writer.add_image(
+        f"erase/palsar",
+        vutils.make_grid(
+            [
+                *batch_aug(aug, sample['palsar'], ch=1)[:, 0:1, :, :],
+                *batch_aug(aug, sample['palsar'], ch=1)[:, 1:2, :, :],
+                *sample['palsar'][:, 0:1, :, :],
+                *sample['palsar'][:, 1:2, :, :],
+            ]
+        ),
+    )
+
