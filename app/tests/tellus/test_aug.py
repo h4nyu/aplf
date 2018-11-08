@@ -90,3 +90,37 @@ def test_aug():
         ),
     )
 
+
+def test_all():
+    output = load_train_df(
+        dataset_dir='/store/tellus/train',
+        output='/store/tmp/train.pqt'
+    )
+    df = pd.read_parquet(output)
+    dataset = TellusDataset(
+        df=df,
+        has_y=True,
+    )
+    loader = DataLoader(
+        dataset=dataset,
+        batch_size=8,
+        shuffle=False,
+    )
+    sample = pipe(
+        loader,
+        first,
+    )
+    aug = Augment()
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test/aug')
+    writer.add_image(
+        f"all/palsar",
+        vutils.make_grid(
+            [
+                *batch_aug(aug, sample['palsar'], ch=1)[:, 0:1, :, :],
+                *batch_aug(aug, sample['palsar'], ch=1)[:, 1:2, :, :],
+                *sample['palsar'][:, 0:1, :, :],
+                *sample['palsar'][:, 1:2, :, :],
+            ]
+        ),
+    )

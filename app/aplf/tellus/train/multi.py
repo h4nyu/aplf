@@ -149,8 +149,8 @@ def train_epoch(model,
     sum_fusion_loss = 0
     sum_landsat_loss = 0
     sum_train_loss = 0
-    aug = RandomErasing()
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        aug = Augment()
         palsar_x = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0

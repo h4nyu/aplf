@@ -15,6 +15,7 @@ from torchvision.transforms import (
     RandomVerticalFlip,
     RandomResizedCrop,
     RandomCrop,
+    ColorJitter,
 )
 
 from torchvision.transforms.functional import (
@@ -40,6 +41,7 @@ import h5py
 from .preprocess import add_is_empty
 from aplf.utils import skip_if_exists
 from sklearn.model_selection import KFold
+from aplf.preprocess import RandomErasing
 
 
 def get_train_row(base_path, label_dir, label):
@@ -250,6 +252,10 @@ class Augment(object):
         )
         self.transform = Compose([
             ToPILImage(),
+            ColorJitter(
+                brightness=0.5,
+                contrast=0.5,
+            ),
             *self.augs,
             ToTensor(),
         ])
