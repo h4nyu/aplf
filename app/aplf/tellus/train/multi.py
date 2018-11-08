@@ -8,7 +8,7 @@ import torchvision.utils as vutils
 from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
@@ -246,11 +246,8 @@ def train_multi(model_dir,
             sets['train_neg'],
             batch_size=batch_size//2,
             pin_memory=True,
-            sampler=ChunkSampler(
-                epoch_size=len(pos_set),
-                len_indices=len(sets['train_neg']),
-                shuffle=True,
-                start_at=x,
+            sampler=RandomSampler(
+                data_source=sets['train_neg']
             ),
         )),
         list,
