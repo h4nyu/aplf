@@ -29,8 +29,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"{uuid.uuid4()}-scse-in-res-lr-0.001-esb-2-fs-16-dp2-lw-10",
-        #  id=f"sub",
+        id=f"3795fe71-11b5-46a8-9e82-769d5a164f33-scse-in-res-lr-0.001-esb-2-fs-16-dp2-lw-10",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
