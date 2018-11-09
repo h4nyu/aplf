@@ -25,58 +25,8 @@ from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment, batch_aug
-
-
-def validate(predicts, dataset, batch_size):
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-    )
-    y_preds = np.array(predicts).mean(axis=0).argmax(axis=1)
-    y_trues = pipe(
-        loader,
-        map(lambda x: x['label'].cpu().detach().tolist()),
-        reduce(lambda x, y: x+y),
-        np.array,
-    )
-
-    score = iou(
-        y_preds,
-        y_trues,
-    )
-    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
-    return {
-        'TPR': tp/(tp+fn),
-        'FNR': fn/(tp+fn),
-        'FPR': fp/(fp+tn),
-        'acc': (tp+tn) / (tp+tn+fp+fn),
-        'pre': tp / (tp + fp),
-        'iou': tp / (fn+tp+fp),
-    }
-
-
-def validate_epoch(model,
-                   dataset,
-                   batch_size,
-                   ):
-    y_preds = []
-    device = torch.device('cuda')
-
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-    )
-    for sample in loader:
-        with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            label_preds = model(palsar_x)[0].softmax(dim=1)
-            y_preds += label_preds.cpu().detach().tolist()
-
-    return y_preds
+from sklearn.metrics import roc_curve
+import json
 
 
 def validate(models,
@@ -101,30 +51,39 @@ def validate(models,
             label_preds = pipe(
                 models,
                 map(lambda x: x(palsar_x)[0].softmax(dim=1)),
-                reduce(lambda x, y: (x+y)/2)
+                reduce(lambda x, y: (x+y)/2),
+                lambda x: x[:, 1]
             )
-            y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
-            y_trues += labels.cpu().detach().tolist()
+            y_preds.append(label_preds)
+            y_trues.append(labels)
             batch_len += 1
+    y_pred = torch.cat(y_preds, dim=0).view(-1).cpu().detach().numpy()
+    y_true = torch.cat(y_trues, dim=0).view(-1).cpu().detach().numpy()
 
     score = iou(
-        y_preds,
-        y_trues,
+        y_pred,
+        y_true,
     )
 
-    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+    ious = pipe(
+        thresholds,
+        map(lambda x: confusion_matrix(y_true, y_pred > x).ravel()),
+        map(lambda x: x[3] / (x[2] + x[3] + x[1])),
+        list,
+        np.array
+    )
+
+    max_iou_idx = np.argmax(ious)
     return {
-        'TPR': tp/(tp+fn),
-        'FNR': fn/(tp+fn),
-        'FPR': fp/(fp+tn),
-        'acc': (tp+tn) / (tp+tn+fp+fn),
-        'pre': tp / (tp + fp),
-        'iou': tp / (fn+tp+fp),
+        'tpr': float(tpr[max_iou_idx]),
+        'fpr': float(fpr[max_iou_idx]),
+        'iou': float(ious[max_iou_idx]),
+        'threshold': float(thresholds[max_iou_idx]),
     }
 
 
 def train_epoch(model,
-                criterion,
                 pos_loader,
                 neg_loader,
                 device,
@@ -183,15 +142,6 @@ def train_epoch(model,
     return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
 
 
-@curry
-def criterion(landsat_weight, x, y):
-    image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
-    logit, landsat_x = x
-    labels, landsat_y = y
-    return class_cri(logit, labels), image_cri(landsat_x, landsat_y)
-
-
 @skip_if_exists('model_dir')
 def train_multi(model_dir,
                 sets,
@@ -200,7 +150,6 @@ def train_multi(model_dir,
                 epochs,
                 batch_size,
                 log_dir,
-                landsat_weight,
                 lr,
                 num_ensamble,
                 neg_scale,
@@ -290,7 +239,6 @@ def train_multi(model_dir,
                 model=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
-                criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),
@@ -318,13 +266,10 @@ def train_multi(model_dir,
         with SummaryWriter(log_dir) as w:
             w.add_scalar('loss/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('loss/landsat', train_metrics['landsat'], epoch)
-            w.add_scalars(
-                'score',
-                {
-                    **val_metrics
-                },
-                epoch
-            )
+            w.add_scalar('val/iou', val_metrics['iou'], epoch)
+            w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
+            w.add_scalar('val/fpr', val_metrics['fpr'], epoch)
+            w.add_scalar('val/threshold', val_metrics['threshold'], epoch)
 
             if max_val_score <= val_metrics['iou']:
                 max_val_score = val_metrics['iou']
@@ -338,5 +283,7 @@ def train_multi(model_dir,
                     map(lambda x: torch.save(x[0], x[1])),
                     list
                 )
+                with open(model_dir / 'metric.json', 'w') as outfile:
+                    json.dump(val_metrics, outfile)
 
     return model_dir
