@@ -24,7 +24,7 @@ class SEBlock(nn.Module):
     def forward(self, x):
         avg_out = self.avg_fc(self.avg_pool(x))
         max_out = self.max_fc(self.max_pool(x))
-        return F.sigmoid(avg_out + max_pool)
+        return F.sigmoid(avg_out + max_out)
 
 
 class CSE(nn.Module):

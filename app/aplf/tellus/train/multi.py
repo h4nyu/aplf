@@ -1,6 +1,6 @@
 from pathlib import Path
 import dask
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last, valmap
 from sklearn.metrics import confusion_matrix
 from dask import delayed
 import random
@@ -266,12 +266,10 @@ def train_multi(model_dir,
         with SummaryWriter(log_dir) as w:
             w.add_scalar('loss/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('loss/landsat', train_metrics['landsat'], epoch)
-            w.add_scalar('score/landsat', train_metrics['landsat'], epoch)
-            w.add_scalars('score/tpr', val_metrics['tpr'], epoch)
-            :wa
-            w.add_scalars('score/fpr', val_metrics['fpr'], epoch)
-            w.add_scalars('score/iou', val_metrics['iou'], epoch)
-            w.add_scalars('score/acc', val_metrics['acc'], epoch)
+            w.add_scalar('score/tpr', val_metrics['tpr'], epoch)
+            w.add_scalar('score/fpr', val_metrics['fpr'], epoch)
+            w.add_scalar('score/iou', val_metrics['iou'], epoch)
+            w.add_scalar('score/acc', val_metrics['acc'], epoch)
 
             if max_val_score <= val_metrics['iou']:
                 max_val_score = val_metrics['iou']
