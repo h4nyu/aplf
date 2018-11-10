@@ -29,7 +29,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"scse-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu-avg-add-max",
+        id=f"avg-max-sum-dual-optim-scse-lr-0.001-esb-1-fs-8-dp-2",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,

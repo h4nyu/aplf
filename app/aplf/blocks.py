@@ -9,13 +9,7 @@ class SEBlock(nn.Module):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.max_fc = nn.Sequential(
-            nn.Conv2d(in_ch, in_ch//r, kernel_size=1),
-            nn.ELU(inplace=True),
-            nn.Conv2d(in_ch//r, out_ch, kernel_size=1),
-            nn.Sigmoid()
-        )
-        self.avg_fc = nn.Sequential(
+        self.fc = nn.Sequential(
             nn.Conv2d(in_ch, in_ch//r, kernel_size=1),
             nn.ELU(inplace=True),
             nn.Conv2d(in_ch//r, out_ch, kernel_size=1),
@@ -24,8 +18,8 @@ class SEBlock(nn.Module):
         self.out_ch = out_ch
 
     def forward(self, x):
-        avg_out = self.avg_fc(self.avg_pool(x))
-        max_out = self.max_fc(self.max_pool(x))
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
         return avg_out + max_out
 
 
