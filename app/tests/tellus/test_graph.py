@@ -16,7 +16,7 @@ def test_graph():
         'model_type': 'MultiEncoder',
         'num_ensamble': 1,
         'model_kwargs': {
-            'feature_size': 8,
+            'feature_size': 16,
             'resize': 80,
             'pad': 4,
             'depth': 2
@@ -29,7 +29,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"avg-max-sum-dual-optim-scse-lr-0.001-esb-1-fs-8-dp-2",
+        id=f"avg-max-sum-dual-optim-scse-lr-0.001-esb-1-fs-16-dp-2",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,
