@@ -29,7 +29,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"d17eaf3b-07bd-42fa-9c7f-8c1e6c9fa3b8-scse-in-res-lr-0.001-esb-1-fs-16-dp-2-dual-optim-elu",
+        id=f"msconv-scse-in-res-lr-0.001-esb-1-fs-16-dp-2-dual-optim-elu",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,
