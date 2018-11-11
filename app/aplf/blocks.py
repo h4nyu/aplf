@@ -13,7 +13,6 @@ class SEBlock(nn.Module):
             nn.Linear(in_ch, in_ch//r),
             nn.ELU(inplace=True),
             nn.Linear(in_ch//r, out_ch),
-            nn.Sigmoid()
         )
         self.out_ch = out_ch
 
@@ -23,7 +22,7 @@ class SEBlock(nn.Module):
         max_out = self.max_pool(x).view(b, c)
         avg_out = self.fc(avg_out).view(b, self.out_ch, 1, 1)
         max_out = self.fc(max_out).view(b, self.out_ch, 1, 1)
-        return avg_out + max_out
+        return F.sigmoid(avg_out + max_out)
 
 
 class CSE(nn.Module):

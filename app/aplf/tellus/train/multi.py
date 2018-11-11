@@ -21,7 +21,7 @@ from aplf import config
 from tensorboardX import SummaryWriter
 from ..metric import iou
 from os import path
-from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
+from aplf.losses import lovasz_softmax_flat, SSIM
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment, batch_aug
@@ -91,7 +91,7 @@ def train_epoch(model,
         lr=lr
     )
 
-    image_cri = nn.MSELoss(size_average=True)
+    image_cri = SSIM(size_average=True, window_size=3)
     class_cri = nn.CrossEntropyLoss(size_average=True)
 
     sum_fusion_loss = 0
