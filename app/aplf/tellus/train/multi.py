@@ -27,58 +27,6 @@ from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment, batch_aug
 
 
-def validate(predicts, dataset, batch_size):
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-    )
-    y_preds = np.array(predicts).mean(axis=0).argmax(axis=1)
-    y_trues = pipe(
-        loader,
-        map(lambda x: x['label'].cpu().detach().tolist()),
-        reduce(lambda x, y: x+y),
-        np.array,
-    )
-
-    score = iou(
-        y_preds,
-        y_trues,
-    )
-    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
-    return {
-        'TPR': tp/(tp+fn),
-        'FNR': fn/(tp+fn),
-        'FPR': fp/(fp+tn),
-        'acc': (tp+tn) / (tp+tn+fp+fn),
-        'pre': tp / (tp + fp),
-        'iou': tp / (fn+tp+fp),
-    }
-
-
-def validate_epoch(model,
-                   dataset,
-                   batch_size,
-                   ):
-    y_preds = []
-    device = torch.device('cuda')
-
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-    )
-    for sample in loader:
-        with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            label_preds = model(palsar_x)[0].softmax(dim=1)
-            y_preds += label_preds.cpu().detach().tolist()
-
-    return y_preds
-
-
 def validate(models,
              loader,
              ):
@@ -114,9 +62,9 @@ def validate(models,
 
     tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
     return {
-        'TPR': tp/(tp+fn),
-        'FNR': fn/(tp+fn),
-        'FPR': fp/(fp+tn),
+        'tpr': tp/(tp+fn),
+        'fnr': fn/(tp+fn),
+        'fpr': fp/(fp+tn),
         'acc': (tp+tn) / (tp+tn+fp+fn),
         'pre': tp / (tp + fp),
         'iou': tp / (fn+tp+fp),
@@ -124,7 +72,6 @@ def validate(models,
 
 
 def train_epoch(model,
-                criterion,
                 pos_loader,
                 neg_loader,
                 device,
@@ -181,15 +128,6 @@ def train_epoch(model,
     mean_fusion_loss = sum_fusion_loss / batch_len
     mean_landsat_loss = sum_landsat_loss / batch_len
     return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
-
-
-@curry
-def criterion(landsat_weight, x, y):
-    image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
-    logit, landsat_x = x
-    labels, landsat_y = y
-    return class_cri(logit, labels), image_cri(landsat_x, landsat_y)
 
 
 @skip_if_exists('model_dir')
@@ -290,7 +228,6 @@ def train_multi(model_dir,
                 model=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
-                criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),
@@ -318,13 +255,10 @@ def train_multi(model_dir,
         with SummaryWriter(log_dir) as w:
             w.add_scalar('loss/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('loss/landsat', train_metrics['landsat'], epoch)
-            w.add_scalars(
-                'score',
-                {
-                    **val_metrics
-                },
-                epoch
-            )
+            w.add_scalar('val/iou', val_metrics['iou'], epoch)
+            w.add_scalar('val/fpr', val_metrics['fpr'], epoch)
+            w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
+            w.add_scalar('val/acc', val_metrics['acc'], epoch)
 
             if max_val_score <= val_metrics['iou']:
                 max_val_score = val_metrics['iou']
