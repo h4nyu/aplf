@@ -15,6 +15,12 @@ from torchvision.transforms import (
     RandomVerticalFlip,
     RandomResizedCrop,
 )
+from albumentations import (
+    HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90,
+    Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
+    IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine,
+    IAASharpen, IAAEmboss, RandomContrast, RandomBrightness, Flip, OneOf, Compose
+)
 
 from torchvision.transforms.functional import (
     adjust_brightness,
@@ -132,15 +138,9 @@ class TellusDataset(Dataset):
     def __init__(self, df, has_y=True):
         self.has_y = has_y
         self.df = df
+        self.transform = ToTensor()
+        self.to_tensor = ToTensor()
 
-        self.transforms = [
-            lambda x:x,
-            hflip,
-            vflip,
-            lambda x: rotate(x, 90),
-            lambda x: rotate(x, -90),
-            lambda x: rotate(x, -180),
-        ]
 
     @staticmethod
     def read_image(path):
@@ -175,17 +175,17 @@ class TellusDataset(Dataset):
 
             return {
                 'id': id,
-                'palsar_before': palsar_before,
-                'palsar_after': palsar_after,
-                'landsat_before': landsat_before,
-                'landsat_after': landsat_after,
+                'palsar_before': self.transform(palsar_before),
+                'palsar_after': self.transform(palsar_after),
+                'landsat_before': self.to_tensor(landsat_before),
+                'landsat_after': self.to_tensor(landsat_after),
                 'label': row['label'],
             }
         else:
             return {
                 'id': id,
-                'palsar_before': palsar_before,
-                'palsar_after': palsar_after,
+                'palsar_before': self.to_tensor(palsar_before),
+                'palsar_after': self.to_tensor(palsar_after),
             }
 
 

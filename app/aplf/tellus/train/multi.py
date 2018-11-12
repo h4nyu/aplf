@@ -24,59 +24,9 @@ from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
-from ..data import ChunkSampler, Augment, batch_aug
-
-
-def validate(predicts, dataset, batch_size):
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-    )
-    y_preds = np.array(predicts).mean(axis=0).argmax(axis=1)
-    y_trues = pipe(
-        loader,
-        map(lambda x: x['label'].cpu().detach().tolist()),
-        reduce(lambda x, y: x+y),
-        np.array,
-    )
-
-    score = iou(
-        y_preds,
-        y_trues,
-    )
-    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
-    return {
-        'TPR': tp/(tp+fn),
-        'FNR': fn/(tp+fn),
-        'FPR': fp/(fp+tn),
-        'acc': (tp+tn) / (tp+tn+fp+fn),
-        'pre': tp / (tp + fp),
-        'iou': tp / (fn+tp+fp),
-    }
-
-
-def validate_epoch(model,
-                   dataset,
-                   batch_size,
-                   ):
-    y_preds = []
-    device = torch.device('cuda')
-
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-    )
-    for sample in loader:
-        with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            label_preds = model(palsar_x)[0].softmax(dim=1)
-            y_preds += label_preds.cpu().detach().tolist()
-
-    return y_preds
+from ..data import ChunkSampler
+from ..aug import Augment
+import albumentations as A
 
 
 def validate(models,
@@ -95,8 +45,14 @@ def validate(models,
     batch_len = 0
     for sample in loader:
         with torch.no_grad():
-            palsar_x = sample['palsar'].to(device)
-            landsat_y = sample['landsat'].to(device)
+            palsar_x = torch.cat([
+                sample['palsar_before'],
+                sample['palsar_after']
+            ], dim=1).to(device)
+            landsat_y = torch.cat([
+                sample['landsat_before'],
+                sample['landsat_after'],
+            ]).to(device)
             labels = sample['label'].to(device)
             label_preds = pipe(
                 models,
@@ -114,9 +70,9 @@ def validate(models,
 
     tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
     return {
-        'TPR': tp/(tp+fn),
-        'FNR': fn/(tp+fn),
-        'FPR': fp/(fp+tn),
+        'tpr': tp/(tp+fn),
+        'fnp': fn/(tp+fn),
+        'fpr': fp/(fp+tn),
         'acc': (tp+tn) / (tp+tn+fp+fn),
         'pre': tp / (tp + fp),
         'iou': tp / (fn+tp+fp),
@@ -124,7 +80,6 @@ def validate(models,
 
 
 def train_epoch(model,
-                criterion,
                 pos_loader,
                 neg_loader,
                 device,
@@ -149,29 +104,52 @@ def train_epoch(model,
     sum_fusion_loss = 0
     sum_landsat_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        pos_palsar = torch.cat(
+            [
+                pos_sample['palsar_before'], pos_sample['palsar_after'],
+            ],
+            dim=1
+        )
+        neg_palsar = torch.cat(
+            [
+                neg_sample['palsar_before'], neg_sample['palsar_after'],
+            ],
+            dim=1
+        )
+        palsar = torch.cat(
+            [pos_palsar, neg_palsar],
+            dim=0
+        ).to(device)
 
-        aug = Augment()
-        palsar_x = torch.cat(
-            [pos_sample['palsar'], neg_sample['palsar']],
-            dim=0
+        pos_landsat = torch.cat(
+            [
+                pos_sample['landsat_before'], pos_sample['landsat_after'],
+            ],
+            dim=1
         )
-        palsar_x = batch_aug(aug, palsar_x, ch=1).to(device)
-        landsat_x = torch.cat(
-            [pos_sample['landsat'], neg_sample['landsat']],
-            dim=0
+        neg_landsat = torch.cat(
+            [
+                neg_sample['landsat_before'], neg_sample['landsat_after'],
+            ],
+            dim=1
         )
-        landsat_x = batch_aug(aug, landsat_x, ch=3).to(device)
+
+        landsat = torch.cat(
+            [pos_landsat, neg_landsat],
+            dim=0
+        ).to(device)
+
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
 
-        landsat_loss = image_cri(model(palsar_x)[1], landsat_x)
+        landsat_loss = image_cri(model(palsar)[1], landsat)
         landstat_optim.zero_grad()
         landsat_loss.backward()
         landstat_optim.step()
 
-        fusion_loss = class_cri(model(palsar_x)[0], labels)
+        fusion_loss = class_cri(model(palsar)[0], labels)
         fusion_optim.zero_grad()
         fusion_loss.backward()
         fusion_optim.step()
@@ -181,15 +159,6 @@ def train_epoch(model,
     mean_fusion_loss = sum_fusion_loss / batch_len
     mean_landsat_loss = sum_landsat_loss / batch_len
     return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
-
-
-@curry
-def criterion(landsat_weight, x, y):
-    image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
-    logit, landsat_x = x
-    labels, landsat_y = y
-    return class_cri(logit, labels), image_cri(landsat_x, landsat_y)
 
 
 @skip_if_exists('model_dir')
@@ -229,9 +198,20 @@ def train_multi(model_dir,
         list,
     )
 
+    aug = Augment(
+        transform=A.GridDistortion(
+            p=0.5,
+            num_steps=10,
+            distort_limit=0.1,
+        )
+    )
+
+    pos_set = sets['train_pos']
+    pos_set.dataset.transform = aug
+
     pos_set = pipe(
         range(neg_scale),
-        map(lambda _: sets['train_pos']),
+        map(lambda _: pos_set),
         reduce(lambda x, y: x+y)
     )
     train_pos_loader = DataLoader(
@@ -240,10 +220,13 @@ def train_multi(model_dir,
         shuffle=True,
         pin_memory=True,
     )
+
+    neg_set = sets['train_neg']
+    neg_set.dataset.transform = aug
     train_neg_loaders = pipe(
         range(num_ensamble),
         map(lambda x: DataLoader(
-            sets['train_neg'],
+            neg_set,
             batch_size=batch_size//2,
             pin_memory=True,
             sampler=ChunkSampler(
@@ -290,7 +273,6 @@ def train_multi(model_dir,
                 model=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
-                criterion=criterion(landsat_weight),
                 device=device,
                 lr=lr
             )),
@@ -318,13 +300,10 @@ def train_multi(model_dir,
         with SummaryWriter(log_dir) as w:
             w.add_scalar('loss/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('loss/landsat', train_metrics['landsat'], epoch)
-            w.add_scalars(
-                'score',
-                {
-                    **val_metrics
-                },
-                epoch
-            )
+            w.add_scalar('val/iou', val_metrics['iou'], epoch)
+            w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
+            w.add_scalar('val/fpr', val_metrics['fpr'], epoch)
+            w.add_scalar('val/acc', val_metrics['acc'], epoch)
 
             if max_val_score <= val_metrics['iou']:
                 max_val_score = val_metrics['iou']

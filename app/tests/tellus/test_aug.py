@@ -10,6 +10,7 @@ from cytoolz.curried import keymap, filter, pipe, merge, map, compose, concatv, 
 from torch.utils.data import Subset
 from tensorboardX import SummaryWriter
 import albumentations as A
+from albumentations.torch import ToTensor
 import torchvision.utils as vutils
 from aplf import config
 from torchvision import datasets, models, transforms
@@ -17,6 +18,8 @@ import albumentations.augmentations.functional as AF
 from torchvision.transforms.functional import (
     adjust_brightness
 )
+from aplf.tellus.aug import Augment
+import albumentations as A
 
 from torchvision.transforms import ToTensor
 
@@ -34,38 +37,39 @@ def dataset():
     )
 
 
-@pytest.mark.parametrize("num_steps", [1, 5])
-@pytest.mark.parametrize("distort_limit", [0.1])
+@pytest.mark.parametrize("num_steps", [1, 2,  5, 10])
+@pytest.mark.parametrize("distort_limit", [0.01, 0.1, 0.3])
 def test_grid_distorsion(dataset, num_steps, distort_limit):
-    transform = ToTensor()
+    aug = Augment(
+        transform=A.GridDistortion(
+            p=1,
+            num_steps=num_steps,
+            distort_limit=distort_limit,
+        )
+    )
+    dataset.transform = aug
     loader = DataLoader(
         dataset,
         batch_size=1,
-        transform=transform,
     )
+    aug_sample = first(loader)
 
-    sample = first(loader)
-    print(sample['palsar_before'].size())
+    dataset.transform = ToTensor()
+    loader = DataLoader(
+        dataset,
+        batch_size=1,
+    )
+    no_aug_sample = first(loader)
 
-    #  aug = Augment(
-    #      [
-    #          lambda x: A.GridDistortion(
-    #              num_steps=num_steps,
-    #              distort_limit=distort_limit,
-    #              p=1,
-    #          )(image=x)['image'].reshape(1, 40, 40)
-    #      ]
-    #  )
-    #
-    #  writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test/aug')
-    #  writer.add_image(
-    #      f"GridDistortion/palsar",
-    #      vutils.make_grid(
-    #          [
-    #              *batch_aug(aug, sample['palsar'], ch=1)[:, 0:1, :, :],
-    #              *batch_aug(aug, sample['palsar'], ch=1)[:, 1:2, :, :],
-    #              *sample['palsar'][:, 0:1, :, :],
-    #              *sample['palsar'][:, 1:2, :, :],
-    #          ]
-    #      ),
-    #  )
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test/aug')
+    writer.add_image(
+        f"GridDistortion/num_steps/{num_steps}/distort_limit/{distort_limit}/palsar",
+        vutils.make_grid(
+            [
+                *aug_sample['palsar_before'],
+                *no_aug_sample['palsar_before'],
+                *aug_sample['palsar_after'],
+                *no_aug_sample['palsar_after'],
+            ]
+        ),
+    )
