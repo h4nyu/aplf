@@ -15,6 +15,12 @@ from torchvision.transforms import (
     RandomVerticalFlip,
     RandomResizedCrop,
 )
+from albumentations import (
+    HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90,
+    Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
+    IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine,
+    IAASharpen, IAAEmboss, RandomContrast, RandomBrightness, Flip, OneOf, Compose
+)
 
 from torchvision.transforms.functional import (
     adjust_brightness,
@@ -255,7 +261,6 @@ class Augment(object):
             #  lambda x: rotate(x, 90),
             #  lambda x: adjust_brightness(x, 2),
             #  lambda x: adjust_contrast(x, 2),
-
         ]
         self.augs = pipe(
             augs,

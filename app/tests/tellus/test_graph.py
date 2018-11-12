@@ -11,7 +11,7 @@ base_param = {
 
 def test_graph():
     base_train_config = {
-        'epochs': 1000,
+        'epochs': 300,
         'batch_size': 64,
         'model_type': 'MultiEncoder',
         'num_ensamble': 1,
