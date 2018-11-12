@@ -21,15 +21,15 @@ def test_graph():
             'pad': 4,
             'depth': 2
         },
-        'landsat_weight': 0.5,
         'num_ensamble': 1,
-        'lr': 0.001,
+        'landsat_lr': 0.001,
+        'fusion_lr': 0.0001,
         'neg_scale': 10,
     }
 
     g = Graph(
         **base_param,
-        id=f"scse-in-res-lr-0.001-esb-1-fs-16-dp-2-dual-optim-elu",
+        id=f"flr-0.0001-llr-0.001scse-in-res--esb-1-fs-8-dp-2-dual-optim-elu",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,

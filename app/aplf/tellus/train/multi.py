@@ -75,19 +75,20 @@ def train_epoch(model,
                 pos_loader,
                 neg_loader,
                 device,
-                lr
+                landsat_lr,
+                fusion_lr,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
     landstat_optim = optim.Adam(
         model.landsat_enc.parameters(),
         amsgrad=True,
-        lr=lr
+        lr=landsat_lr
     )
     fusion_optim = optim.Adam(
         model.fusion_enc.parameters(),
         amsgrad=True,
-        lr=lr
+        lr=fusion_lr,
     )
 
     image_cri = nn.MSELoss(size_average=True)
@@ -138,8 +139,8 @@ def train_multi(model_dir,
                 epochs,
                 batch_size,
                 log_dir,
-                landsat_weight,
-                lr,
+                landsat_lr,
+                fusion_lr,
                 num_ensamble,
                 neg_scale,
                 ):
@@ -229,7 +230,8 @@ def train_multi(model_dir,
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
                 device=device,
-                lr=lr
+                landsat_lr=landsat_lr,
+                fusion_lr=fusion_lr,
             )),
             list,
         )
