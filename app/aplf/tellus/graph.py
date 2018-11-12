@@ -16,7 +16,6 @@ import torch
 import os
 
 
-
 class Graph(object):
     def __init__(self,
                  id,
@@ -42,7 +41,6 @@ class Graph(object):
         )
 
         train_df = delayed(pd.read_parquet)(train_df_path)
-
 
         kfolded = delayed(kfold)(
             train_df,
@@ -75,7 +73,6 @@ class Graph(object):
             test_df,
             has_y=False,
         )
-
 
         submission_df_path = delayed(predict)(
             model_dirs=model_dirs,

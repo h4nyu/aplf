@@ -128,17 +128,6 @@ def load_test_df(dataset_dir='/store/tellus/test',
     return output
 
 
-def image_to_tensor(path):
-    image = io.imread(
-        path,
-    )
-    if len(image.shape) == 2:
-        h, w = image.shape
-        image = img_as_float(image.reshape(h, w, -1)).astype(np.float32)
-    tensor = ToTensor()(image)
-    return tensor
-
-
 class TellusDataset(Dataset):
     def __init__(self, df, has_y=True):
         self.has_y = has_y
@@ -153,48 +142,50 @@ class TellusDataset(Dataset):
             lambda x: rotate(x, -180),
         ]
 
+    @staticmethod
+    def read_image(path):
+        image = io.imread(
+            path,
+        )
+        if len(image.shape) == 2:
+            h, w = image.shape
+            image = img_as_float(image.reshape(h, w, -1)).astype(np.float32)
+        return image
+
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         id = row['id']
-        palsar_after = image_to_tensor(
+        palsar_after = self.read_image(
             row['palsar_after'],
         )
-        palsar_before = image_to_tensor(
+        palsar_before = self.read_image(
             row['palsar_before'],
         )
 
-        palsar = torch.cat(
-            [palsar_before, palsar_after],
-            dim=0,
-        )
-
         if self.has_y:
-            aug = Augment()
-
-            landsat_after = image_to_tensor(
+            landsat_after = self.read_image(
                 row['landsat_after']
             )
-            landsat_before = image_to_tensor(
+            landsat_before = self.read_image(
                 row['landsat_before']
-            )
-            landsat = torch.cat(
-                [landsat_before, landsat_after],
-                dim=0,
             )
 
             return {
                 'id': id,
-                'palsar': palsar,
-                'landsat': landsat,
+                'palsar_before': palsar_before,
+                'palsar_after': palsar_after,
+                'landsat_before': landsat_before,
+                'landsat_after': landsat_after,
                 'label': row['label'],
             }
         else:
             return {
                 'id': id,
-                'palsar': palsar,
+                'palsar_before': palsar_before,
+                'palsar_after': palsar_after,
             }
 
 
@@ -245,39 +236,3 @@ def kfold(df, n_splits, random_state=0):
     )
 
     return splieted
-
-
-class Augment(object):
-    def __init__(self):
-        augs = [
-            #  hflip,
-            #  vflip,
-            #  lambda x: rotate(x, 90),
-            #  lambda x: adjust_brightness(x, 2),
-            #  lambda x: adjust_contrast(x, 2),
-
-        ]
-        self.augs = pipe(
-            augs,
-            map(lambda a: random.choice([lambda x: x, a])),
-            list,
-        )
-        self.transform = Compose([
-            ToPILImage(),
-            *self.augs,
-            ToTensor(),
-        ])
-
-    def __call__(self, t):
-        return self.transform(t)
-
-
-@curry
-def batch_aug(aug, batch, ch=3):
-    return pipe(
-        batch,
-        map(lambda x: [aug(x[0:ch, :, :]), aug(x[ch:2*ch, :, :])]),
-        map(lambda x: torch.cat(x, dim=0)),
-        list,
-        torch.stack
-    )
