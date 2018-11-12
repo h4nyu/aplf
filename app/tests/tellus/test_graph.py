@@ -29,12 +29,12 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"msconv-scse-in-res-lr-0.001-esb-1-fs-16-dp-2-dual-optim-elu",
+        id=f"msconv-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu",
         #  id=f"sub",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
-        folds=[0],
+        folds=[1],
     )
 
     g(scheduler='single-threaded')
