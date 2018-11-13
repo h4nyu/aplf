@@ -12,11 +12,11 @@ base_param = {
 def test_graph():
     base_train_config = {
         'epochs': 300,
-        'batch_size': 64,
+        'batch_size': 516,
         'model_type': 'MultiEncoder',
-        'num_ensamble': 2,
+        'num_ensamble': 1,
         'model_kwargs': {
-            'feature_size': 4,
+            'feature_size': 8,
             'resize': 80,
             'depth': 2
         },
@@ -28,7 +28,7 @@ def test_graph():
 
     g = Graph(
         **base_param,
-        id=f"bem-2-pad-scse-in-res-lr-0.001-esb-1-fs-4-dp-2-dual-optim-elu",
+        id=f"large-batch-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
