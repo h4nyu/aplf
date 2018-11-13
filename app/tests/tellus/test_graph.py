@@ -20,14 +20,14 @@ def test_graph():
             'resize': 80,
             'depth': 2
         },
-        'landsat_weight': 2,
+        'landsat_weight': 0.1,
         'num_ensamble': 1,
-        'lr': 0.01,
+        'lr': 0.005,
     }
 
     g = Graph(
         **base_param,
-        id=f"acc-batch-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu",
+        id=f"acc-batch-lw-0.1-scse-in-res-lr-0.0005-esb-1-fs-8-dp-2-dual-optim-elu",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
