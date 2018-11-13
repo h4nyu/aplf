@@ -109,7 +109,6 @@ class MultiEncoder(nn.Module):
                  feature_size=64,
                  resize=120,
                  depth=3,
-                 pad=4,
                  ):
         super().__init__()
         self.resize = resize
@@ -125,7 +124,7 @@ class MultiEncoder(nn.Module):
             depth=depth,
         )
 
-        self.pad = nn.ReflectionPad2d(pad)
+        self.pad = nn.ReflectionPad2d(resize//10)
 
     def forward(self, x):
         x = F.interpolate(
