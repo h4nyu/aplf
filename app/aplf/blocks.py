@@ -24,9 +24,9 @@ class SEBlock(nn.Module):
 
 
 class CSE(nn.Module):
-    def __init__(self, in_ch, out_ch, r=2):
+    def __init__(self, in_ch, r=1):
         super().__init__()
-        self.se = SEBlock(in_ch, out_ch, r=r)
+        self.se = SEBlock(in_ch, in_ch, r=r)
 
     def forward(self, x):
         y = self.se(x)
@@ -54,7 +54,7 @@ class SCSE(nn.Module):
     def __init__(self, in_ch, r=2):
         super(SCSE, self).__init__()
 
-        self.cSE = CSE(in_ch, in_ch, r)
+        self.cSE = CSE(in_ch, r)
         self.sSE = SSE(in_ch)
 
     def forward(self, x):
@@ -71,7 +71,6 @@ class ResBlock(nn.Module):
                  out_ch,
                  ):
         super().__init__()
-        assert out_ch % 2 == 0
         if in_ch == out_ch:
             self.projection = None
         else:
@@ -80,77 +79,41 @@ class ResBlock(nn.Module):
                 out_ch,
                 kernel_size=1,
             )
-        self.conv3 = nn.Sequential(
+        self.block = nn.Sequential(
             nn.Conv2d(
                 in_ch,
-                out_ch // 2,
+                out_ch,
                 kernel_size=3,
                 padding=1,
                 stride=1,
             ),
-            nn.BatchNorm2d(out_ch // 2),
+            nn.BatchNorm2d(out_ch),
             nn.ELU(inplace=True),
             nn.Conv2d(
-                out_ch // 2,
-                out_ch // 2,
+                out_ch,
+                out_ch,
                 kernel_size=3,
                 padding=1,
                 stride=1,
                 groups=2 - (out_ch % 2),
             ),
-            nn.BatchNorm2d(out_ch // 2),
+            nn.BatchNorm2d(out_ch),
             nn.ELU(inplace=True),
             nn.Conv2d(
-                out_ch // 2,
-                out_ch // 2,
+                out_ch,
+                out_ch,
                 kernel_size=3,
                 padding=1,
                 stride=1,
             ),
-            nn.BatchNorm2d(out_ch // 2),
+            nn.BatchNorm2d(out_ch),
+            SCSE(out_ch),
         )
-
-        self.conv5 = nn.Sequential(
-            nn.Conv2d(
-                in_ch,
-                out_ch // 2,
-                kernel_size=5,
-                padding=2,
-                stride=1,
-            ),
-            nn.BatchNorm2d(out_ch // 2),
-            nn.ELU(inplace=True),
-            nn.Conv2d(
-                out_ch // 2,
-                out_ch // 2,
-                kernel_size=5,
-                padding=2,
-                stride=1,
-            ),
-            nn.BatchNorm2d(out_ch // 2),
-            nn.ELU(inplace=True),
-            nn.Conv2d(
-                out_ch // 2,
-                out_ch // 2,
-                kernel_size=5,
-                padding=2,
-                stride=1,
-            ),
-            nn.BatchNorm2d(out_ch // 2),
-        )
-
-        self.scse = SCSE(
-            in_ch=out_ch,
-        )
-
         self.activation = nn.ELU(inplace=True)
 
     def forward(self, x):
         residual = x
-        conv3_out = self.conv3(x)
-        conv5_out = self.conv5(x)
-        out = torch.cat([conv3_out, conv5_out], dim=1)
-        out = self.scse(out)
+        out = self.block(x)
         if self.projection:
             residual = self.projection(residual)
         out += residual
@@ -197,6 +160,7 @@ class UpSample(nn.Module):
                  kernel_size=3,
                  padding=1,
                  ):
+        super().__init__()
         self.block = nn.Sequential(
             ResBlock(
                 in_ch,
