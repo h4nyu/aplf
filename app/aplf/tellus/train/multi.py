@@ -25,6 +25,7 @@ from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment, batch_aug
+import uuid
 
 
 def validate(models,
@@ -158,7 +159,7 @@ def train_multi(model_dir,
 
     model_paths = pipe(
         range(num_ensamble),
-        map(lambda x: model_dir / f'{x}.pt'),
+        map(lambda x: model_dir / f'{uuid.uuid4()}.pt'),
         list,
     )
     pos_set = pipe(
