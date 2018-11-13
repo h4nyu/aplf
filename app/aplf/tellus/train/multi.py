@@ -256,10 +256,10 @@ def train_multi(model_dir,
         with SummaryWriter(log_dir) as w:
             w.add_scalar('loss/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('loss/landsat', train_metrics['landsat'], epoch)
-            w.add_scalar('val/iou', metrics['iou'], epoch)
-            w.add_scalar('val/tpr', metrics['tpr'], epoch)
-            w.add_scalar('val/fpr', metrics['fpr'], epoch)
-            w.add_scalar('val/acc', metrics['acc'], epoch)
+            w.add_scalar('val/iou', val_metrics['iou'], epoch)
+            w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
+            w.add_scalar('val/fpr', val_metrics['fpr'], epoch)
+            w.add_scalar('val/acc', val_metrics['acc'], epoch)
 
             if max_val_score <= val_metrics['iou']:
                 max_val_score = val_metrics['iou']
