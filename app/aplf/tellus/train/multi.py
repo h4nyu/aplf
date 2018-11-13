@@ -130,7 +130,6 @@ def train_epoch(model,
     return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
 
 
-
 @skip_if_exists('model_dir')
 def train_multi(model_dir,
                 sets,
@@ -162,12 +161,6 @@ def train_multi(model_dir,
         map(lambda x: model_dir / f'{x}.pt'),
         list,
     )
-    check_model_paths = pipe(
-        range(num_ensamble),
-        map(lambda x: model_dir / f'{x}_check.pt'),
-        list,
-    )
-
     pos_set = pipe(
         range(neg_scale),
         map(lambda _: sets['train_pos']),
