@@ -22,16 +22,10 @@ from tensorboardX import SummaryWriter
 from ..metric import iou
 from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
-from aplf.utils import skip_if_exists
+from aplf.utils import skip_if_exists, dump_json
 from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment, batch_aug
 import uuid
-
-
-def dump_json(path, data):
-    with open(path, 'w') as f:
-        json.dump(data, f)
-        return path
 
 
 def validate(models,

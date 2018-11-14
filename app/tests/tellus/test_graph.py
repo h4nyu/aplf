@@ -3,11 +3,6 @@ from aplf.tellus.graph import Graph
 import uuid
 from datetime import datetime
 
-base_param = {
-    "dataset_dir": '/store/tellus',
-    "output_dir": '/store/tellus/output/',
-}
-
 
 def test_graph():
     base_train_config = {
@@ -26,11 +21,9 @@ def test_graph():
         'lr': 0.001,
         'neg_scale': 10,
     }
-
     g = Graph(
-        **base_param,
-        id=f"scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu",
-        #  id=f"sub-0",
+        dataset_dir="/store/tellus",
+        output_dir="/store/tellus/output/scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,

@@ -1,3 +1,4 @@
+from pathlib import Path
 from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk
 from sklearn.model_selection import train_test_split
 from dask import delayed
@@ -16,10 +17,8 @@ import torch
 import os
 
 
-
 class Graph(object):
     def __init__(self,
-                 id,
                  dataset_dir,
                  output_dir,
                  n_splits,
@@ -27,9 +26,17 @@ class Graph(object):
                  folds,
                  train_method,
                  ):
+        output_dir = Path(output_dir)
+        output_dir.mkdir(exist_ok=True)
         params = locals()
-        torch.manual_seed(0)
+        config_file = delayed(dump_json)(
+            output_dir / Path('config.json'),
+            {
+                **params
+            }
+        )
 
+        torch.manual_seed(0)
         ids = pipe(
             range(n_splits),
             filter(lambda x: x in folds),
@@ -38,12 +45,10 @@ class Graph(object):
 
         train_df_path = delayed(load_train_df)(
             dataset_dir=os.path.join(dataset_dir, 'train'),
-            output=os.path.join(output_dir, 'train.pqt')
+            output=output_dir / Path('train.pqt')
         )
 
         train_df = delayed(pd.read_parquet)(train_df_path)
-
-
         kfolded = delayed(kfold)(
             train_df,
             n_splits
@@ -59,9 +64,9 @@ class Graph(object):
             zip(ids, train_sets),
             map(lambda x: delayed(getattr(tra, train_method))(
                 **base_train_config,
-                model_dir=os.path.join(output_dir, f"{id}-fold-{x[0]}"),
+                model_dir=output_dir/Path("fold-0"),
                 sets=x[1],
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}/base',
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
             )),
             list
         )
@@ -76,16 +81,16 @@ class Graph(object):
             has_y=False,
         )
 
-
         submission_df_path = delayed(predict)(
             model_dirs=model_dirs,
             dataset=test_dataset,
-            out_path=f'{output_dir}/{id}_submission.tsv',
+            out_path=output_dir / Path("submission.tsv"),
         )
 
         self.output = delayed(lambda x: x)((
             model_dirs,
             submission_df_path,
+            config_file,
         ))
 
     def __call__(self, *args, **kwargs):
