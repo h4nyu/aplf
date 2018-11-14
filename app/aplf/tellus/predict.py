@@ -58,7 +58,7 @@ def predict(model_dirs,
             output = pipe(
                 [*normal_outputs],
                 map(lambda x: x.softmax(dim=1)),
-                reduce(lambda x, y: (x+y)/2),
+                reduce(lambda x, y: x+y),
                 lambda x: x.argmax(dim=1),
             )
             y_ids += ids

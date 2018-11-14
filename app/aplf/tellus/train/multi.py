@@ -28,6 +28,12 @@ from ..data import ChunkSampler, Augment, batch_aug
 import uuid
 
 
+def dump_json(path, data):
+    with open(path, 'w') as f:
+        json.dump(data, f)
+        return path
+
+
 def validate(models,
              loader,
              ):
@@ -156,10 +162,15 @@ def train_multi(model_dir,
         map(lambda _: Model(**model_kwargs).to(device).train()),
         list
     )
+    model_ids = pipe(
+        range(num_ensamble),
+        map(lambda _: uuid.uuid4()),
+        list
+    )
 
     model_paths = pipe(
-        range(num_ensamble),
-        map(lambda x: model_dir / f'{uuid.uuid4()}.pt'),
+        model_ids,
+        map(lambda x: model_dir / f'{x}.pt'),
         list,
     )
     pos_set = pipe(
@@ -265,6 +276,15 @@ def train_multi(model_dir,
                 pipe(
                     zip(models, model_paths),
                     map(lambda x: torch.save(x[0], x[1])),
+                    list
+                )
+
+                pipe(
+                    model_ids,
+                    map(lambda x: dump_json(model_dir / f'{x}.json', {
+                        **val_metrics,
+                        "id": str(x),
+                    })),
                     list
                 )
 
