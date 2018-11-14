@@ -14,6 +14,7 @@ import os
 import torch
 from .preprocess import rl_enc
 from .metric import iou
+import json
 
 
 @skip_if_exists('out_path')
