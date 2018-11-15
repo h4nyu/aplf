@@ -9,7 +9,7 @@ from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import torch
+import torch 
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
 import torch.nn.functional as F
@@ -21,8 +21,8 @@ from aplf import config
 from tensorboardX import SummaryWriter
 from ..metric import iou
 from os import path
-from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists, dump_json
+from aplf.losses import SSIM
 from aplf.optimizers import Eve
 from ..data import ChunkSampler, Augment, batch_aug
 import uuid
@@ -76,22 +76,18 @@ def train_epoch(model,
                 pos_loader,
                 neg_loader,
                 device,
-                lr
+                lr,
+                landsat_weight,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
-    landstat_optim = optim.Adam(
-        model.landsat_enc.parameters(),
-        amsgrad=True,
-        lr=lr
-    )
-    fusion_optim = optim.Adam(
-        model.fusion_enc.parameters(),
+    optimizer = optim.Adam(
+        model.parameters(),
         amsgrad=True,
         lr=lr
     )
 
-    image_cri = nn.MSELoss(size_average=True)
+    image_cri = SSIM(size_average=True, window_size=2)
     class_cri = nn.CrossEntropyLoss(size_average=True)
 
     sum_fusion_loss = 0
@@ -113,16 +109,14 @@ def train_epoch(model,
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
+        pred_fusion, pred_landsat = model(palsar_x)
 
-        landsat_loss = image_cri(model(palsar_x)[1], landsat_x)
-        landstat_optim.zero_grad()
-        landsat_loss.backward()
-        landstat_optim.step()
-
-        fusion_loss = class_cri(model(palsar_x)[0], labels)
-        fusion_optim.zero_grad()
-        fusion_loss.backward()
-        fusion_optim.step()
+        fusion_loss = class_cri(pred_fusion, labels)
+        landsat_loss = - landsat_weight * image_cri(pred_landsat, landsat_x)
+        loss = fusion_loss + landsat_loss
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
         sum_fusion_loss += fusion_loss.item()
         sum_landsat_loss += landsat_loss.item()
@@ -228,6 +222,7 @@ def train_multi(model_dir,
                 model=x[0],
                 neg_loader=x[1],
                 pos_loader=train_pos_loader,
+                landsat_weight=landsat_weight,
                 device=device,
                 lr=lr
             )),
