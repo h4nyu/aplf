@@ -9,7 +9,7 @@ from pathlib import Path
 from cytoolz import curry
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import torch 
+import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR, MultiStepLR
 import torch.nn.functional as F
@@ -81,8 +81,14 @@ def train_epoch(model,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
-    optimizer = optim.Adam(
-        model.parameters(),
+
+    landstat_optim = optim.Adam(
+        model.landsat_enc.parameters(),
+        amsgrad=True,
+        lr=lr
+    )
+    fusion_optim = optim.Adam(
+        model.fusion_enc.parameters(),
         amsgrad=True,
         lr=lr
     )
@@ -109,14 +115,17 @@ def train_epoch(model,
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
-        pred_fusion, pred_landsat = model(palsar_x)
 
-        fusion_loss = class_cri(pred_fusion, labels)
-        landsat_loss = - landsat_weight * image_cri(pred_landsat, landsat_x)
-        loss = fusion_loss + landsat_loss
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        landsat_loss = -landsat_weight * \
+            image_cri(model(palsar_x)[1], landsat_x)
+        landstat_optim.zero_grad()
+        landsat_loss.backward()
+        landstat_optim.step()
+
+        fusion_loss = class_cri(model(palsar_x)[0], labels)
+        fusion_optim.zero_grad()
+        fusion_loss.backward()
+        fusion_optim.step()
 
         sum_fusion_loss += fusion_loss.item()
         sum_landsat_loss += landsat_loss.item()

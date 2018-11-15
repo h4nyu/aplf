@@ -23,7 +23,7 @@ def test_graph():
     }
     g = Graph(
         dataset_dir="/store/tellus",
-        output_dir="/store/tellus/output/ssim-w-2-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-elu",
+        output_dir="/store/tellus/output/dual-optim-ssim-w-2-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-elu",
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
