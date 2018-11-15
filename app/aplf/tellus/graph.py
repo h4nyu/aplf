@@ -37,7 +37,7 @@ class Graph(object):
         )
 
         torch.manual_seed(0)
-        ids = pipe(
+        fold_ids = pipe(
             range(n_splits),
             filter(lambda x: x in folds),
             list
@@ -55,18 +55,18 @@ class Graph(object):
         )
 
         train_sets = pipe(
-            ids,
+            fold_ids,
             map(lambda x: delayed(lambda i: i[x])(kfolded)),
             list
         )
 
         model_dirs = pipe(
-            zip(ids, train_sets),
+            zip(fold_ids, train_sets),
             map(lambda x: delayed(getattr(tra, train_method))(
                 **base_train_config,
-                model_dir=output_dir/Path("fold-0"),
+                model_dir=output_dir/Path(f"fold-{x[0]}"),
                 sets=x[1],
-                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{id}/{x[0]}',
+                log_dir=f'{config["TENSORBORAD_LOG_DIR"]}/{output_dir}/fold-{x[0]}',
             )),
             list
         )

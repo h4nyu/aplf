@@ -27,7 +27,7 @@ def test_graph():
         train_method='multi',
         base_train_config=base_train_config,
         n_splits=8,
-        folds=[0],
+        folds=[0, 1, 2, 3, 4],
     )
 
     g(scheduler='single-threaded')
