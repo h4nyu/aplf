@@ -5,32 +5,37 @@ from datetime import datetime
 
 
 def test_graph():
-    base_train_config = {
-        'epochs': 400,
-        'batch_size': 64,
-        'model_type': 'MultiEncoder',
-        'num_ensamble': 1,
-        'model_kwargs': {
-            'feature_size': 8,
-            'resize': 80,
-            'pad': 4,
-            'depth': 2
+    config = {
+        "landsat_train_config": {
+            'epochs': 400,
+            'batch_size': 64,
+            'num_ensamble': 1,
+            'model_kwargs': {
+                'landsat_enc_config':{
+                    'feature_size': 8,
+                    'depth': 2
+                },
+                'fusion_enc_config':{
+                    'feature_size': 8,
+                    'depth': 2
+                },
+                'resize': 80,
+            },
+            'landsat_weight': 10,
+            'num_ensamble': 1,
+            'lr': 0.001,
+            'neg_scale': 10,
         },
-        'landsat_weight': 10,
-        'num_ensamble': 1,
-        'lr': 0.001,
-        'neg_scale': 10,
-    }
-    g = Graph(
-        dataset_dir="/store/tellus",
-        output_dir="/store/tellus/output/dual-optim-ssim-w-2-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-elu",
-        train_method='multi',
-        base_train_config=base_train_config,
-        n_splits=8,
-        folds=list(range(8)),
-    )
+        "dataset_dir": "/store/tellus",
+        "output_dir": "/store/tellus/output/dual-train-ssim-w-2-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-elu",
+        "n_splits": 8,
+        "folds": list(range(8)),
+        'seed': 0
 
-    g(scheduler='single-threaded')
+    }
+    g = Graph(config)
+
+    g().compute(scheduler='single-threaded')
     #
     #  with Client('dask-scheduler:8786') as c:
     #      try:

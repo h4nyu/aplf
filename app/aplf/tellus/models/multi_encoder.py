@@ -106,26 +106,23 @@ class FusionEnc(nn.Module):
 
 class MultiEncoder(nn.Module):
     def __init__(self,
-                 feature_size=64,
+                 landsat_enc_config,
+                 fusion_enc_config,
                  resize=120,
-                 depth=3,
-                 pad=4,
                  ):
         super().__init__()
         self.resize = resize
 
         self.landsat_enc = LandsatEnc(
             in_ch=2,
-            feature_size=feature_size,
-            depth=depth,
+            **landsat_enc_config
         )
         self.fusion_enc = FusionEnc(
             in_ch=self.landsat_enc.before_out_ch + 2,
-            feature_size=feature_size,
-            depth=depth,
+            **fusion_enc_config
         )
 
-        self.pad = nn.ReflectionPad2d(pad)
+        self.pad = nn.ReflectionPad2d(resize//10)
 
     def forward(self, x):
         x = F.interpolate(
