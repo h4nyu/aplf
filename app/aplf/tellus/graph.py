@@ -70,31 +70,30 @@ class Graph(Flow):
         self.dump_config()
         train_sets = self.create_train_sets()
 
-        landsat_model_dirs = pipe(
+        landsat_model_paths = pipe(
             zip(self.fold_indices, train_sets),
             map(lambda x: delayed(train_landsat)(
                 **self.config['landsat_train_config'],
-                model_dir=self.output_dir/Path(f"fold-{x[0]}/landsat"),
+                model_path=self.output_dir/Path(f"landsat-fold-{x[0]}.pt"),
                 sets=x[1],
-                log_dir=f'{TENSORBORAD_LOG_DIR}/{self.output_dir}/fold-{x[0]}/landsat',
+                log_dir=f'{TENSORBORAD_LOG_DIR}/{self.output_dir}/landsat-fold-{x[0]}',
             )),
             lambda x: dask.compute(*x)
         )
-        print(landsat_model_dirs)
-        #
-        #  fusion_model_dirs = pipe(
-        #      zip(self.fold_indices, train_sets, landsat_model_dirs),
-        #      map(lambda x: delayed(train_fusion)(
-        #          **self.config['landsat_train_config'],
-        #          model_dir=self.output_dir/Path(f"fold-{x[0]}/landsat"),
-        #          sets=x[1],
-        #          log_dir=f'{TENSORBORAD_LOG_DIR}/{self.output_dir}/fold-{x[0]}/landsat',
-        #      )),
-        #      lambda x: dask.compute(*x)
-        #  )
-        #
+
+        fusion_model_paths = pipe(
+            zip(self.fold_indices, train_sets, landsat_model_paths),
+            map(lambda x: delayed(train_fusion)(
+                **self.config['palsar_train_config'],
+                landsat_model_path=x[2],
+                model_path=self.output_dir/Path(f"palsar-fold-{x[0]}.pt"),
+                sets=x[1],
+                log_dir=f'{TENSORBORAD_LOG_DIR}/{self.output_dir}/palsar-fold-{x[0]}.pt',
+            )),
+            lambda x: dask.compute(*x)
+        )
+        print(fusion_model_paths)
         #  test_set = self.create_test_set()
-        #
         #  submission_df_path = predict(
         #      model_dirs=fusion_model_dirs,
         #      dataset=test_set,

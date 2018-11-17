@@ -9,10 +9,9 @@ def test_graph():
         "landsat_train_config": {
             'epochs': 400,
             'batch_size': 32,
-            'num_ensamble': 1,
             'model_kwargs': {
                 'landsat_enc_config': {
-                    'feature_size': 8,
+                    'feature_size': 16,
                     'depth': 2
                 },
                 'fusion_enc_config': {
@@ -21,25 +20,34 @@ def test_graph():
                 },
                 'resize': 80,
             },
-            'landsat_weight': 1,
-            'num_ensamble': 1,
+            'landsat_weight': 10,
+            'lr': 0.001,
+            'neg_scale': 10,
+        },
+        "palsar_train_config": {
+            'epochs': 400,
+            'batch_size': 32,
+            'model_kwargs': {
+                'landsat_enc_config': {
+                    'feature_size': 16,
+                    'depth': 2
+                },
+                'fusion_enc_config': {
+                    'feature_size': 8,
+                    'depth': 2
+                },
+                'resize': 80,
+            },
             'lr': 0.001,
             'neg_scale': 10,
         },
         "dataset_dir": "/store/tellus",
-        "output_dir": "/store/tellus/output/dual-train-mse-w-2-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-elu",
+        "output_dir": "/store/tellus/output/dual-train-ssim-w-2-scse-in-res-lr-0.001-fs-16-8-dp-2-2-elu",
         "n_splits": 8,
-        "folds": list(range(8)),
+        "folds": [0],
         'seed': 0
 
     }
     g = Graph(config)
 
     g().compute(scheduler='single-threaded')
-    #
-    #  with Client('dask-scheduler:8786') as c:
-    #      try:
-    #          result = g()
-    #      finally:
-    #          c.restart()
-    #

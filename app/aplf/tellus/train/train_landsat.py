@@ -29,30 +29,20 @@ import uuid
 
 
 def criterion(x, y):
-    return nn.SSIM(size_average=True, window_size=2)(x, y)
+    return SSIM(size_average=True, window_size=2)(x, y)
 
 
-def validate(models,
+def validate(model,
              loader):
-    models = pipe(
-        models,
-        map(lambda x: x.eval()),
-        list
-    )
+    model = model.eval()
     device = torch.device("cuda")
     sum_loss = 0
     epoch_len = len(loader)
-    model_len = len(models)
     for sample in loader:
         with torch.no_grad():
             palsar = sample['palsar'].to(device)
             landsat = sample['landsat'].to(device)
-            loss = pipe(
-                models,
-                map(lambda x: criterion(x(palsar, part='landsat'), landsat)),
-                reduce(lambda x, y: (x+y)),
-                lambda x: x/model_len
-            )
+            loss = criterion(model(palsar, part='landsat'), landsat)
             sum_loss += loss.item()
     mean_loss = sum_loss / epoch_len
 
@@ -78,17 +68,17 @@ def train_epoch(model,
     )
     sum_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
-        palsar_x = torch.cat(
+        palsar = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
         ).to(device)
-        landsat_x = torch.cat(
+        landsat = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
         ).to(device)
 
         loss = - landsat_weight * \
-            criterion(model(palsar_x, part='landsat'), landsat_x)
+            criterion(model(palsar, part='landsat'), landsat)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -97,40 +87,19 @@ def train_epoch(model,
     return model, {"ssim": mean_loss}
 
 
-@skip_if_exists('model_dir')
-def train(model_dir,
+@skip_if_exists('model_path')
+def train(model_path,
           sets,
           model_kwargs,
           epochs,
           batch_size,
-          log_dir,
           landsat_weight,
           lr,
-          num_ensamble,
           neg_scale,
+          log_dir,
           ):
-
-    model_dir = Path(model_dir)
-    model_dir.mkdir(parents=True, exist_ok=True)
-
     device = torch.device("cuda")
-    models = pipe(
-        range(num_ensamble),
-        map(lambda _: mdl.MultiEncoder(**model_kwargs).to(device).train()),
-        list
-    )
-    model_ids = pipe(
-        range(num_ensamble),
-        map(lambda _: uuid.uuid4()),
-        list
-    )
-
-    model_paths = pipe(
-        model_ids,
-        map(lambda x: model_dir / f'{x}-landsat.pt'),
-        list,
-    )
-
+    model = mdl.MultiEncoder(**model_kwargs).to(device).train()
     pos_set = pipe(
         range(neg_scale),
         map(lambda _: sets['train_pos']),
@@ -143,20 +112,16 @@ def train(model_dir,
         shuffle=True,
         pin_memory=True,
     )
-    train_neg_loaders = pipe(
-        range(num_ensamble),
-        map(lambda x: DataLoader(
-            sets['train_neg'],
-            batch_size=batch_size//2,
-            pin_memory=True,
-            sampler=ChunkSampler(
-                epoch_size=len(pos_set),
-                len_indices=len(sets['train_neg']),
-                shuffle=True,
-                start_at=x,
-            ),
-        )),
-        list,
+    train_neg_loader = DataLoader(
+        sets['train_neg'],
+        batch_size=batch_size//2,
+        pin_memory=True,
+        sampler=ChunkSampler(
+            epoch_size=len(pos_set),
+            len_indices=len(sets['train_neg']),
+            shuffle=True,
+            start_at=0,
+        ),
     )
     val_set = sets['val_neg']+sets['val_pos']
 
@@ -179,34 +144,17 @@ def train(model_dir,
         train_probs = []
         train_labels = []
 
-        traineds = pipe(
-            zip(models, train_neg_loaders),
-            map(lambda x: train_epoch(
-                model=x[0],
-                neg_loader=x[1],
-                pos_loader=train_pos_loader,
-                landsat_weight=landsat_weight,
-                device=device,
-                lr=lr
-            )),
-            list,
-        )
-        train_metrics = pipe(
-            traineds,
-            map(lambda x: x[1]),
-            reduce(lambda x, y: {
-                'landsat': (x['landsat'] + y['landsat'])/2,
-                'fusion': (x['fusion'] + y['fusion'])/2,
-            }),
-        )
-        models = pipe(
-            traineds,
-            map(lambda x: x[0]),
-            list,
+        model, train_metrics = train_epoch(
+            model=model,
+            neg_loader=train_neg_loader,
+            pos_loader=train_pos_loader,
+            landsat_weight=landsat_weight,
+            device=device,
+            lr=lr
         )
 
         val_metrics = validate(
-            models=models,
+            model=model,
             loader=val_loader,
         )
 
@@ -216,20 +164,7 @@ def train(model_dir,
 
             if max_val_score <= val_metrics['ssim']:
                 max_val_score = val_metrics['ssim']
-                pipe(
-                    zip(models, model_paths),
-                    map(lambda x: torch.save(
-                        x[0].landsat_enc.state_dict(), x[1])),
-                    list
-                )
+                torch.save(model.landsat_enc.state_dict(), model_path)
+                dump_json(f'{model_path}.json', {**val_metrics})
 
-                pipe(
-                    model_ids,
-                    map(lambda x: dump_json(model_dir / f'{x}.json', {
-                        **val_metrics,
-                        "id": str(x),
-                    })),
-                    list
-                )
-
-    return model_dir
+    return model_path
