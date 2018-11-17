@@ -49,7 +49,7 @@ def validate(models,
             landsat = sample['landsat'].to(device)
             loss = pipe(
                 models,
-                map(lambda x: criterion(x(palsar)[1], landsat)),
+                map(lambda x: criterion(x(palsar, part='landsat'), landsat)),
                 reduce(lambda x, y: (x+y)),
                 lambda x: x/model_len
             )
@@ -87,7 +87,8 @@ def train_epoch(model,
             dim=0
         ).to(device)
 
-        loss = - criterion(model(palsar_x)[1], landsat_x)
+        loss = - landsat_weight * \
+            criterion(model(palsar_x, part='landsat'), landsat_x)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -126,7 +127,7 @@ def train(model_dir,
 
     model_paths = pipe(
         model_ids,
-        map(lambda x: model_dir / f'{x}.pt'),
+        map(lambda x: model_dir / f'{x}-landsat.pt'),
         list,
     )
 
@@ -217,7 +218,8 @@ def train(model_dir,
                 max_val_score = val_metrics['ssim']
                 pipe(
                     zip(models, model_paths),
-                    map(lambda x: torch.save(x[0], x[1])),
+                    map(lambda x: torch.save(
+                        x[0].landsat_enc.state_dict(), x[1])),
                     list
                 )
 

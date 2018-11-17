@@ -8,14 +8,14 @@ def test_graph():
     config = {
         "landsat_train_config": {
             'epochs': 400,
-            'batch_size': 64,
+            'batch_size': 32,
             'num_ensamble': 1,
             'model_kwargs': {
-                'landsat_enc_config':{
-                    'feature_size': 8,
+                'landsat_enc_config': {
+                    'feature_size': 16,
                     'depth': 2
                 },
-                'fusion_enc_config':{
+                'fusion_enc_config': {
                     'feature_size': 8,
                     'depth': 2
                 },
@@ -27,7 +27,7 @@ def test_graph():
             'neg_scale': 10,
         },
         "dataset_dir": "/store/tellus",
-        "output_dir": "/store/tellus/output/dual-train-ssim-w-2-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-elu",
+        "output_dir": "/store/tellus/output/dual-train-ssim-w-2-scse-in-res-lr-0.001-esb-1-fs-16-dp-2-elu",
         "n_splits": 8,
         "folds": list(range(8)),
         'seed': 0

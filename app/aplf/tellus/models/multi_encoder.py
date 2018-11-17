@@ -124,7 +124,7 @@ class MultiEncoder(nn.Module):
 
         self.pad = nn.ReflectionPad2d(resize//10)
 
-    def forward(self, x):
+    def forward(self, x, part=None):
         x = F.interpolate(
             x,
             mode='bilinear',
@@ -132,6 +132,9 @@ class MultiEncoder(nn.Module):
         )
         palser = self.pad(x)
         landsat_x, before_landsat = self.landsat_enc(palser)
+
+        if part == 'landsat':
+            return landsat_x
 
         x = pipe(
             [before_landsat, palser],
@@ -141,4 +144,4 @@ class MultiEncoder(nn.Module):
             lambda x: torch.cat(x, dim=1)
         )
         x, _ = self.fusion_enc(x)
-        return x, landsat_x
+        return x
