@@ -5,21 +5,22 @@ from datetime import datetime
 
 
 def test_graph():
+    model_kwargs = {
+        'landsat_enc_config': {
+            'feature_size': 16,
+            'depth': 2
+        },
+        'fusion_enc_config': {
+            'feature_size': 8,
+            'depth': 2
+        },
+        'resize': 80,
+    }
     config = {
         "landsat_train_config": {
             'epochs': 400,
             'batch_size': 32,
-            'model_kwargs': {
-                'landsat_enc_config': {
-                    'feature_size': 16,
-                    'depth': 2
-                },
-                'fusion_enc_config': {
-                    'feature_size': 8,
-                    'depth': 2
-                },
-                'resize': 80,
-            },
+            'model_kwargs': model_kwargs,
             'landsat_weight': 10,
             'lr': 0.001,
             'neg_scale': 10,
@@ -27,17 +28,7 @@ def test_graph():
         "palsar_train_config": {
             'epochs': 400,
             'batch_size': 32,
-            'model_kwargs': {
-                'landsat_enc_config': {
-                    'feature_size': 16,
-                    'depth': 2
-                },
-                'fusion_enc_config': {
-                    'feature_size': 8,
-                    'depth': 2
-                },
-                'resize': 80,
-            },
+            'model_kwargs': model_kwargs,
             'lr': 0.001,
             'neg_scale': 10,
         },
