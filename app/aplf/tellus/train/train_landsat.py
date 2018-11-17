@@ -29,7 +29,7 @@ import uuid
 
 
 def criterion(x, y):
-    return SSIM(size_average=True, window_size=2)(x, y)
+    return nn.MSELoss(size_average=True)(x, y)
 
 
 def validate(models,
