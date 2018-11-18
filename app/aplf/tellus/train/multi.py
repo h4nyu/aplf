@@ -68,12 +68,13 @@ def train_epoch(model,
                 pos_loader,
                 neg_loader,
                 device,
+                landsat_weight,
                 lr,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
 
-    image_cri = nn.MSELoss(size_average=True)
+    image_cri = SSIM(size_average=True, window_size=2)
     class_cri = nn.CrossEntropyLoss(size_average=True)
 
     landsat_optimizer = optim.Adam(
@@ -102,12 +103,12 @@ def train_epoch(model,
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
         ).to(device)
-        landsat_loss = image_cri(model(palsar_x, part='landsat'), landsat)
+        landsat_loss = - landsat_weight * image_cri(model(palsar, part='landsat'), landsat)
         landsat_optimizer.zero_grad()
         landsat_loss.backward()
         landsat_optimizer.step()
 
-        fusion_loss = class_cri(model(palsar_x), labels)
+        fusion_loss = class_cri(model(palsar), labels)
         fusion_optimizer.zero_grad()
         fusion_loss.backward()
         fusion_optimizer.step()
@@ -125,14 +126,13 @@ def train(model_path,
           model_kwargs,
           epochs,
           batch_size,
-          landsat_model_path,
+          landsat_weight,
           lr,
           neg_scale,
           log_dir,
           ):
     device = torch.device("cuda")
     model = mdl.MultiEncoder(**model_kwargs).to(device).train()
-    model.landsat_enc.load_state_dict(torch.load(landsat_model_path))
     pos_set = pipe(
         range(neg_scale),
         map(lambda _: sets['train_pos']),
@@ -182,6 +182,7 @@ def train(model_path,
             neg_loader=train_neg_loader,
             pos_loader=train_pos_loader,
             device=device,
+            landsat_weight=landsat_weight,
             lr=lr
         )
 
@@ -191,7 +192,8 @@ def train(model_path,
         )
 
         with SummaryWriter(log_dir) as w:
-            w.add_scalar('train/class', train_metrics['class'], epoch)
+            w.add_scalar('train/landsat', train_metrics['landsat'], epoch)
+            w.add_scalar('train/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('val/iou', val_metrics['iou'], epoch)
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
             w.add_scalar('val/fpr', val_metrics['fpr'], epoch)

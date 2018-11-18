@@ -11,7 +11,7 @@ import uuid
 import os
 from aplf.config import TENSORBORAD_LOG_DIR
 from .data import TellusDataset, load_train_df, kfold, load_test_df
-from .train import train_landsat, train_fusion
+from .train import train_landsat, train_fusion, train_multi
 from .predict import predict
 from .preprocess import take_topk, cleanup, cut_bin, add_mask_size, groupby, avarage_dfs, dump_json,  get_segment_indices
 import torch
@@ -72,16 +72,15 @@ class Graph(Flow):
 
         model_paths = pipe(
             zip(self.fold_indices, train_sets),
-            map(lambda x: delayed(train_landsat)(
+            map(lambda x: delayed(train_multi)(
                 **self.config['landsat_train_config'],
-                model_path=self.output_dir/Path(f"landsat-fold-{x[0]}.pt"),
+                model_path=self.output_dir/Path(f"fold-{x[0]}.pt"),
                 sets=x[1],
                 log_dir=f'{TENSORBORAD_LOG_DIR}/{self.output_dir}/fold-{x[0]}',
             )),
             lambda x: dask.compute(*x)
         )
 
-        print(fusion_model_paths)
         #  test_set = self.create_test_set()
         #  submission_df_path = predict(
         #      model_dirs=fusion_model_dirs,
