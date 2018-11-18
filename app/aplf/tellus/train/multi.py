@@ -24,7 +24,7 @@ from os import path
 from aplf.utils import skip_if_exists, dump_json
 from aplf.losses import SSIM
 from aplf.optimizers import Eve
-from ..data import ChunkSampler, Augment, batch_aug
+from ..data import ChunkSampler, Augment, batch_aug, RandomErasing
 import uuid
 
 
@@ -90,11 +90,13 @@ def train_epoch(model,
     )
     sum_fusion_loss = 0
     sum_landsat_loss = 0
+    aug = RandomErasing()
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
         palsar = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
-        ).to(device)
+        )
+        palsar = batch_aug(aug, palsar, ch=1).to(device)
         labels = torch.cat(
             [pos_sample['label'], neg_sample['label']],
             dim=0
@@ -103,7 +105,8 @@ def train_epoch(model,
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
         ).to(device)
-        landsat_loss = - landsat_weight * image_cri(model(palsar, part='landsat'), landsat)
+        landsat_loss = - landsat_weight * \
+            image_cri(model(palsar, part='landsat'), landsat)
         landsat_optimizer.zero_grad()
         landsat_loss.backward()
         landsat_optimizer.step()

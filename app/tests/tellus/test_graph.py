@@ -33,7 +33,7 @@ def test_graph():
             'neg_scale': 10,
         },
         "dataset_dir": "/store/tellus",
-        "output_dir": "/store/tellus/output/dual-optim-ssim-w-2-scse-in-res-lr-0.001-fs-16-8-dp-2-2-elu",
+        "output_dir": "/store/tellus/output/rerase-dual-optim-ssim-w-2-scse-in-res-lr-0.001-fs-16-8-dp-2-2-elu",
         "n_splits": 8,
         "folds": [0],
         'seed': 0
