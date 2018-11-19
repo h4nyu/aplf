@@ -11,7 +11,7 @@ def test_graph():
     config = {
         "train_config": {
             'epochs': 400,
-            'batch_size': 128,
+            'batch_size': 32,
             'model_kwargs': {
                 'feature_size': 8,
                 'resize': 80,
