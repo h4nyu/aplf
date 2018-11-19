@@ -22,7 +22,7 @@ def test_graph():
             'neg_scale': 10,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/direct-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
+        "output_dir": '/store/tellus/output/bs-32-direct-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
         'n_splits': 8,
         'folds': [0],
         'seed': 0
