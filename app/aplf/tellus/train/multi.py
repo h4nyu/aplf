@@ -40,6 +40,7 @@ def validate(model,
              loader,
              ):
 
+    image_cri = nn.MSELoss(size_average=True)
     with torch.no_grad():
         model.eval()
         device = torch.device("cuda")
@@ -47,21 +48,27 @@ def validate(model,
         y_trues = []
         sum_loss = 0
         batch_len = 0
+        sum_loss = 0
         for sample in loader:
             palsar = sample['palsar'].to(device)
             labels = sample['label'].to(device)
+            landsat = sample['landsat'].to(device)
             label_preds = model(palsar)
+            loss = image_cri(model(palsar, part='landsat'), landsat)
             y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
+            sum_loss += loss.item()
             batch_len += 1
 
         score = iou(
             y_preds,
             y_trues,
         )
+        mean_loss = sum_loss / batch_len
 
         tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
         return {
+            'landsat': mean_loss,
             'tpr': tp/(tp+fn),
             'fnp': fn/(tp+fn),
             'fpr': fp/(fp+tn),
@@ -133,7 +140,6 @@ def train_multi(model_path,
                 model_kwargs,
                 epochs,
                 batch_size,
-                val_batch_size,
                 log_dir,
                 landsat_weight,
                 lr,
@@ -168,7 +174,7 @@ def train_multi(model_path,
 
     val_loader = DataLoader(
         val_set,
-        batch_size=val_batch_size,
+        batch_size=batch_size,
         pin_memory=True,
         shuffle=False,
     )
@@ -213,6 +219,7 @@ def train_multi(model_path,
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
             w.add_scalar('val/fpr', val_metrics['fpr'], epoch)
             w.add_scalar('val/acc', val_metrics['acc'], epoch)
+            w.add_scalar('val/landsat', val_metrics['landsat'], epoch)
 
             if max_val_score <= val_metrics['iou']:
                 max_val_score = val_metrics['iou']
