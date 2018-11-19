@@ -4,40 +4,33 @@ import uuid
 from datetime import datetime
 
 base_param = {
-    "dataset_dir": '/store/tellus',
-    "output_dir": '/store/tellus/output/',
 }
 
 
 def test_graph():
-    base_train_config = {
-        'epochs': 400,
-        'batch_size': 64,
-        'model_type': 'MultiEncoder',
-        'num_ensamble': 1,
-        'model_kwargs': {
-            'feature_size': 8,
-            'resize': 80,
-            'pad': 4,
-            'depth': 2
+    config = {
+        "train_config": {
+            'epochs': 400,
+            'batch_size': 64,
+            'model_kwargs': {
+                'feature_size': 8,
+                'resize': 80,
+                'pad': 4,
+                'depth': 2
+            },
+            'landsat_weight': 0.5,
+            'lr': 0.001,
+            'neg_scale': 10,
         },
-        'landsat_weight': 0.5,
-        'num_ensamble': 1,
-        'lr': 0.001,
-        'neg_scale': 10,
+        "dataset_dir": '/store/tellus',
+        "output_dir": '/store/tellus/output/direct-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
+        'n_splits': 8,
+        'folds': [0],
+        'seed': 0
     }
+    g = Graph(config)
 
-    g = Graph(
-        **base_param,
-        id=f"scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu",
-        #  id=f"sub-0",
-        train_method='multi',
-        base_train_config=base_train_config,
-        n_splits=8,
-        folds=[0],
-    )
-
-    g(scheduler='single-threaded')
+    g().compute(scheduler='single-threaded')
     #
     #  with Client('dask-scheduler:8786') as c:
     #      try:

@@ -18,7 +18,7 @@ import json
 
 
 @skip_if_exists('out_path')
-def predict(model_dirs,
+def predict(model_paths,
             dataset,
             out_path,
             batch_size=512,
@@ -26,10 +26,7 @@ def predict(model_dirs,
 
     device = torch.device("cuda")
     models = pipe(
-        model_dirs,
-        map(lambda x: os.path.join(x, '*.pt')),
-        map(glob.glob),
-        concat,
+        model_paths,
         map(torch.load),
         map(lambda x: x.eval().to(device)),
         list
