@@ -48,12 +48,12 @@ def validate(model,
         sum_loss = 0
         batch_len = 0
         for sample in loader:
-                palsar = sample['palsar'].to(device)
-                labels = sample['label'].to(device)
-                label_preds = model(palsar)
-                y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
-                y_trues += labels.cpu().detach().tolist()
-                batch_len += 1
+            palsar = sample['palsar'].to(device)
+            labels = sample['label'].to(device)
+            label_preds = model(palsar)
+            y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
+            y_trues += labels.cpu().detach().tolist()
+            batch_len += 1
 
         score = iou(
             y_preds,
@@ -133,6 +133,7 @@ def train_multi(model_path,
                 model_kwargs,
                 epochs,
                 batch_size,
+                val_batch_size,
                 log_dir,
                 landsat_weight,
                 lr,
@@ -158,16 +159,16 @@ def train_multi(model_path,
         sets['train_neg'],
         batch_size=batch_size//2,
         pin_memory=True,
-        sampler=ChunkSampler( epoch_size=len(pos_set),
-            len_indices=len(sets['train_neg']),
-            shuffle=True,
-        ),
+        sampler=ChunkSampler(epoch_size=len(pos_set),
+                             len_indices=len(sets['train_neg']),
+                             shuffle=True,
+                             ),
     )
     val_set = sets['val_neg']+sets['val_pos']
 
     val_loader = DataLoader(
         val_set,
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         pin_memory=True,
         shuffle=False,
     )
