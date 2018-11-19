@@ -2,6 +2,7 @@ from cytoolz.curried import keymap, filter, pipe, merge, map
 from pathlib import Path
 import numpy as np
 from dask import delayed
+import json
 
 
 class EarlyStop(object):
@@ -17,11 +18,13 @@ class EarlyStop(object):
             self.losses = self.losses[1:]
 
         if len(self.losses) == (self.patience + self.base_size):
-            self.flag = np.mean(self.losses[:self.base_size]) < np.min(self.losses[self.base_size:])
+            self.flag = np.mean(self.losses[:self.base_size]) < np.min(
+                self.losses[self.base_size:])
         return self.flag
 
     def clear(self):
         self.losses = []
+
 
 def skip_if_exists(key):
     def _skip(func):
@@ -34,6 +37,13 @@ def skip_if_exists(key):
         return wrapper
     return _skip
 
+
 def get_learning_rate(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
+
+
+def dump_json(path, data):
+    with open(path, 'w') as f:
+        json.dump(data, f)
+        return path

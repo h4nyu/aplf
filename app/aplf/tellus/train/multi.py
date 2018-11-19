@@ -17,8 +17,8 @@ import torch.nn.functional as F
 import pandas as pd
 import numpy as np
 from ..models import MultiEncoder
-from aplf.utils import EarlyStop
 from aplf import config
+from aplf.preprocess import RandomErasing
 from tensorboardX import SummaryWriter
 from ..metric import iou
 from os import path
@@ -81,9 +81,11 @@ def validate(model,
 def train_epoch(model,
                 pos_loader,
                 neg_loader,
+                pi_loader,
                 device,
                 lr
                 ):
+    aug = RandomErasing(p=1)
     model = model.train()
     batch_len = len(pos_loader)
     landstat_optim = optim.Adam(
@@ -102,12 +104,14 @@ def train_epoch(model,
 
     sum_fusion_loss = 0
     sum_landsat_loss = 0
-    for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+    sum_pi_loss = 0
+    for pos_sample, neg_sample, pi_sample in zip(pos_loader, neg_loader, pi_loader):
 
         palsar = torch.cat(
             [pos_sample['palsar'], neg_sample['palsar']],
             dim=0
         ).to(device)
+        palsar = batch_aug(aug, palsar, ch=1).to(device)
         landsat = torch.cat(
             [pos_sample['landsat'], neg_sample['landsat']],
             dim=0
@@ -116,22 +120,32 @@ def train_epoch(model,
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
+        pi_palsar = pi_sample['palsar']
+        pi_palsar0 = batch_aug(aug, pi_palsar, ch=1).to(device)
+        pi_palsar1 = batch_aug(aug, pi_palsar, ch=1).to(device)
 
         landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
+        sum_landsat_loss += landsat_loss.item()
+        pi_loss = image_cri(
+            model(pi_palsar0, part='landsat'),
+            model(pi_palsar1, part='landsat')
+        )
+        sum_pi_loss += pi_loss.item()
+        loss = landsat_loss + 0.1 * pi_loss
         landstat_optim.zero_grad()
-        landsat_loss.backward()
+        loss.backward()
         landstat_optim.step()
 
         fusion_loss = class_cri(model(palsar), labels)
+        sum_fusion_loss += fusion_loss.item()
         fusion_optim.zero_grad()
         fusion_loss.backward()
         fusion_optim.step()
 
-        sum_fusion_loss += fusion_loss.item()
-        sum_landsat_loss += landsat_loss.item()
     mean_fusion_loss = sum_fusion_loss / batch_len
     mean_landsat_loss = sum_landsat_loss / batch_len
-    return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss}
+    mean_pi_loss = sum_pi_loss / batch_len
+    return model, {"fusion": mean_fusion_loss, "landsat": mean_landsat_loss, "pi": mean_pi_loss}
 
 
 @skip_if_exists('model_path')
@@ -179,6 +193,13 @@ def train_multi(model_path,
         shuffle=False,
     )
 
+    pi_loader = DataLoader(
+        val_set,
+        batch_size=len(val_loader) * batch_size // len(train_pos_loader),
+        pin_memory=True,
+        shuffle=False,
+    )
+
     batch_len = len(train_pos_loader)
 
     max_val_score = 0
@@ -203,6 +224,7 @@ def train_multi(model_path,
             model=model,
             neg_loader=train_neg_loader,
             pos_loader=train_pos_loader,
+            pi_loader=pi_loader,
             device=device,
             lr=lr
         )
@@ -215,6 +237,7 @@ def train_multi(model_path,
         with SummaryWriter(log_dir) as w:
             w.add_scalar('train/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('train/landsat', train_metrics['landsat'], epoch)
+            w.add_scalar('train/pi', train_metrics['pi'], epoch)
             w.add_scalar('val/iou', val_metrics['iou'], epoch)
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
             w.add_scalar('val/fpr', val_metrics['fpr'], epoch)

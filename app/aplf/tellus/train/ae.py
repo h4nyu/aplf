@@ -19,7 +19,6 @@ from ..metric import iou
 from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from ..ramps import linear_rampup
-from ..preprocess import hflip, add_noise
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
 from ..data import ChunkSampler
