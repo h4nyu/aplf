@@ -11,11 +11,10 @@ def test_graph():
     config = {
         "train_config": {
             'epochs': 400,
-            'batch_size': 64,
+            'batch_size': 128,
             'model_kwargs': {
                 'feature_size': 8,
                 'resize': 80,
-                'pad': 4,
                 'depth': 2
             },
             'landsat_weight': 0.5,
