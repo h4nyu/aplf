@@ -120,9 +120,17 @@ def train_epoch(model,
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
-        pi_palsar = pi_sample['palsar']
-        pi_palsar0 = batch_aug(aug, pi_palsar, ch=1).to(device)
-        pi_palsar1 = batch_aug(aug, pi_palsar, ch=1).to(device)
+
+        labels = torch.cat(
+            [pos_sample['label'], neg_sample['label']],
+            dim=0
+        ).to(device)
+        pi_palsar = torch.cat(
+            [pos_sample['label'], neg_sample['label'], pi_sample['palsar']],
+            dim=0
+        ).to(device)
+        pi_palsar0 = batch_aug(aug, pi_palsar).to(device)
+        pi_palsar1 = batch_aug(aug, pi_palsar).to(device)
 
         landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
         sum_landsat_loss += landsat_loss.item()

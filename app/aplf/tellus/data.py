@@ -305,11 +305,20 @@ class RandomErasing(object):
 
 
 @curry
-def batch_aug(aug, batch, ch=3):
+def batch_aug_concat(aug, batch, ch=3):
     return pipe(
         batch,
         map(lambda x: [aug(x[0:ch, :, :]), aug(x[ch:2*ch, :, :])]),
         map(lambda x: torch.cat(x, dim=0)),
+        list,
+        torch.stack
+    )
+
+@curry
+def batch_aug(aug, batch):
+    return pipe(
+        batch,
+        map(aug),
         list,
         torch.stack
     )
