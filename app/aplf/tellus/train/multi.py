@@ -99,14 +99,14 @@ def train_epoch(model,
     )
 
     image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
+    class_cri = nn.KLDivLoss(size_average=True)
 
     sum_fusion_loss = 0
     sum_landsat_loss = 0
     sum_pi_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
-        mix_dice_pos = random.uniform(0.5, 1)
-        mix_dice_neg = random.uniform(0, 0.5)
+        mix_dice_pos = random.uniform(0.4, 1)
+        mix_dice_neg = random.uniform(0, 0.4)
         palar_pos = mix_dice_pos * \
             pos_sample['palsar'] + (1 - mix_dice_pos) * neg_sample['palsar']
         palar_neg = mix_dice_neg * \
@@ -125,9 +125,8 @@ def train_epoch(model,
             dim=0
         ).to(device)
 
-        labels = (torch.tensor([mix_dice_pos] * palar_pos.size(0) +
-                               [mix_dice_neg] * palar_pos.size(0)) > 0.5).long().to(device)
-        print(labels)
+        labels = torch.tensor([[1 - mix_dice_pos, mix_dice_pos]] * palar_pos.size(
+            0) + [[1 - mix_dice_neg, mix_dice_neg]] * palar_pos.size(0)).to(device)
 
         landsat_loss = image_cri(
             model(palar, part='landsat'), landsat)
@@ -137,7 +136,7 @@ def train_epoch(model,
         loss.backward()
         landstat_optim.step()
 
-        fusion_loss = class_cri(model(palar), labels)
+        fusion_loss = class_cri(F.log_softmax(model(palar)), labels)
         sum_fusion_loss += fusion_loss.item()
         fusion_optim.zero_grad()
         fusion_loss.backward()
