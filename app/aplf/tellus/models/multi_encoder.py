@@ -121,11 +121,11 @@ class MultiEncoder(nn.Module):
         )
         self.fusion_enc = FusionEnc(
             in_ch=self.landsat_enc.before_out_ch + 2,
-            feature_size=feature_size,
+            feature_size=self.landsat_enc.before_out_ch,
             depth=depth,
         )
 
-        self.pad = nn.ReflectionPad2d(resize//10)
+        self.pad = nn.ZeroPad2d(resize//10 - 1)
 
     def forward(self, x, part=None):
         x = F.interpolate(

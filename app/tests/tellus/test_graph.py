@@ -14,16 +14,15 @@ def test_graph():
             'batch_size': 64,
             'model_kwargs': {
                 'feature_size': 8,
-                'resize': 80,
+                'resize': 40,
                 'depth': 2
             },
-            'landsat_weight': 0.5,
             'lr': 0.001,
             'neg_scale': 10,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/rerase-pi-direct-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
-        'n_splits': 8,
+        "output_dir": '/store/tellus/output/repro-2-large-fusion-padr-10-rs-40-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
+        'n_splits': 15,
         'folds': [0],
         'seed': 0
     }
