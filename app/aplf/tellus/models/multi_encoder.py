@@ -120,7 +120,7 @@ class MultiEncoder(nn.Module):
             depth=depth,
         )
         self.fusion_enc = FusionEnc(
-            in_ch=self.landsat_enc.out_ch + 2,
+            in_ch=self.landsat_enc.before_out_ch + 2,
             feature_size=feature_size,
             depth=depth,
         )
@@ -140,7 +140,7 @@ class MultiEncoder(nn.Module):
             return landsat
 
         x = pipe(
-            [landsat, palser],
+            [before_landsat, palser],
             map(lambda x: F.interpolate(x, mode='bilinear',
                                         size=(self.resize, self.resize))),
             list,
