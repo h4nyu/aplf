@@ -117,15 +117,10 @@ def train_epoch(model,
             dim=0
         ).to(device)
 
-        labels = torch.cat(
-            [pos_sample['label'], neg_sample['label']],
-            dim=0
-        ).to(device)
         landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
         sum_landsat_loss += landsat_loss.item()
-        loss = landsat_loss
         landstat_optim.zero_grad()
-        loss.backward()
+        landsat_loss.backward()
         landstat_optim.step()
 
         fusion_loss = class_cri(model(palsar), labels)

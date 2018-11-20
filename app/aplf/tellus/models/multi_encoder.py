@@ -125,7 +125,7 @@ class MultiEncoder(nn.Module):
             depth=depth,
         )
 
-        self.pad = nn.ReflectionPad2d(resize//10)
+        self.pad = nn.ZeroPad2d(resize//20)
 
     def forward(self, x, part=None):
         x = F.interpolate(
