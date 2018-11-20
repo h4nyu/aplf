@@ -14,7 +14,7 @@ def test_graph():
             'batch_size': 64,
             'model_kwargs': {
                 'feature_size': 8,
-                'resize': 80,
+                'resize': 40,
                 'depth': 2
             },
             'landsat_weight': 0.5,
@@ -22,7 +22,7 @@ def test_graph():
             'neg_scale': 10,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/pi-direct-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
+        "output_dir": '/store/tellus/output/mixup-direct-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu',
         'n_splits': 8,
         'folds': [0],
         'seed': 0

@@ -81,7 +81,6 @@ def validate(model,
 def train_epoch(model,
                 pos_loader,
                 neg_loader,
-                pi_loader,
                 device,
                 lr
                 ):
@@ -105,38 +104,40 @@ def train_epoch(model,
     sum_fusion_loss = 0
     sum_landsat_loss = 0
     sum_pi_loss = 0
-    for pos_sample, neg_sample, pi_sample in zip(pos_loader, neg_loader, pi_loader):
-
-        palsar = torch.cat(
-            [pos_sample['palsar'], neg_sample['palsar']],
+    for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        mix_dice_pos = random.uniform(0.5, 1)
+        mix_dice_neg = random.uniform(0, 0.5)
+        palar_pos = mix_dice_pos * \
+            pos_sample['palsar'] + (1 - mix_dice_pos) * neg_sample['palsar']
+        palar_neg = mix_dice_neg * \
+            pos_sample['palsar'] + (1 - mix_dice_neg) * neg_sample['palsar']
+        palar = torch.cat(
+            [palar_pos, palar_neg],
             dim=0
         ).to(device)
-        palsar = batch_aug(aug, palsar, ch=1).to(device)
+
+        landsat_pos = mix_dice_pos * \
+            pos_sample['landsat'] + (1 - mix_dice_pos) * neg_sample['landsat']
+        landsat_neg = mix_dice_neg * \
+            pos_sample['landsat'] + (1 - mix_dice_neg) * neg_sample['landsat']
         landsat = torch.cat(
-            [pos_sample['landsat'], neg_sample['landsat']],
+            [landsat_pos, landsat_neg],
             dim=0
         ).to(device)
-        labels = torch.cat(
-            [pos_sample['label'], neg_sample['label']],
-            dim=0
-        ).to(device)
-        pi_palsar = pi_sample['palsar']
-        pi_palsar0 = batch_aug(aug, pi_palsar, ch=1).to(device)
-        pi_palsar1 = batch_aug(aug, pi_palsar, ch=1).to(device)
 
-        landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
+        labels = (torch.tensor([mix_dice_pos] * palar_pos.size(0) +
+                               [mix_dice_neg] * palar_pos.size(0)) > 0.5).long().to(device)
+        print(labels)
+
+        landsat_loss = image_cri(
+            model(palar, part='landsat'), landsat)
         sum_landsat_loss += landsat_loss.item()
-        pi_loss = image_cri(
-            model(pi_palsar0, part='landsat'),
-            model(pi_palsar1, part='landsat')
-        )
-        sum_pi_loss += pi_loss.item()
-        loss = landsat_loss + 0.1 * pi_loss
+        loss = landsat_loss
         landstat_optim.zero_grad()
         loss.backward()
         landstat_optim.step()
 
-        fusion_loss = class_cri(model(palsar), labels)
+        fusion_loss = class_cri(model(palar), labels)
         sum_fusion_loss += fusion_loss.item()
         fusion_optim.zero_grad()
         fusion_loss.backward()
@@ -193,13 +194,6 @@ def train_multi(model_path,
         shuffle=False,
     )
 
-    pi_loader = DataLoader(
-        val_set,
-        batch_size=len(val_loader) * batch_size // len(train_pos_loader),
-        pin_memory=True,
-        shuffle=False,
-    )
-
     batch_len = len(train_pos_loader)
 
     max_val_score = 0
@@ -224,7 +218,6 @@ def train_multi(model_path,
             model=model,
             neg_loader=train_neg_loader,
             pos_loader=train_pos_loader,
-            pi_loader=pi_loader,
             device=device,
             lr=lr
         )
