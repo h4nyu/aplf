@@ -57,10 +57,8 @@ class LandsatEnc(nn.Module):
             nn.Conv2d(
                 in_channels=self.enc.out_ch,
                 out_channels=6,
-                kernel_size=3,
+                kernel_size=1,
             ),
-            nn.Upsample(size=(4, 4), mode='bilinear'),
-            nn.Sigmoid(),
         )
         self.out_ch = 6
         self.before_out_ch = self.enc.out_ch
@@ -106,10 +104,9 @@ class FusionEnc(nn.Module):
 
 class MultiEncoder(nn.Module):
     def __init__(self,
-                 feature_size=64,
-                 resize=120,
-                 depth=3,
-                 pad=4,
+                 feature_size,
+                 resize,
+                 depth,
                  ):
         super().__init__()
         self.resize = resize
@@ -124,16 +121,15 @@ class MultiEncoder(nn.Module):
             feature_size=self.landsat_enc.before_out_ch,
             depth=depth,
         )
-
-        self.pad = nn.ZeroPad2d(resize//10 - 1)
+        self.pad = nn.ReplicationPad2d(4)
 
     def forward(self, x, part=None):
-        x = F.interpolate(
+        x = self.pad(x)
+        palser = F.interpolate(
             x,
             mode='bilinear',
             size=(self.resize, self.resize)
         )
-        palser = self.pad(x)
         landsat, before_landsat = self.landsat_enc(palser)
 
         if part == 'landsat':

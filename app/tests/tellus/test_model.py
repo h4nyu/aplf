@@ -35,17 +35,17 @@ def test_enc(depth, feature_size):
         assert out.size() == (32, model.out_ch, 80//(2**(depth + 1)), 80//(2**(depth + 1)))
 
 
-@pytest.mark.parametrize("depth, feature_size", [
-    (2, 16),
-])
-def test_multi(depth, feature_size):
+def test_multi():
     with torch.no_grad():
         model = MultiEncoder(
-            feature_size=feature_size,
+            feature_size=8,
+            depth=3,
+            resize=64,
         )
         parlsar_x = torch.empty(32, 2, 40, 40)
-        landsat_x = torch.empty(32, 6, 4, 4)
-        logit, landsat_y = model(parlsar_x)
+        landsat = model(parlsar_x, part='landsat')
+        assert landsat.size() == (32, 6, 4, 4)
+        logit = model(parlsar_x)
         assert logit.size() == (32, 2)
 
 
