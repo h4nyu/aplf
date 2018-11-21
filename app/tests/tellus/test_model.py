@@ -73,4 +73,4 @@ def test_fnet():
         landsat_x = torch.empty(32, 2, 4, 4)
         palsar_x = torch.empty(32, 6, 40, 40)
         out = model(palsar_x, landsat_x)
-        assert out.size() == (32, 2)
+       assert out.size() == (32, 2)
