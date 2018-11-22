@@ -59,6 +59,7 @@ class LandsatEnc(nn.Module):
                 out_channels=6,
                 kernel_size=1,
             ),
+            nn.Sigmoid()
         )
         self.out_ch = 6
         self.before_out_ch = self.enc.out_ch

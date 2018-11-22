@@ -44,7 +44,7 @@ def get_threshold(model, loader, ):
     y_trues = []
     sum_loss = 0
     batch_len = 0
-    for sample in pipe(loader, take(20)):
+    for sample in pipe(loader, take(40)):
         with torch.no_grad():
             palsar = sample['palsar'].to(device)
             labels = sample['label'].to(device)

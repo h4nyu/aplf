@@ -19,10 +19,10 @@ def test_graph():
             },
             'lr': 0.001,
             'neg_scale': 10,
-            'fusion_train_start': 100,
+            'fusion_train_start': 50,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/repro-3-fusion-start-100-th-large-fusion-padr-10-rs-32-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu',
+        "output_dir": '/store/tellus/output/repro-3-fusion-start-50-th-large-fusion-padr-10-rs-32-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu',
         'n_splits': 15,
         'folds': [0],
         'seed': 0
