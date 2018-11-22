@@ -1,6 +1,6 @@
 from pathlib import Path
 import dask
-from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last
+from cytoolz.curried import keymap, filter, pipe, merge, map, reduce, topk, last, take
 from datetime import datetime
 from sklearn.metrics import confusion_matrix
 from dask import delayed
@@ -25,6 +25,7 @@ from os import path
 from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher, lovasz_softmax_flat
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
+from sklearn.metrics import roc_curve
 from ..data import ChunkSampler, Augment, batch_aug
 import uuid
 import json
@@ -36,8 +37,44 @@ def dump_json(path, data):
         return path
 
 
+def get_threshold(model, loader, ):
+
+    device = torch.device("cuda")
+    y_preds = []
+    y_trues = []
+    sum_loss = 0
+    batch_len = 0
+    for sample in pipe(loader, take(20)):
+        with torch.no_grad():
+            palsar = sample['palsar'].to(device)
+            labels = sample['label'].to(device)
+            label_preds = model(palsar).softmax(dim=1)[:, 1]
+            y_preds += label_preds.cpu().detach().tolist()
+            y_trues += labels.cpu().detach().tolist()
+            batch_len += 1
+
+
+    fpr, tpr, thresholds = roc_curve(y_trues, y_preds)
+    ious = pipe(
+        thresholds,
+        map(lambda x: confusion_matrix(y_trues, y_preds > x).ravel()),
+        map(lambda x: x[3] / (x[2] + x[3] + x[1])),
+        list,
+        np.array
+    )
+
+    max_iou_idx = np.argmax(ious)
+    return {
+        'tpr': float(tpr[max_iou_idx]),
+        'fpr': float(fpr[max_iou_idx]),
+        'iou': float(ious[max_iou_idx]),
+        'threshold': float(thresholds[max_iou_idx]),
+    }
+
+
 def validate(model,
              loader,
+             threshold,
              ):
 
     image_cri = nn.MSELoss(size_average=True)
@@ -53,9 +90,9 @@ def validate(model,
             palsar = sample['palsar'].to(device)
             labels = sample['label'].to(device)
             landsat = sample['landsat'].to(device)
-            label_preds = model(palsar)
+            label_preds = model(palsar).softmax(dim=1)[:, 1] > threshold
             loss = image_cri(model(palsar, part='landsat'), landsat)
-            y_preds += label_preds.argmax(dim=1).cpu().detach().tolist()
+            y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             sum_loss += loss.item()
             batch_len += 1
@@ -70,10 +107,8 @@ def validate(model,
         return {
             'landsat': mean_loss,
             'tpr': tp/(tp+fn),
-            'fnp': fn/(tp+fn),
             'fpr': fp/(fp+tn),
             'acc': (tp+tn) / (tp+tn+fp+fn),
-            'pre': tp / (tp + fp),
             'iou': tp / (fn+tp+fp),
         }
 
@@ -175,6 +210,12 @@ def train_multi(model_path,
                              shuffle=True,
                              ),
     )
+    threshold_loader = DataLoader(
+        sets['train_pos'] + sets['train_neg'],
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+    )
     val_set = sets['val_neg']+sets['val_pos']
 
     val_loader = DataLoader(
@@ -211,15 +252,22 @@ def train_multi(model_path,
             device=device,
             lr=lr
         )
+        train_metrics = {
+            **train_metrics,
+            **get_threshold(model, threshold_loader)
+        }
 
         val_metrics = validate(
             model=model,
             loader=val_loader,
+            threshold=train_metrics['threshold'],
         )
 
         with SummaryWriter(log_dir) as w:
             w.add_scalar('train/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('train/landsat', train_metrics['landsat'], epoch)
+            w.add_scalar('train/threshold', train_metrics['threshold'], epoch)
+            w.add_scalar('train/iou', train_metrics['iou'], epoch)
             w.add_scalar('train/pi', train_metrics['pi'], epoch)
             w.add_scalar('val/iou', val_metrics['iou'], epoch)
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
@@ -237,6 +285,7 @@ def train_multi(model_path,
                 torch.save(model, model_path)
                 dump_json(f'{model_path}.json', {
                     **val_metrics,
+                    'threshold': train_metrics['threshold'],
                     "create_date": datetime.now().isoformat(),
                 })
 
