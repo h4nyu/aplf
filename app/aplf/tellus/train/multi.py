@@ -53,7 +53,6 @@ def get_threshold(model, loader, ):
             y_trues += labels.cpu().detach().tolist()
             batch_len += 1
 
-
     fpr, tpr, thresholds = roc_curve(y_trues, y_preds)
     ious = pipe(
         thresholds,
@@ -117,7 +116,8 @@ def train_epoch(model,
                 pos_loader,
                 neg_loader,
                 device,
-                lr
+                lr,
+                is_fusion_train,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
@@ -163,11 +163,12 @@ def train_epoch(model,
         loss.backward()
         landstat_optim.step()
 
-        fusion_loss = class_cri(model(palsar), labels)
-        sum_fusion_loss += fusion_loss.item()
-        fusion_optim.zero_grad()
-        fusion_loss.backward()
-        fusion_optim.step()
+        if is_fusion_train:
+            fusion_loss = class_cri(model(palsar), labels)
+            sum_fusion_loss += fusion_loss.item()
+            fusion_optim.zero_grad()
+            fusion_loss.backward()
+            fusion_optim.step()
 
     mean_fusion_loss = sum_fusion_loss / batch_len
     mean_landsat_loss = sum_landsat_loss / batch_len
@@ -184,6 +185,7 @@ def train_multi(model_path,
                 log_dir,
                 lr,
                 neg_scale,
+                fusion_train_start,
                 ):
 
     model_path = Path(model_path)
@@ -244,13 +246,15 @@ def train_multi(model_path,
         val_labels = []
         train_probs = []
         train_labels = []
+        is_fusion_train = True if epoch > fusion_train_start else False
 
         model, train_metrics = train_epoch(
             model=model,
             neg_loader=train_neg_loader,
             pos_loader=train_pos_loader,
             device=device,
-            lr=lr
+            lr=lr,
+            is_fusion_train=is_fusion_train,
         )
         train_metrics = {
             **train_metrics,
