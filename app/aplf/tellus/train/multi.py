@@ -37,17 +37,24 @@ def dump_json(path, data):
         return path
 
 
-def get_threshold(model, loader, ):
-
+def get_threshold(model, pos_loader, neg_loader):
     device = torch.device("cuda")
     y_preds = []
     y_trues = []
     sum_loss = 0
     batch_len = 0
-    for sample in pipe(loader, take(40)):
+
+    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(40)):
+
         with torch.no_grad():
-            palsar = sample['palsar'].to(device)
-            labels = sample['label'].to(device)
+            palsar = torch.cat(
+                [pos_sample['palsar'], neg_sample['palsar']],
+                dim=0
+            ).to(device)
+            labels = torch.cat(
+                [pos_sample['label'], neg_sample['label']],
+                dim=0
+            ).to(device)
             label_preds = model(palsar).softmax(dim=1)[:, 1]
             y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
@@ -212,9 +219,16 @@ def train_multi(model_path,
                              shuffle=True,
                              ),
     )
-    threshold_loader = DataLoader(
-        sets['train_pos'] + sets['train_neg'],
-        batch_size=batch_size,
+    threshold_pos_loader = DataLoader(
+        sets['train_pos'],
+        batch_size=1,
+        shuffle=True,
+        pin_memory=True,
+    )
+
+    threshold_neg_loader = DataLoader(
+        sets['train_neg'],
+        batch_size=len(sets['train_pos']) // len(sets['train_pos']),
         shuffle=True,
         pin_memory=True,
     )
@@ -258,7 +272,7 @@ def train_multi(model_path,
         )
         train_metrics = {
             **train_metrics,
-            **get_threshold(model, threshold_loader)
+            **get_threshold(model, threshold_pos_loader, threshold_neg_loader)
         }
 
         val_metrics = validate(
