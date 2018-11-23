@@ -44,7 +44,7 @@ def get_threshold(model, pos_loader, neg_loader):
     sum_loss = 0
     batch_len = 0
 
-    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(40)):
+    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(50)):
 
         with torch.no_grad():
             palsar = torch.cat(
@@ -140,7 +140,7 @@ def train_epoch(model,
     )
 
     image_cri = nn.MSELoss(size_average=True)
-    class_cri = nn.CrossEntropyLoss(size_average=True)
+    class_cri = lovasz_softmax_flat
 
     sum_fusion_loss = 0
     sum_landsat_loss = 0
