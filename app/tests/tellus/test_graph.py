@@ -22,7 +22,7 @@ def test_graph():
             'fusion_train_start': 50,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/repro-3-fusion-start-50-th-large-fusion-pad-2-rs-32-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu',
+        "output_dir": '/store/tellus/output/repro-4-fusion-start-50-th-large-fusion-pad--rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu',
         'n_splits': 15,
         'folds': [0],
         'seed': 0

@@ -228,7 +228,7 @@ def train_multi(model_path,
 
     threshold_neg_loader = DataLoader(
         sets['train_neg'],
-        batch_size=len(sets['train_pos']) // len(sets['train_pos']),
+        batch_size=len(sets['train_neg']) // len(sets['train_pos']),
         shuffle=True,
         pin_memory=True,
     )
