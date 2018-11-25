@@ -1,5 +1,5 @@
 from pathlib import Path
-from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler, get_test_row, load_test_df, Augment, batch_aug
+from aplf.tellus.data import load_train_df, get_train_row, TellusDataset, kfold, ChunkSampler, get_test_row, load_test_df, Augment, batch_aug, batch_spatical_shuffle
 from torch.utils.data import DataLoader
 import numpy as np
 import cv2
@@ -25,7 +25,7 @@ from torchvision.transforms import (
     RandomResizedCrop,
 )
 from torchvision.transforms.functional import (
-    adjust_brightness
+    adjust_brightness,
 )
 
 
@@ -71,6 +71,58 @@ def test_test_dataset():
                 *batch_aug(aug, sample['palsar'], ch=1)[:, 1:2, :, :],
                 *sample['palsar'][:, 0:1, :, :],
                 *sample['palsar'][:, 1:2, :, :],
+            ]
+        ),
+    )
+
+
+def test_spacial_shuffle():
+    output = load_train_df(
+        dataset_dir='/store/tellus/train',
+        output='/store/tmp/train.pqt'
+    )
+    df = pd.read_parquet(output)
+    dataset = TellusDataset(
+        df=df,
+        has_y=True,
+    )
+    loader = DataLoader(
+        dataset=dataset,
+        batch_size=2,
+        shuffle=False,
+    )
+    sample = pipe(
+        loader,
+        first,
+    )
+    no_aug = sample['palsar']
+    indices = pipe(
+        range(4),
+        map(lambda _: np.random.permutation(2)),
+        list
+    )
+    auged = batch_spatical_shuffle(sample['palsar'], indices)
+
+    writer = SummaryWriter(f'{config["TENSORBORAD_LOG_DIR"]}/test/aug')
+    writer.add_image(
+        f"s_shuffle/palsar",
+        vutils.make_grid(
+            [
+                *auged[:, 0:1, :, :],
+                *no_aug[:, 0:1, :, :],
+            ]
+        ),
+    )
+
+    no_aug = sample['landsat']
+    auged = batch_spatical_shuffle(sample['landsat'], indices)
+
+    writer.add_image(
+        f"s_shuffle/landsat",
+        vutils.make_grid(
+            [
+                *auged[:, 0:3, :, :],
+                *no_aug[:, 0:3, :, :],
             ]
         ),
     )

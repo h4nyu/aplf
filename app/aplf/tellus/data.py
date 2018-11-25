@@ -270,6 +270,7 @@ class Augment(object):
     def __call__(self, t):
         return self.transform(t)
 
+
 class RandomErasing(object):
 
     def __init__(self, p=0.5,  sl=0.01, sh=0.05, r1=1, num=1, mean=[0, 0.0, 0.0]):
@@ -314,6 +315,7 @@ def batch_aug_concat(aug, batch, ch=3):
         torch.stack
     )
 
+
 @curry
 def batch_aug(aug, batch):
     return pipe(
@@ -322,3 +324,23 @@ def batch_aug(aug, batch):
         list,
         torch.stack
     )
+
+
+def get_spatical_shuffle(batch_size, grid=(2, 2)):
+    idx_arr = np.arange(batch_size)
+    return []
+
+
+def batch_spatical_shuffle(batch, indices):
+    b, c, w, h = batch.size()
+    block00 = batch[indices[0], :, 0:w//2, 0:h//2]
+    block01 = batch[indices[1], :, 0:w//2, h//2:h]
+    block11 = batch[indices[2], :, w//2:w, h//2:h]
+    block10 = batch[indices[3], :, w//2:w, 0:h//2]
+
+    auged = torch.zeros(batch.size())
+    auged[:, :, 0:w//2, 0:h//2] = block00
+    auged[:, :, w//2:w, 0:h//2] = block10
+    auged[:, :, w//2:w, h//2:h] = block11
+    auged[:, :, 0:w//2, h//2:h] = block01
+    return auged

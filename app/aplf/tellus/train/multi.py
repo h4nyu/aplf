@@ -26,7 +26,7 @@ from ..losses import lovasz_softmax, FocalLoss, LossSwitcher, LinearLossSwitcher
 from aplf.utils import skip_if_exists
 from aplf.optimizers import Eve
 from sklearn.metrics import roc_curve
-from ..data import ChunkSampler, Augment, batch_aug
+from ..data import ChunkSampler, Augment, batch_aug, batch_spatical_shuffle
 import uuid
 import json
 
@@ -80,7 +80,7 @@ def get_threshold(model, pos_loader, neg_loader):
 
 def validate(model,
              loader,
-             threshold,
+             threshold=0.5,
              ):
 
     image_cri = nn.MSELoss(size_average=True)
@@ -140,18 +140,30 @@ def train_epoch(model,
     )
 
     image_cri = nn.MSELoss(size_average=True)
-    class_cri = lovasz_softmax_flat
+    class_cri = nn.CrossEntropyLoss(size_average=True)
 
     sum_fusion_loss = 0
     sum_landsat_loss = 0
     sum_pi_loss = 0
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
+        batch_size,  = pos_sample['label'].size()
+        indices = pipe(
+            range(4),
+            map(lambda _: np.random.permutation(batch_size)),
+            list
+        )
         palsar = torch.cat(
-            [pos_sample['palsar'], neg_sample['palsar']],
+            [
+                batch_spatical_shuffle(pos_sample['palsar'], indices),
+                batch_spatical_shuffle(neg_sample['palsar'], indices),
+            ],
             dim=0
         ).to(device)
         landsat = torch.cat(
-            [pos_sample['landsat'], neg_sample['landsat']],
+            [
+                batch_spatical_shuffle(pos_sample['landsat'], indices),
+                batch_spatical_shuffle(neg_sample['landsat'], indices),
+            ],
             dim=0
         ).to(device)
         labels = torch.cat(
@@ -272,20 +284,19 @@ def train_multi(model_path,
         )
         train_metrics = {
             **train_metrics,
-            **get_threshold(model, threshold_pos_loader, threshold_neg_loader)
+            #  **get_threshold(model, threshold_pos_loader, threshold_neg_loader)
         }
 
         val_metrics = validate(
             model=model,
             loader=val_loader,
-            threshold=train_metrics['threshold'],
         )
 
         with SummaryWriter(log_dir) as w:
             w.add_scalar('train/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('train/landsat', train_metrics['landsat'], epoch)
-            w.add_scalar('train/threshold', train_metrics['threshold'], epoch)
-            w.add_scalar('train/iou', train_metrics['iou'], epoch)
+            #  w.add_scalar('train/threshold', train_metrics['threshold'], epoch)
+            #  w.add_scalar('train/iou', train_metrics['iou'], epoch)
             w.add_scalar('train/pi', train_metrics['pi'], epoch)
             w.add_scalar('val/iou', val_metrics['iou'], epoch)
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
@@ -300,11 +311,10 @@ def train_multi(model_path,
                     f"val: {val_metrics['iou']}, epoch: {epoch}",
                     epoch
                 )
-                torch.save(model, model_path)
                 dump_json(f'{model_path}.json', {
                     **val_metrics,
-                    'threshold': train_metrics['threshold'],
                     "create_date": datetime.now().isoformat(),
                 })
+                torch.save(model, model_path)
 
     return model_path
