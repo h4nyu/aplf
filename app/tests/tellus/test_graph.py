@@ -22,7 +22,7 @@ def test_graph():
             'fusion_train_start': 0,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/0-shuffule-pixel-cel-fusion-start-5-th-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu-elu',
+        "output_dir": '/store/tellus/output/0-shuffule-pixel-dropout-cel-fusion-start-5-th-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu-elu',
         'n_splits': 15,
         'folds': [0],
         'seed': 0

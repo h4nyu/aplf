@@ -110,7 +110,7 @@ class ResBlock(nn.Module):
             ),
             nn.BatchNorm2d(out_ch),
             activation,
-            nn.Dropout2d(p=drop_p, inplace=True),
+            nn.Dropout2d(p=drop_p),
             nn.Conv2d(
                 out_ch,
                 out_ch,
