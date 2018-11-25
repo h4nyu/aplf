@@ -8,9 +8,9 @@ import torch.nn.functional as F
 class Encoder(nn.Module):
     def __init__(self,
                  in_ch,
-                 feature_size=64,
-                 depth=2,
-                 r=2
+                 feature_size,
+                 depth,
+                 activation,
                  ):
         super().__init__()
         self.down_layers = nn.ModuleList(
@@ -18,18 +18,20 @@ class Encoder(nn.Module):
                 DownSample(
                     in_ch=in_ch,
                     out_ch=feature_size,
+                    activation=activation,
                 ),
                 *pipe(
                     range(depth),
                     map(lambda d: DownSample(
-                        in_ch=int(feature_size*r**(d)),
-                        out_ch=int(feature_size*r**(d + 1)),
+                        in_ch=int(feature_size*2**(d)),
+                        out_ch=int(feature_size*2**(d + 1)),
+                        activation=activation,
                     )),
                     list,
                 )
             ]
         )
-        self.out_ch = feature_size * r ** (depth)
+        self.out_ch = feature_size * 2 ** (depth)
 
     def forward(self, x):
         d_outs = []
@@ -42,8 +44,9 @@ class LandsatEnc(nn.Module):
 
     def __init__(self,
                  in_ch,
-                 feature_size=64,
-                 depth=3,
+                 feature_size,
+                 depth,
+                 activation,
                  ):
         super().__init__()
 
@@ -51,6 +54,8 @@ class LandsatEnc(nn.Module):
             in_ch=in_ch,
             feature_size=feature_size,
             depth=depth,
+            activation=activation,
+
         )
 
         self.out = nn.Sequential(
@@ -74,8 +79,9 @@ class FusionEnc(nn.Module):
 
     def __init__(self,
                  in_ch,
-                 feature_size=64,
-                 depth=3,
+                 activation,
+                 feature_size,
+                 depth,
                  ):
         super().__init__()
 
@@ -83,6 +89,7 @@ class FusionEnc(nn.Module):
             in_ch=in_ch,
             feature_size=feature_size,
             depth=depth,
+            activation=activation,
         )
 
         self.out = nn.Sequential(
@@ -116,11 +123,13 @@ class MultiEncoder(nn.Module):
             in_ch=2,
             feature_size=feature_size,
             depth=depth,
+            activation=nn.ReLU(inplace=True)
         )
         self.fusion_enc = FusionEnc(
             in_ch=self.landsat_enc.before_out_ch + 2,
-            feature_size=self.landsat_enc.before_out_ch,
+            feature_size=feature_size,
             depth=depth,
+            activation=nn.ELU(inplace=True)
         )
         self.pad = nn.ReplicationPad2d(4)
 
@@ -131,6 +140,7 @@ class MultiEncoder(nn.Module):
             mode='bilinear',
             size=(self.resize, self.resize)
         )
+
         landsat, before_landsat = self.landsat_enc(palser)
 
         if part == 'landsat':

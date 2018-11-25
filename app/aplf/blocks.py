@@ -5,12 +5,12 @@ import torch.nn.functional as F
 
 
 class SEBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, r=2):
+    def __init__(self, in_ch, out_ch, activation, r=2):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(in_ch, in_ch//r),
-            nn.ReLU(inplace=True),
+            activation,
             nn.Linear(in_ch//r, out_ch),
             nn.Sigmoid()
         )
@@ -24,9 +24,14 @@ class SEBlock(nn.Module):
 
 
 class CSE(nn.Module):
-    def __init__(self, in_ch, r=1):
+    def __init__(self, in_ch, activation, r=2):
         super().__init__()
-        self.se = SEBlock(in_ch, in_ch, r=r)
+        self.se = SEBlock(
+            in_ch=in_ch,
+            out_ch=in_ch,
+            activation=activation,
+            r=r
+        )
 
     def forward(self, x):
         y = self.se(x)
@@ -51,10 +56,14 @@ class SSE(nn.Module):
 
 
 class SCSE(nn.Module):
-    def __init__(self, in_ch, r=2):
+    def __init__(self, in_ch, activation, r=2):
         super(SCSE, self).__init__()
 
-        self.cSE = CSE(in_ch, r)
+        self.cSE = CSE(
+            in_ch=in_ch,
+            activation=activation,
+            r=r,
+        )
         self.sSE = SSE(in_ch)
 
     def forward(self, x):
@@ -69,6 +78,7 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 activation,
                  ):
         super().__init__()
         if in_ch == out_ch:
@@ -88,7 +98,7 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
+            activation,
             nn.Conv2d(
                 out_ch,
                 out_ch,
@@ -98,7 +108,7 @@ class ResBlock(nn.Module):
                 groups=2 - (out_ch % 2),
             ),
             nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
+            activation,
             nn.Conv2d(
                 out_ch,
                 out_ch,
@@ -107,9 +117,9 @@ class ResBlock(nn.Module):
                 stride=1,
             ),
             nn.BatchNorm2d(out_ch),
-            SCSE(out_ch),
+            SCSE(out_ch, activation=activation),
         )
-        self.activation = nn.ReLU(inplace=True)
+        self.activation = activation
 
     def forward(self, x):
         residual = x
@@ -126,6 +136,7 @@ class DownSample(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 activation,
                  kernel_size=3,
                  padding=1,
                  ):
@@ -137,10 +148,12 @@ class DownSample(nn.Module):
             ResBlock(
                 in_ch=in_ch,
                 out_ch=out_ch,
+                activation=activation,
             ),
             ResBlock(
                 in_ch=out_ch,
                 out_ch=out_ch,
+                activation=activation,
             ),
         )
         self.pool = nn.MaxPool2d(2, 2)
@@ -157,6 +170,7 @@ class UpSample(nn.Module):
     def __init__(self,
                  in_ch,
                  out_ch,
+                 activation,
                  kernel_size=3,
                  padding=1,
                  ):
@@ -165,6 +179,7 @@ class UpSample(nn.Module):
             ResBlock(
                 in_ch,
                 out_ch,
+                activation=activation,
             ),
         )
 

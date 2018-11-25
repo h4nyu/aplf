@@ -221,15 +221,14 @@ def train_multi(model_path,
         batch_size=batch_size // 2,
         shuffle=True,
         pin_memory=True,
+        drop_last=True,
     )
     train_neg_loader = DataLoader(
         sets['train_neg'],
         batch_size=batch_size//2,
         pin_memory=True,
-        sampler=ChunkSampler(epoch_size=len(pos_set),
-                             len_indices=len(sets['train_neg']),
-                             shuffle=True,
-                             ),
+        shuffle=True,
+        drop_last=True,
     )
     threshold_pos_loader = DataLoader(
         sets['train_pos'],
