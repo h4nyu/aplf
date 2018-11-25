@@ -79,6 +79,7 @@ class ResBlock(nn.Module):
                  in_ch,
                  out_ch,
                  activation,
+                 drop_p=0.3,
                  ):
         super().__init__()
         if in_ch == out_ch:
@@ -109,6 +110,7 @@ class ResBlock(nn.Module):
             ),
             nn.BatchNorm2d(out_ch),
             activation,
+            nn.Dropout2d(p=drop_p, inplace=True),
             nn.Conv2d(
                 out_ch,
                 out_ch,
