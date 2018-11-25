@@ -96,7 +96,7 @@ def validate(model,
             palsar = sample['palsar'].to(device)
             labels = sample['label'].to(device)
             landsat = sample['landsat'].to(device)
-            label_preds = model(palsar).argmax(dim=1)
+            label_preds = model(palsar).softmax(dim=1)[:, 1] > threshold
             loss = image_cri(model(palsar, part='landsat'), landsat)
             y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
@@ -284,19 +284,20 @@ def train_multi(model_path,
         )
         train_metrics = {
             **train_metrics,
-            #  **get_threshold(model, threshold_pos_loader, threshold_neg_loader)
+            **get_threshold(model, threshold_pos_loader, threshold_neg_loader)
         }
 
         val_metrics = validate(
             model=model,
             loader=val_loader,
+            threshold=train_metrics['threshold']
         )
 
         with SummaryWriter(log_dir) as w:
             w.add_scalar('train/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('train/landsat', train_metrics['landsat'], epoch)
-            #  w.add_scalar('train/threshold', train_metrics['threshold'], epoch)
-            #  w.add_scalar('train/iou', train_metrics['iou'], epoch)
+            w.add_scalar('train/threshold', train_metrics['threshold'], epoch)
+            w.add_scalar('train/iou', train_metrics['iou'], epoch)
             w.add_scalar('train/pi', train_metrics['pi'], epoch)
             w.add_scalar('val/iou', val_metrics['iou'], epoch)
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)

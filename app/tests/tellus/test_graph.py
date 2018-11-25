@@ -18,8 +18,8 @@ def test_graph():
                 'depth': 3
             },
             'lr': 0.001,
-            'neg_scale': 10,
-            'fusion_train_start': 5,
+            'neg_scale': 1,
+            'fusion_train_start': 0,
         },
         "dataset_dir": '/store/tellus',
         "output_dir": '/store/tellus/output/0-shuffule-pixel-cel-fusion-start-5-th-large-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-relu',
