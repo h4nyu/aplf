@@ -96,7 +96,7 @@ def validate(model,
             palsar = sample['palsar'].to(device)
             labels = sample['label'].to(device)
             landsat = sample['landsat'].to(device)
-            label_preds = model(palsar).softmax(dim=1)[:, 1] > threshold
+            label_preds = model(palsar).argmax(dim=1)
             loss = image_cri(model(palsar, part='landsat'), landsat)
             y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
