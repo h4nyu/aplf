@@ -127,7 +127,7 @@ class MultiEncoder(nn.Module):
         )
         self.fusion_enc = FusionEnc(
             in_ch=self.landsat_enc.before_out_ch + 2,
-            feature_size=feature_size,
+            feature_size=feature_size // 2,
             depth=depth,
             activation=nn.ELU(inplace=True)
         )
