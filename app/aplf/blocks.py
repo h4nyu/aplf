@@ -79,7 +79,7 @@ class ResBlock(nn.Module):
                  in_ch,
                  out_ch,
                  activation,
-                 drop_p=0.3,
+                 drop_p=0.1,
                  ):
         super().__init__()
         if in_ch == out_ch:
