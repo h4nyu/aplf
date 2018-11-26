@@ -154,15 +154,15 @@ def train_epoch(model,
         )
         palsar = torch.cat(
             [
-                pos_sample['palsar'],
-                neg_sample['palsar'],
+                batch_spatical_shuffle(pos_sample['palsar'], indices),
+                batch_spatical_shuffle(neg_sample['palsar'], indices),
             ],
             dim=0
         ).to(device)
         landsat = torch.cat(
             [
-                pos_sample['landsat'],
-                neg_sample['landsat'],
+                batch_spatical_shuffle(pos_sample['landsat'], indices),
+                batch_spatical_shuffle(neg_sample['landsat'], indices),
             ],
             dim=0
         ).to(device)
@@ -171,10 +171,6 @@ def train_epoch(model,
             dim=0
         ).to(device)
 
-        labels = torch.cat(
-            [pos_sample['label'], neg_sample['label']],
-            dim=0
-        ).to(device)
         landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
         sum_landsat_loss += landsat_loss.item()
         loss = landsat_loss
