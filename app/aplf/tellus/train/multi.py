@@ -43,6 +43,7 @@ def get_threshold(model, pos_loader, neg_loader):
     y_trues = []
     sum_loss = 0
     batch_len = 0
+
     for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(50)):
 
         with torch.no_grad():
@@ -54,24 +55,26 @@ def get_threshold(model, pos_loader, neg_loader):
                 [pos_sample['label'], neg_sample['label']],
                 dim=0
             ).to(device)
-            label_preds = model(palsar).argmax(dim=1)
+            label_preds = model(palsar).softmax(dim=1)[:, 1]
             y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             batch_len += 1
 
-    score = iou(
-        y_preds,
-        y_trues,
+    fpr, tpr, thresholds = roc_curve(y_trues, y_preds)
+    ious = pipe(
+        thresholds,
+        map(lambda x: confusion_matrix(y_trues, y_preds > x).ravel()),
+        map(lambda x: x[3] / (x[2] + x[3] + x[1])),
+        list,
+        np.array
     )
-    mean_loss = sum_loss / batch_len
 
-    tn, fp, fn, tp = confusion_matrix(y_trues, y_preds).ravel()
+    max_iou_idx = np.argmax(ious)
     return {
-        'tpr': tp/(tp+fn),
-        'fpr': fp/(fp+tn),
-        'acc': (tp+tn) / (tp+tn+fp+fn),
-        'iou': tp / (fn+tp+fp),
-        'threshold': 0.5,
+        'tpr': float(tpr[max_iou_idx]),
+        'fpr': float(fpr[max_iou_idx]),
+        'iou': float(ious[max_iou_idx]),
+        'threshold': float(thresholds[max_iou_idx]),
     }
 
 
