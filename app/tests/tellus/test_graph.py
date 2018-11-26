@@ -19,10 +19,10 @@ def test_graph():
             },
             'lr': 0.001,
             'neg_scale': 1,
-            'fusion_train_start': 0,
+            'fusion_train_start': 100,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/dropout-0.1-cel-fusion-start-5-th-dyn-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-2-dual-optim-elu-elu',
+        "output_dir": '/store/tellus/output/dropout-0.1-cel-fusion-start-100-th-dyn-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-3-4-dual-optim-elu-elu',
         'n_splits': 15,
         'folds': [0],
         'seed': 0
