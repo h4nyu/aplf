@@ -154,15 +154,15 @@ def train_epoch(model,
         )
         palsar = torch.cat(
             [
-                batch_spatical_shuffle(pos_sample['palsar'], indices),
-                batch_spatical_shuffle(neg_sample['palsar'], indices),
+                pos_sample['palsar'],
+                neg_sample['palsar'],
             ],
             dim=0
         ).to(device)
         landsat = torch.cat(
             [
-                batch_spatical_shuffle(pos_sample['landsat'], indices),
-                batch_spatical_shuffle(neg_sample['landsat'], indices),
+                pos_sample['landsat'],
+                neg_sample['landsat'],
             ],
             dim=0
         ).to(device)
