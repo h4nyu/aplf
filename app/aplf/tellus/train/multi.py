@@ -171,19 +171,19 @@ def train_epoch(model,
             dim=0
         ).to(device)
 
-        landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
-        sum_landsat_loss += landsat_loss.item()
-        loss = landsat_loss
-        landstat_optim.zero_grad()
-        loss.backward()
-        landstat_optim.step()
-
         if is_fusion_train:
             fusion_loss = class_cri(model(palsar), labels)
             sum_fusion_loss += fusion_loss.item()
             fusion_optim.zero_grad()
             fusion_loss.backward()
             fusion_optim.step()
+        else:
+            landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
+            sum_landsat_loss += landsat_loss.item()
+            loss = landsat_loss
+            landstat_optim.zero_grad()
+            loss.backward()
+            landstat_optim.step()
 
     mean_fusion_loss = sum_fusion_loss / batch_len
     mean_landsat_loss = sum_landsat_loss / batch_len
