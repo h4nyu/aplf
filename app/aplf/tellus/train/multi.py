@@ -294,12 +294,12 @@ def train_multi(model_path,
                 max_val_score = val_metrics['iou']
                 w.add_text(
                     'iou',
-                    f"val: {val_metrics['iou']}, epoch: {epoch}",
+                    f"val: {val_metrics['iou']}, epoch: {epoch}, threshold:{train_metrics['threshold']}",
                     epoch
                 )
                 dump_json(f'{model_path}.json', {
                     **val_metrics,
-                    'threshold': train['threshold'],
+                    'threshold': train_metrics['threshold'],
                     "create_date": datetime.now().isoformat(),
                 })
                 torch.save(model, model_path)
