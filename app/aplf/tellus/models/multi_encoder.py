@@ -129,7 +129,7 @@ class MultiEncoder(nn.Module):
             in_ch=self.landsat_enc.before_out_ch + 2,
             feature_size=feature_size,
             depth=depth + 1,
-            activation=nn.ELU(inplace=True)
+            activation=nn.ReLU(inplace=True)
         )
         self.pad = nn.ReplicationPad2d(4)
 
