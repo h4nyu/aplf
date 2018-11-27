@@ -17,6 +17,11 @@ from .metric import iou
 import json
 
 
+def get_threshold(path):
+    with open(path, 'r') as f:
+        return json.load(f)['threshold']
+
+
 @skip_if_exists('out_path')
 def predict(model_paths,
             dataset,
@@ -31,6 +36,12 @@ def predict(model_paths,
         map(lambda x: x.eval().to(device)),
         list
     )
+    thresholds = pipe(
+        model_paths,
+        map(lambda x: f"{x}.json"),
+        map(get_threshold),
+        list
+    )
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -40,7 +51,6 @@ def predict(model_paths,
 
     rows = []
 
-
     y_preds = []
     y_ids = []
     with torch.no_grad():
@@ -49,15 +59,15 @@ def predict(model_paths,
             palser_x = sample['palsar'].to(device)
 
             normal_outputs = pipe(
-                models,
-                map(lambda x: x(palser_x)[0]),
+                zip(models, thresholds),
+                map(lambda x: x[0](palser_x)[0].softmax(dim=1)[:, 1] > x[1]),
+                map(lambda x: x.float()),
                 list,
             )
             output = pipe(
                 [*normal_outputs],
-                map(lambda x: x.softmax(dim=1)),
                 reduce(lambda x, y: x+y),
-                lambda x: x.argmax(dim=1),
+                lambda x: x >= 1,
             )
             y_ids += ids
             y_preds += output.cpu().detach().tolist()

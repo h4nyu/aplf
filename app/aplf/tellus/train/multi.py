@@ -140,6 +140,7 @@ def train_epoch(model,
     sum_fusion_loss = 0
     sum_landsat_loss = 0
     sum_pi_loss = 0
+    aug = RandomErasing()
     for pos_sample, neg_sample in zip(pos_loader, neg_loader):
         batch_size,  = pos_sample['label'].size()
         indices = pipe(
@@ -153,7 +154,9 @@ def train_epoch(model,
                 batch_spatical_shuffle(neg_sample['palsar'], indices),
             ],
             dim=0
-        ).to(device)
+        )
+        palsar = batch_aug(aug, palsar).to(device)
+
         landsat = torch.cat(
             [
                 batch_spatical_shuffle(pos_sample['landsat'], indices),

@@ -56,7 +56,7 @@ class Graph(Flow):
     def create_test_set(self):
         test_df_path = load_test_df(
             dataset_dir=self.dataset_dir/Path('test'),
-            output=self.output_dir / Path('train.pqt')
+            output=self.output_dir / Path('test.pqt')
         )
         test_df = pd.read_parquet(test_df_path)
         test_dataset = TellusDataset(
