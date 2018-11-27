@@ -44,7 +44,7 @@ def get_threshold(model, pos_loader, neg_loader):
     sum_loss = 0
     batch_len = 0
 
-    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(80)):
+    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(100)):
 
         with torch.no_grad():
             palsar = torch.cat(
