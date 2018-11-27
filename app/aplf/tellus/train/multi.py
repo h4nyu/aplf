@@ -44,7 +44,7 @@ def get_threshold(model, pos_loader, neg_loader):
     sum_loss = 0
     batch_len = 0
 
-    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(50)):
+    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(80)):
 
         with torch.no_grad():
             palsar = torch.cat(
@@ -55,7 +55,7 @@ def get_threshold(model, pos_loader, neg_loader):
                 [pos_sample['label'], neg_sample['label']],
                 dim=0
             ).to(device)
-            label_preds = model(palsar).softmax(dim=1)[:, 1]
+            label_preds = model(palsar)[0].softmax(dim=1)[:, 1]
             y_preds += label_preds.cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             batch_len += 1
@@ -96,9 +96,9 @@ def validate(model,
             palsar = sample['palsar'].to(device)
             labels = sample['label'].to(device)
             landsat = sample['landsat'].to(device)
-            label_preds = model(palsar).softmax(dim=1)[:, 1] > threshold
-            loss = image_cri(model(palsar, part='landsat'), landsat)
-            y_preds += label_preds.cpu().detach().tolist()
+            label_preds, landsat_pred = model(palsar)
+            loss = image_cri(landsat_pred, landsat)
+            y_preds += (label_preds.softmax(dim=1)[:, 1] > threshold).cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             sum_loss += loss.item()
             batch_len += 1
@@ -124,17 +124,12 @@ def train_epoch(model,
                 neg_loader,
                 device,
                 lr,
-                is_fusion_train,
+                landsat_weight,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
-    landstat_optim = optim.Adam(
-        model.landsat_enc.parameters(),
-        amsgrad=True,
-        lr=lr
-    )
-    fusion_optim = optim.Adam(
-        model.fusion_enc.parameters(),
+    optimizer = optim.Adam(
+        model.parameters(),
         amsgrad=True,
         lr=lr
     )
@@ -170,20 +165,16 @@ def train_epoch(model,
             [pos_sample['label'], neg_sample['label']],
             dim=0
         ).to(device)
+        fusion_pred, landsat_pred = model(palsar)
 
-        if is_fusion_train:
-            fusion_loss = class_cri(model(palsar), labels)
-            sum_fusion_loss += fusion_loss.item()
-            fusion_optim.zero_grad()
-            fusion_loss.backward()
-            fusion_optim.step()
-        else:
-            landsat_loss = image_cri(model(palsar, part='landsat'), landsat)
-            sum_landsat_loss += landsat_loss.item()
-            loss = landsat_loss
-            landstat_optim.zero_grad()
-            loss.backward()
-            landstat_optim.step()
+        fusion_loss = class_cri(fusion_pred, labels)
+        sum_fusion_loss += fusion_loss.item()
+        landsat_loss = image_cri(landsat_pred, landsat)
+        sum_landsat_loss += landsat_loss.item()
+        loss = fusion_loss + landsat_weight * landsat_loss
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
     mean_fusion_loss = sum_fusion_loss / batch_len
     mean_landsat_loss = sum_landsat_loss / batch_len
@@ -200,7 +191,7 @@ def train_multi(model_path,
                 log_dir,
                 lr,
                 neg_scale,
-                fusion_train_start,
+                landsat_weight,
                 ):
 
     model_path = Path(model_path)
@@ -267,7 +258,6 @@ def train_multi(model_path,
         val_labels = []
         train_probs = []
         train_labels = []
-        is_fusion_train = True if epoch > fusion_train_start else False
 
         model, train_metrics = train_epoch(
             model=model,
@@ -275,7 +265,7 @@ def train_multi(model_path,
             pos_loader=train_pos_loader,
             device=device,
             lr=lr,
-            is_fusion_train=is_fusion_train,
+            landsat_weight=landsat_weight,
         )
         train_metrics = {
             **train_metrics,

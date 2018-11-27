@@ -129,7 +129,7 @@ class MultiEncoder(nn.Module):
             in_ch=self.landsat_enc.before_out_ch + 2,
             feature_size=feature_size,
             depth=depth + 1,
-            activation=nn.ReLU(inplace=True)
+            activation=nn.ELU(inplace=True)
         )
         self.pad = nn.ReplicationPad2d(4)
 
@@ -154,4 +154,4 @@ class MultiEncoder(nn.Module):
             lambda x: torch.cat(x, dim=1)
         )
         x, _ = self.fusion_enc(x)
-        return x
+        return x, landsat
