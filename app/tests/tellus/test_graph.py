@@ -11,19 +11,19 @@ def test_graph():
     config = {
         "train_config": {
             'epochs': 1000,
-            'batch_size': 64,
+            'batch_size': 128,
             'model_kwargs': {
-                'feature_size': 8,
+                'feature_size': 16,
                 'resize': 64,
                 'depth': 3
             },
             'lr': 0.001,
             'neg_scale': 1,
-            'landsat_weight': 10,
+            'landsat_weight': 1,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/rerase-landsatw-10-shuffle-pixel-dropout-0.1-cel-fusion-th-dyn-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-8-dp-3-4-single-optim-elu-elu',
-        'n_splits': 15,
+        "output_dir": '/store/tellus/output/split-8-rerase-10-landsatw-1-shuffle-pixel-dropout-0.1-cel-fusion-th-dyn-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-16-dp-3-4-single-optim-elu-elu',
+        'n_splits': 8,
         'folds': [0],
         'seed': 0
     }

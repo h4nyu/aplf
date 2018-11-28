@@ -16,7 +16,7 @@ import json
 
 class RandomErasing(object):
 
-    def __init__(self, p=0.5,  sl=0.01, sh=0.05, r1=1, num=1, mean=[0, 0.0, 0.0]):
+    def __init__(self, p=1.0,  sl=0.01, sh=0.05, r1=1, num=10, mean=[0, 0.0, 0.0]):
         self.mean = mean
         self.sl = sl
         self.sh = sh
