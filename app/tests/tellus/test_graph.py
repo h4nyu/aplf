@@ -11,20 +11,19 @@ def test_graph():
     config = {
         "train_config": {
             'epochs': 1000,
-            'batch_size': 32,
+            'batch_size': 64,
             'model_kwargs': {
-                'feature_size': 16,
+                'feature_size': 8,
                 'resize': 64,
                 'depth': 3
             },
             'lr': 0.001,
-            'neg_scale': 1,
-            'landsat_weight': 1,
+            'neg_scale': 5,
         },
         "dataset_dir": '/store/tellus',
-        "output_dir": '/store/tellus/output/bs-32-split-8-rerase-10-landsatw-1-shuffle-pixel-dropout-0.1-cel-fusion-th-dyn-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-16-dp-3-4-single-optim-elu-elu',
+        "output_dir": '/store/tellus/output/split-8-landsatw-100-shuffle-pixel-dropout-0.1-cel-fusion-small-fusion-pad-4-rs-64-landsat-scse-in-res-lr-0.001-esb-1-fs-16-dp-3-4-single-optim-elu-elu',
         'n_splits': 8,
-        'folds': [0],
+        'folds': [0, 1],
         'seed': 0
     }
     g = Graph(config)

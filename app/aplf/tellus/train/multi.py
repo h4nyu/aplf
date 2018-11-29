@@ -37,50 +37,8 @@ def dump_json(path, data):
         return path
 
 
-def get_threshold(model, pos_loader, neg_loader):
-    device = torch.device("cuda")
-    y_preds = []
-    y_trues = []
-    sum_loss = 0
-    batch_len = 0
-
-    for pos_sample, neg_sample in pipe(zip(pos_loader, neg_loader), take(100)):
-
-        with torch.no_grad():
-            palsar = torch.cat(
-                [pos_sample['palsar'], neg_sample['palsar']],
-                dim=0
-            ).to(device)
-            labels = torch.cat(
-                [pos_sample['label'], neg_sample['label']],
-                dim=0
-            ).to(device)
-            label_preds = model(palsar)[0].softmax(dim=1)[:, 1]
-            y_preds += label_preds.cpu().detach().tolist()
-            y_trues += labels.cpu().detach().tolist()
-            batch_len += 1
-
-    fpr, tpr, thresholds = roc_curve(y_trues, y_preds)
-    ious = pipe(
-        thresholds,
-        map(lambda x: confusion_matrix(y_trues, y_preds > x).ravel()),
-        map(lambda x: x[3] / (x[2] + x[3] + x[1])),
-        list,
-        np.array
-    )
-
-    max_iou_idx = np.argmax(ious)
-    return {
-        'tpr': float(tpr[max_iou_idx]),
-        'fpr': float(fpr[max_iou_idx]),
-        'iou': float(ious[max_iou_idx]),
-        'threshold': float(thresholds[max_iou_idx]),
-    }
-
-
 def validate(model,
              loader,
-             threshold=0.5,
              ):
 
     image_cri = nn.MSELoss(size_average=True)
@@ -98,7 +56,7 @@ def validate(model,
             landsat = sample['landsat'].to(device)
             label_preds, landsat_pred = model(palsar)
             loss = image_cri(landsat_pred, landsat)
-            y_preds += (label_preds.softmax(dim=1)[:, 1] > threshold).cpu().detach().tolist()
+            y_preds += (label_preds.argmax(dim=1)).cpu().detach().tolist()
             y_trues += labels.cpu().detach().tolist()
             sum_loss += loss.item()
             batch_len += 1
@@ -124,7 +82,6 @@ def train_epoch(model,
                 neg_loader,
                 device,
                 lr,
-                landsat_weight,
                 ):
     model = model.train()
     batch_len = len(pos_loader)
@@ -154,8 +111,7 @@ def train_epoch(model,
                 batch_spatical_shuffle(neg_sample['palsar'], indices),
             ],
             dim=0
-        )
-        palsar = batch_aug(aug, palsar).to(device)
+        ).to(device)
 
         landsat = torch.cat(
             [
@@ -174,7 +130,7 @@ def train_epoch(model,
         sum_fusion_loss += fusion_loss.item()
         landsat_loss = image_cri(landsat_pred, landsat)
         sum_landsat_loss += landsat_loss.item()
-        loss = fusion_loss + landsat_weight * landsat_loss
+        loss = 0.05 * fusion_loss + landsat_loss
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -194,7 +150,6 @@ def train_multi(model_path,
                 log_dir,
                 lr,
                 neg_scale,
-                landsat_weight,
                 ):
 
     model_path = Path(model_path)
@@ -220,19 +175,7 @@ def train_multi(model_path,
         shuffle=True,
         drop_last=True,
     )
-    threshold_pos_loader = DataLoader(
-        sets['train_pos'],
-        batch_size=1,
-        shuffle=True,
-        pin_memory=True,
-    )
 
-    threshold_neg_loader = DataLoader(
-        sets['train_neg'],
-        batch_size=len(sets['train_neg']) // len(sets['train_pos']),
-        shuffle=True,
-        pin_memory=True,
-    )
     val_set = sets['val_neg']+sets['val_pos']
 
     val_loader = DataLoader(
@@ -268,25 +211,19 @@ def train_multi(model_path,
             pos_loader=train_pos_loader,
             device=device,
             lr=lr,
-            landsat_weight=landsat_weight,
         )
         train_metrics = {
             **train_metrics,
-            **get_threshold(model, threshold_pos_loader, threshold_neg_loader)
         }
 
         val_metrics = validate(
             model=model,
             loader=val_loader,
-            threshold=train_metrics['threshold']
         )
 
         with SummaryWriter(log_dir) as w:
             w.add_scalar('train/fusion', train_metrics['fusion'], epoch)
             w.add_scalar('train/landsat', train_metrics['landsat'], epoch)
-            w.add_scalar('train/threshold', train_metrics['threshold'], epoch)
-            w.add_scalar('train/iou', train_metrics['iou'], epoch)
-            w.add_scalar('train/pi', train_metrics['pi'], epoch)
             w.add_scalar('val/iou', val_metrics['iou'], epoch)
             w.add_scalar('val/tpr', val_metrics['tpr'], epoch)
             w.add_scalar('val/fpr', val_metrics['fpr'], epoch)
@@ -297,12 +234,11 @@ def train_multi(model_path,
                 max_val_score = val_metrics['iou']
                 w.add_text(
                     'iou',
-                    f"val: {val_metrics['iou']}, epoch: {epoch}, threshold:{train_metrics['threshold']}",
+                    f"val: {val_metrics['iou']}, epoch: {epoch}",
                     epoch
                 )
                 dump_json(f'{model_path}.json', {
                     **val_metrics,
-                    'threshold': train_metrics['threshold'],
                     "create_date": datetime.now().isoformat(),
                 })
                 torch.save(model, model_path)
