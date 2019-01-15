@@ -7,13 +7,10 @@ torchvision
 sklearn
 scipy
 scikit-image
-tensorboardX
-tensorflow
 pydensecrf
 fastparquet
-sacred
-pymongo
 albumentations
+mlboard_client
 
 # graph
 bokeh

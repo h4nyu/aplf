@@ -4,22 +4,6 @@ volumes:
   mongo_data:
 
 services:
-
-  tensorboard:
-    build:
-      context: ./app
-      args:
-        - http_proxy
-        - https_proxy
-    environment:
-      - DASK_CONFIG=/srv/dask.config.yml
-    command: tensorboard --logdir=/store/log
-    volumes:
-      - ./app:/srv
-      - ./store:/store
-    ports:
-      - ${TENSORBOARD_PORT}:6006
-
   dask-scheduler:
     build:
       context: ./app
@@ -35,8 +19,6 @@ services:
     ports:
       - ${DASKBOARD_PORT}:8787
       - ${DASKSCHEDULER_PORT}:8786
-    depends_on:
-      - nfs
 
   dask-worker:
     build:
@@ -52,32 +34,6 @@ services:
       - ./store:/store
     restart: always
 
-  front:
-    build:
-      context: ./front
-      args:
-        - http_proxy
-        - https_proxy
-    environment:
-      - NODE_ENV=development
-    command: npm run watch
-    volumes:
-      - ./front:/srv
-
-  omniboard:
-    build:
-      context: ./front
-      args:
-        - http_proxy
-        - https_proxy
-    environment:
-      - NODE_ENV=development
-    command: npm run omniboard 
-    volumes:
-      - ./front:/srv
-    ports:
-      - "${OMNIBOARD_PORT}:9000"
-
   web:
     build:
       context: ./web
@@ -90,14 +46,6 @@ services:
       - ./web/nginx.conf:/etc/nginx/nginx.conf
     ports:
       - "${WEB_PORT}:80"
-
-  mongo:
-    image: mongo
-    restart: always
-    volumes:
-      - mongo_data:/data/db
-    ports:
-      - "${MONGO_PORT}:27017"
 
   app:
     build:
@@ -114,21 +62,7 @@ services:
       - ./store:/store
       - ./experiments:/experiments
 
-  nfs:
-    image: itsthenetwork/nfs-server-alpine:latest
-    environment:
-      - SHARED_DIRECTORY=/nfsshare
-    privileged: true
-    volumes:
-      - ./:/nfsshare
-    ports:
-      - "2049:2049"
-
-
 networks:
-  default:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: ${SUBNET}
+  defualt:
+    external: 
+      name: host
