@@ -1,52 +1,6 @@
 version: "3"
 
-volumes:
-  mongo_data:
-
 services:
-  dask-scheduler:
-    build:
-      context: ./app
-      args:
-        - http_proxy
-        - https_proxy
-    environment:
-      - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-scheduler
-    volumes:
-      - ./app:/srv
-      - ./store:/store
-    ports:
-      - ${DASKBOARD_PORT}:8787
-      - ${DASKSCHEDULER_PORT}:8786
-
-  dask-worker:
-    build:
-      context: ./app
-      args:
-        - http_proxy
-        - https_proxy
-    environment:
-      - DASK_CONFIG=/srv/dask.config.yml
-    command: dask-worker dask-scheduler:8786 --local-directory=/dask-worker-space
-    volumes:
-      - ./app:/srv
-      - ./store:/store
-    restart: always
-
-  web:
-    build:
-      context: ./web
-      args:
-        - http_proxy
-        - https_proxy
-    volumes:
-      - ./front/dist:/public/aplf
-      - ./store:/public/store
-      - ./web/nginx.conf:/etc/nginx/nginx.conf
-    ports:
-      - "${WEB_PORT}:80"
-
   app:
     build:
       context: ./app
@@ -54,15 +8,6 @@ services:
         - http_proxy
         - https_proxy
     environment:
-      - DASK_CONFIG=/srv/dask.config.yml
-      - MASTER_IP
-      - MONGO_PORT
     volumes:
       - ./app:/srv
       - ./store:/store
-      - ./experiments:/experiments
-
-networks:
-  defualt:
-    external: 
-      name: host
