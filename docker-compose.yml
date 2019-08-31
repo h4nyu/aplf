@@ -7,7 +7,6 @@ services:
       args:
         - http_proxy
         - https_proxy
-    environment:
     volumes:
       - ./app:/srv
       - ./store:/store
