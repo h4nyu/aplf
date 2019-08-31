@@ -4,6 +4,8 @@ requires = [
     "cytoolz",
     "torchvision",
     "torch",
+    "pandas",
+    "vaex",
 ]
 dev_requires = [
     "requests",
@@ -33,4 +35,3 @@ setup(
         'dev': dev_requires
     }
 )
-

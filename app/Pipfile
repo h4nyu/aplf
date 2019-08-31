@@ -10,3 +10,9 @@ aplf = {editable = true,extras = ["dev"],path = "."}
 
 [requires]
 python_version = "3.7"
+
+
+[scripts]
+format = ""
+lint = "bash -c 'autopep8 -ivr . && flake8 --show-source .'"
+
