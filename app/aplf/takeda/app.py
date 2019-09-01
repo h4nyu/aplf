@@ -19,7 +19,7 @@ def run(n_splits:int, fold_idx:int)->None:
         train_loss, = train_epoch(
             model=model,
             dataset=train_set,
-            batch_size=1024,
+            batch_size=256
         )
 
         val_loss, = eval_epoch(

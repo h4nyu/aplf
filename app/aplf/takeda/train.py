@@ -7,7 +7,7 @@ import typing as t
 from logging import getLogger
 
 from .models import Model
-from .eval import r2
+from .eval import r2, r2_loss
 
 
 logger = getLogger("takeda.train")

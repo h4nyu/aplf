@@ -18,11 +18,9 @@ class ResBlock(nn.Module):
             nn.Linear(in_ch, out_ch),
             nn.BatchNorm1d(out_ch),
             nn.ReLU(),
-            nn.Linear(out_ch, out_ch),
-            nn.BatchNorm1d(out_ch),
-            nn.ReLU(),
         )
         self.activation = nn.ReLU()
+
 
     def forward(self, x:Tensor) -> Tensor:
         residual = x
@@ -40,37 +38,44 @@ class Model(nn.Module):
     ) -> None:
         super().__init__()
         r = 2
-        self.fc0 = ResBlock(
+        self.fc00 = ResBlock(
+            size_in // (r**0),
+            size_in // (r**0),
+        )
+
+        self.fc01 = ResBlock(
             size_in // (r**0),
             size_in // (r**1),
         )
 
-        self.fc1 = ResBlock(
+        self.fc11 = ResBlock(
+            size_in // (r**1),
+            size_in // (r**1),
+        )
+
+        self.fc12 = ResBlock(
             size_in // (r**1),
             size_in // (r**2),
         )
 
-        self.fc2 = ResBlock(
-            size_in // (r**2),
-            size_in // (r**3),
+        self.out = nn.Sequential(
+            nn.Linear(
+                size_in // (r**2),
+                size_in // (r**2),
+            ),
+            nn.BatchNorm1d(size_in // (r**2)),
+            nn.ReLU(),
+            nn.Linear(
+                size_in // (r**2),
+                1
+            ),
         )
 
-
-        self.fc3 = ResBlock(
-            size_in // (r**3),
-            size_in // (r**4),
-        )
-
-        self.out = nn.Linear(
-            size_in // (r**4),
-            1,
-        )
 
     def forward(self, x:Tensor) -> Tensor: # type: ignore
-        y = self.fc0(x)
-        y = self.fc1(y)
-        y = self.fc2(y)
-        y = self.fc3(y)
+        y = self.fc00(x)
+        y = self.fc01(y)
+        y = self.fc11(y)
+        y = self.fc12(y)
         y = self.out(y)
         return y
-
