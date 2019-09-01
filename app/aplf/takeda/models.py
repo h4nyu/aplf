@@ -58,15 +58,24 @@ class Model(nn.Module):
             size_in // (r**2),
         )
 
+        self.fc22 = ResBlock(
+            size_in // (r**2),
+            size_in // (r**2),
+        )
+
+        self.fc23 = ResBlock(
+            size_in // (r**2),
+            size_in // (r**3),
+        )
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**2),
-                size_in // (r**2),
+                size_in // (r**3),
+                size_in // (r**3),
             ),
-            nn.BatchNorm1d(size_in // (r**2)),
+            nn.BatchNorm1d(size_in // (r**3)),
             nn.ReLU(),
             nn.Linear(
-                size_in // (r**2),
+                size_in // (r**3),
                 1
             ),
         )
@@ -77,5 +86,7 @@ class Model(nn.Module):
         y = self.fc01(y)
         y = self.fc11(y)
         y = self.fc12(y)
+        y = self.fc22(y)
+        y = self.fc23(y)
         y = self.out(y)
         return y
