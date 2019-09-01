@@ -1,8 +1,8 @@
 from aplf.takeda.eval import r2
-import numpy as np
+from torch import arange
 
 
 def test_r2() -> None:
-    x_arr = np.arange(10)
-    y_arr = np.arange(10)
+    x_arr = arange(10, dtype=float)
+    y_arr = arange(10, dtype=float)
     assert r2(x_arr, y_arr) == 1.0

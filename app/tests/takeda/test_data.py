@@ -4,6 +4,7 @@ import pandas as pd
 from torch import tensor
 import torchvision
 
+
 def test_read_csv() -> None:
     df = read_csv('/store/takeda/train.csv')
     assert len(df.columns) == 3806
@@ -15,7 +16,10 @@ def test_dataset() -> None:
         'col2': [0., 1.],
     }, index=[0, 1])
     dataset = TakedaDataset(df)
+    assert len(dataset) == 2
+    print(dataset[0])
+
     assert  all(tensor([0., 0.]) == dataset[0][0])
-    assert  tensor(0.) == dataset[0][1]
+    assert  0. == dataset[0][1]
     assert  all(tensor([1., 1.]) == dataset[1][0])
-    assert  tensor(1.) == dataset[1][1]
+    assert  1. == dataset[1][1]
