@@ -1,7 +1,8 @@
 from torch.utils.data import DataLoader, Dataset
 import multiprocessing
 from torch.optim import Adam
-from torch import device
+from torch import device, no_grad
+from torch.nn.functional import mse_loss
 import typing as t
 from logging import getLogger
 
@@ -38,11 +39,37 @@ def train_epoch(
         source = source.to(cuda)
         ans = ans.to(cuda)
         y = model(source)
-        loss = (- r2(ans.view(-1), y.view(-1)))
+        loss = mse_loss(y.view(-1), ans.view(-1))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         sum_loss += loss.item()
+
     mean_loss = sum_loss / batch_len
-    logger.info(f'mean_loss: {mean_loss}')
+    return (mean_loss, )
+
+def eval_epoch(
+    model:Model,
+    dataset:Dataset,
+    batch_size:int,
+) -> t.Tuple[float]:
+    cuda = device('cuda')
+    model = model.train().to(cuda)
+    loader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+        num_workers=4,
+    )
+    batch_len = len(loader)
+    sum_loss = 0
+    with no_grad():
+        for source, ans in loader:
+            source = source.to(cuda)
+            ans = ans.to(cuda)
+            y = model(source)
+            loss = r2(y.view(-1), ans.view(-1))
+            sum_loss += loss.item()
+    mean_loss = sum_loss / batch_len
     return (mean_loss, )

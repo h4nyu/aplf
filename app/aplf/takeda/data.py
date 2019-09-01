@@ -5,6 +5,7 @@ import typing as t
 import pandas as pd
 from torch import Tensor, tensor, float32
 from typing_extensions import Protocol
+from sklearn.model_selection import KFold
 
 
 logger = getLogger("takeda.data")
@@ -13,6 +14,13 @@ def read_csv(path: str) -> t.Any:
     df = df.set_index('ID')
     return df
 
+def kfold(
+    dataset:Dataset, 
+    n_splits:int, 
+    random_state:int=0
+) -> t.List[t.Tuple[t.Sequence[int], t.Sequence[int]]]:
+    kf = KFold(n_splits, random_state=random_state, shuffle=True)
+    return list(kf.split(dataset))
 
 class TakedaDataset(Dataset):
     def __init__(self, df:t.Any) -> None:

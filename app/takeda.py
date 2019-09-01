@@ -2,4 +2,7 @@ from aplf.takeda.app import run
 
 
 if __name__ == '__main__':
-    run()
+    run(
+        n_splits=4,
+        fold_idx=0,
+    )

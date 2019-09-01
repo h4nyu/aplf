@@ -1,7 +1,8 @@
-from aplf.takeda.data import read_csv, TakedaDataset
+from aplf.takeda.data import read_csv, TakedaDataset, kfold
 from torch.utils.data import Dataset
+import typing as t
 import pandas as pd
-from torch import tensor
+from torch import tensor, Tensor
 import torchvision
 
 
@@ -23,3 +24,16 @@ def test_dataset() -> None:
     assert  0. == dataset[0][1]
     assert  all(tensor([1., 1.]) == dataset[1][0])
     assert  1. == dataset[1][1]
+
+
+
+def test_kfold() -> None:
+    class DatasetMock(Dataset):
+        def __len__(self) -> int:
+            return 10
+
+        def __getitem__(self, index: int) -> t.Tuple[float, Tensor]:
+            return rand(10), randn(1)
+    dataset = DatasetMock()
+    res =kfold(dataset, n_splits=3)
+    assert len(res) == 3
