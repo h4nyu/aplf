@@ -6,6 +6,7 @@ requires = [
     "torch",
     "pandas",
     "sklearn",
+    "lightgbm",
 ]
 dev_requires = [
     "requests",

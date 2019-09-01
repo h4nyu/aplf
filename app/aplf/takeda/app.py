@@ -28,3 +28,12 @@ def run(n_splits:int, fold_idx:int)->None:
             batch_size=2048,
         )
         logger.info(f'train loss: {train_loss} val loss: {val_loss}')
+
+
+def run_lgb():
+    df = read_csv('/store/takeda/train.csv')
+    dataset = TakedaDataset(df)
+    indices = kfold(dataset, n_splits=n_splits)
+    train_set = Subset(dataset, indices[0][0])
+    val_set = Subset(dataset, indices[0][1])
+

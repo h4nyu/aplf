@@ -1,4 +1,4 @@
-from aplf.takeda.data import read_csv, TakedaDataset, kfold
+from aplf.takeda.data import read_csv, TakedaDataset, kfold, add_noise
 from torch.utils.data import Dataset
 import typing as t
 import pandas as pd
@@ -8,6 +8,7 @@ import torchvision
 
 def test_read_csv() -> None:
     df = read_csv('/store/takeda/train.csv')
+    float_cols = []
     assert len(df.columns) == 3806
 
 def test_dataset() -> None:
@@ -24,6 +25,17 @@ def test_dataset() -> None:
     assert  0. == dataset[0][1]
     assert  all(tensor([1., 1.]) == dataset[1][0])
     assert  1. == dataset[1][1]
+
+def test_add_noise() -> None:
+    df = pd.DataFrame({
+        'Score': [0., 1., 2.5, 10],
+        'col1': [0., 1., 0., 1,],
+        'col2': [0., 1., 1.5, 20],
+        'col3': [0., 1., 3, 0.5],
+    }, index=[0, 1, 2, 3])
+    dataset = TakedaDataset(df)
+    dataset[0]
+
 
 
 

@@ -24,7 +24,7 @@ def train_epoch(
         batch_size=batch_size,
         shuffle=True,
         pin_memory=True,
-        num_workers=4,
+        num_workers=8,
     )
 
     batch_len = len(loader)

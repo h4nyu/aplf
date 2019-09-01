@@ -143,6 +143,15 @@
             ],
             "version": "==0.13.2"
         },
+        "lightgbm": {
+            "hashes": [
+                "sha256:0dc1729b6974eaad3ded060ca3b508f400bf4976550a7d4a3d4091a3cbe3bf5f",
+                "sha256:1106082265671d87b183a29aee2e849b5f0ad81474c889d38d1250cf6ef19583",
+                "sha256:40354d21da6bfa73c7ada4d01b2e0b22eaae00f93e90bdaf3fc423020c273890",
+                "sha256:fe4701e65b1151824375d23108d4098266edfe6c556f596f84577b3763dce977"
+            ],
+            "version": "==2.2.3"
+        },
         "mccabe": {
             "hashes": [
                 "sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42",
