@@ -5,7 +5,6 @@ requires = [
     "torchvision",
     "torch",
     "pandas",
-    "vaex",
 ]
 dev_requires = [
     "requests",

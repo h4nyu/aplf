@@ -9,10 +9,8 @@ verify_ssl = true
 aplf = {editable = true,extras = ["dev"],path = "."}
 
 [requires]
-python_version = "3.7"
-
+python_version = "3.6"
 
 [scripts]
 format = ""
 lint = "bash -c 'autopep8 -ivr . && flake8 --show-source .'"
-
