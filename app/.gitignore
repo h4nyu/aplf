@@ -30,7 +30,6 @@ dist
 #docker
 .env
 
-*.lock
 **/*.DS_store
 
 tmp
