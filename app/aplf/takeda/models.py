@@ -16,8 +16,8 @@ class ResBlock(nn.Module):
                 out_ch,
             )
         self.block = nn.Sequential(
-            nn.Linear(in_ch, out_ch),
-            nn.BatchNorm1d(out_ch),
+            nn.Linear(in_ch, in_ch),
+            nn.BatchNorm1d(in_ch),
             nn.ReLU(),
         )
         self.activation = nn.ReLU()
@@ -25,9 +25,9 @@ class ResBlock(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         residual = x
         out = self.block(x)
-        if self.projection:
-            residual = self.projection(residual)
         out += residual
+        if self.projection:
+            out = self.projection(out)
         out = self.activation(out)
         return out
 
