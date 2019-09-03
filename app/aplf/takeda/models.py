@@ -1,10 +1,11 @@
 import torch.nn as nn
 from torch import Tensor
 
+
 class ResBlock(nn.Module):
     def __init__(self,
-                 in_ch:int,
-                 out_ch:int,
+                 in_ch: int,
+                 out_ch: int,
                  ) -> None:
         super().__init__()
         if in_ch == out_ch:
@@ -21,8 +22,7 @@ class ResBlock(nn.Module):
         )
         self.activation = nn.ReLU()
 
-
-    def forward(self, x:Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         residual = x
         out = self.block(x)
         if self.projection:
@@ -31,10 +31,11 @@ class ResBlock(nn.Module):
         out = self.activation(out)
         return out
 
+
 class Model(nn.Module):
     def __init__(
         self,
-        size_in:int,
+        size_in: int,
     ) -> None:
         super().__init__()
         r = 2
@@ -80,8 +81,7 @@ class Model(nn.Module):
             ),
         )
 
-
-    def forward(self, x:Tensor) -> Tensor: # type: ignore
+    def forward(self, x: Tensor) -> Tensor:  # type: ignore
         y = self.fc00(x)
         y = self.fc01(y)
         y = self.fc11(y)

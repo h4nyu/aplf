@@ -6,12 +6,14 @@ import pytest
 import typing as t
 import torchvision
 
+
 class DatasetMock(Dataset):
     def __len__(self) -> int:
         return 30
 
     def __getitem__(self, index: int) -> t.Tuple[float, Tensor]:
         return rand(10), randn(1)
+
 
 def test_train_epoch() -> None:
     dataset = DatasetMock()

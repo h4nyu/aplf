@@ -12,10 +12,11 @@ from .eval import r2, r2_loss
 
 logger = getLogger("takeda.train")
 
+
 def train_epoch(
-    model:Model,
-    dataset:Dataset,
-    batch_size:int,
+    model: Model,
+    dataset: Dataset,
+    batch_size: int,
 ) -> t.Tuple[float]:
     cuda = device('cuda')
     model = model.train().to(cuda)
@@ -48,10 +49,11 @@ def train_epoch(
     mean_loss = sum_loss / batch_len
     return (mean_loss, )
 
+
 def eval_epoch(
-    model:Model,
-    dataset:Dataset,
-    batch_size:int,
+    model: Model,
+    dataset: Dataset,
+    batch_size: int,
 ) -> t.Tuple[float]:
     cuda = device('cuda')
     model = model.train().to(cuda)
