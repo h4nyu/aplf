@@ -25,7 +25,7 @@ def train_epoch(
         batch_size=batch_size,
         shuffle=True,
         pin_memory=True,
-        num_workers=8,
+        num_workers=4,
     )
 
     batch_len = len(loader)
@@ -59,6 +59,7 @@ def eval_epoch(
     dataset: Dataset,
     batch_size: int,
 ) -> t.Tuple[float]:
+    model.eval()
     cuda = device('cuda')
     model = model.train().to(cuda)
     loader = DataLoader(

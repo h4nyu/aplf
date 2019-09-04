@@ -16,11 +16,16 @@ class ResBlock(nn.Module):
                 out_ch,
             )
         self.block = nn.Sequential(
+            nn.BatchNorm1d(in_ch),
+            nn.ReLU(),
             nn.Linear(in_ch, in_ch),
             nn.BatchNorm1d(in_ch),
             nn.ReLU(),
+            nn.Linear(in_ch, in_ch),
+            nn.BatchNorm1d(in_ch),
+            nn.ReLU(),
+            nn.Linear(in_ch, in_ch),
         )
-        self.activation = nn.ReLU()
 
     def forward(self, x: Tensor) -> Tensor:
         residual = x
@@ -28,7 +33,6 @@ class ResBlock(nn.Module):
         out += residual
         if self.projection:
             out = self.projection(out)
-        out = self.activation(out)
         return out
 
 
@@ -39,54 +43,26 @@ class Model(nn.Module):
     ) -> None:
         super().__init__()
         r = 2
-        self.fc00 = ResBlock(
-            size_in // (r**0),
-            size_in // (r**0),
-        )
-
-        self.fc01 = ResBlock(
-            size_in // (r**0),
-            size_in // (r**1),
-        )
-
-        self.fc11 = ResBlock(
-            size_in // (r**1),
-            size_in // (r**1),
-        )
-
-        self.fc12 = ResBlock(
-            size_in // (r**1),
-            size_in // (r**2),
-        )
-
-        self.fc22 = ResBlock(
-            size_in // (r**2),
-            size_in // (r**2),
-        )
-
-        self.fc23 = ResBlock(
-            size_in // (r**2),
-            size_in // (r**3),
-        )
+        length = 10
+        self.input = nn.BatchNorm1d(size_in)
+        self.layers = nn.ModuleList([
+            ResBlock(
+                size_in // (r ** i),
+                size_in // (r ** (i+1)),
+            )
+            for i
+            in range(length)
+        ])
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**3),
-                size_in // (r**3),
-            ),
-            nn.BatchNorm1d(size_in // (r**3)),
-            nn.ReLU(),
-            nn.Linear(
-                size_in // (r**3),
+                size_in // (r ** length),
                 1
-            ),
+            )
         )
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
-        y = self.fc00(x)
-        y = self.fc01(y)
-        y = self.fc11(y)
-        y = self.fc12(y)
-        y = self.fc22(y)
-        y = self.fc23(y)
+        y = self.input(x)
+        for l in self.layers:
+            y = l(y)
         y = self.out(y)
         return y

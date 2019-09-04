@@ -8,6 +8,8 @@ import torchvision
 
 def test_read_csv() -> None:
     df = read_csv('/store/takeda/train.csv')
+    print(df.std())
+    print(df.mean())
     assert len(df.columns) == 3806
 
 

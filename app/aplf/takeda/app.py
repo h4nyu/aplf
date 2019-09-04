@@ -1,4 +1,4 @@
-from .data import read_csv, TakedaDataset, kfold, create_dataset
+from .data import read_csv, TakedaDataset, kfold, create_dataset, save_model
 from torch.utils.data import Subset
 from .models import Model
 from .train.nn import train_epoch, eval_epoch
@@ -16,6 +16,8 @@ def run(n_splits: int, fold_idx: int) -> None:
     model = Model(
         size_in=3805,
     )
+
+    best_val_loss = 0
     while True:
         train_loss, train_r2_loss = train_epoch(
             model=model,
@@ -29,17 +31,6 @@ def run(n_splits: int, fold_idx: int) -> None:
             batch_size=2048,
         )
         logger.info(f'train loss: {train_r2_loss} val loss: {val_loss}')
-
-
-#  def run(n_splits: int, fold_idx: int):
-#      df = read_csv('/store/takeda/train.csv')
-#      indices = kfold(df, n_splits=n_splits)
-#
-#      train_set = create_dataset(df.iloc[indices[fold_idx][0]])
-#      val_set = create_dataset(df.iloc[indices[fold_idx][1]])
-#      clf = train(
-#          train_set,
-#          val_set,
-#
-#      )
-#
+        if val_loss > best_val_loss:
+            best_val_loss = val_loss
+            save_model(model, f'/store/model-{fold_idx}')

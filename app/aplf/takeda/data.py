@@ -7,6 +7,7 @@ import numpy as np
 from torch import Tensor, tensor, float32
 from typing_extensions import Protocol
 from sklearn.model_selection import KFold
+import torch
 import lightgbm as lgbm
 
 
@@ -41,31 +42,13 @@ class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
         self.y = df['Score'].values
         self.x = df.drop('Score', axis=1).values
-        self.float_indices = self.__get_float_indices()
 
-    def __get_float_indices(self) -> t.List[int]:
-        indices = []
-        for i in range(self.x.shape[1]):
-            if len(np.unique(self.x[:, i])) > 10:
-                indices.append(i)
-        return indices
-
-    def __get_rand_tensor(self, indices: t.List[int]) -> t.Any:
-        base = np.zeros(self.x.shape[1])
-        rand = np.random.randn(len(self.float_indices)) * 0.05
-        for i, j in enumerate(self.float_indices):
-            base[j] = rand[i]
-        return base
 
     def __len__(self) -> int:
         return self.y.shape[0]
 
     def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
-        if np.random.randn() > 0:
-            rand_t = self.__get_rand_tensor(self.float_indices)
-            x = self.x[idx] + rand_t
-        else:
-            x = self.x[idx]
+        x = self.x[idx]
         y = self.y[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
@@ -74,3 +57,6 @@ def create_dataset(df) -> lgbm.Dataset:
     y = df['Score'].values
     x = df.drop('Score', axis=1).values
     return lgbm.Dataset(data=x, label=y)
+
+def save_model(model, path:str):
+    torch.save(model.state_dict(), path)
