@@ -65,7 +65,6 @@ def eval_epoch(
     loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
-        shuffle=True,
         pin_memory=True,
         num_workers=4,
     )
@@ -75,8 +74,33 @@ def eval_epoch(
         for source, ans in loader:
             source = source.to(cuda)
             ans = ans.to(cuda)
-            y = model(source)
-            loss = r2(y.view(-1), ans.view(-1))
+            y = model(source).view(-1)
+            loss = r2(y, ans.view(-1))
             sum_loss += loss.item()
     mean_loss = sum_loss / batch_len
     return (mean_loss, )
+
+def pred_epoch(
+    model: Model,
+    dataset: Dataset,
+    batch_size: int,
+) -> t.Tuple[float]:
+    model.eval()
+    cuda = device('cuda')
+    model = model.train().to(cuda)
+    loader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        pin_memory=True,
+        shuffle=False,
+        num_workers=1,
+    )
+    batch_len = len(loader)
+    sum_loss = 0
+    preds = []
+    with no_grad():
+        for source in loader:
+            source = source.to(cuda)
+            y = model(source).view(-1)
+            preds += y.tolist()
+    return preds

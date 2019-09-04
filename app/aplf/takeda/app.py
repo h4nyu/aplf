@@ -1,7 +1,7 @@
-from .data import read_csv, TakedaDataset, kfold, create_dataset, save_model
+from .data import read_csv, TakedaDataset, kfold, create_dataset, save_model, load_model, TakedaPredDataset, save_submit
 from torch.utils.data import Subset
 from .models import Model
-from .train.nn import train_epoch, eval_epoch
+from .train.nn import train_epoch, eval_epoch, pred_epoch
 from logging import getLogger
 logger = getLogger("takeda.app")
 
@@ -34,3 +34,19 @@ def run(n_splits: int, fold_idx: int) -> None:
         if val_loss > best_val_loss:
             best_val_loss = val_loss
             save_model(model, f'/store/model-{fold_idx}')
+
+def submit(model_path:str) -> None:
+    df = read_csv('/store/takeda/test.csv')
+    model = load_model(model_path)
+    dataset = TakedaPredDataset(df)
+    preds = pred_epoch(
+        model,
+        dataset,
+        2048,
+    )
+    save_submit(
+        df,
+        preds,
+        '/store/submit.csv'
+    )
+

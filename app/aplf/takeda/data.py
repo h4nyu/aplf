@@ -9,6 +9,7 @@ from typing_extensions import Protocol
 from sklearn.model_selection import KFold
 import torch
 import lightgbm as lgbm
+from .models import Model
 
 
 logger = getLogger("takeda.data")
@@ -40,8 +41,8 @@ def add_noise(df, unique_threshold=2):
 
 class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
-        self.y = df['Score'].values
         self.x = df.drop('Score', axis=1).values
+        self.y = df['Score'].values
 
 
     def __len__(self) -> int:
@@ -52,6 +53,17 @@ class TakedaDataset(Dataset):
         y = self.y[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
+class TakedaPredDataset(Dataset):
+    def __init__(self, df: t.Any) -> None:
+        self.x = df.values
+
+    def __len__(self) -> int:
+        return self.x.shape[0]
+
+    def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
+        x = self.x[idx]
+        return tensor(x, dtype=float32)
+
 
 def create_dataset(df) -> lgbm.Dataset:
     y = df['Score'].values
@@ -60,3 +72,18 @@ def create_dataset(df) -> lgbm.Dataset:
 
 def save_model(model, path:str):
     torch.save(model.state_dict(), path)
+
+
+def load_model(path:str):
+    model = Model(
+        size_in=3805,
+    )
+    model.load_state_dict(torch.load(path))
+    return model
+
+def save_submit(df, preds, path):
+    submit_df = pd.DataFrame({
+        'Score': preds
+    }, index=df.index)
+    submit_df.to_csv(path, header=False)
+    return submit_df

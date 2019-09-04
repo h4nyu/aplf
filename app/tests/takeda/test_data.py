@@ -1,4 +1,4 @@
-from aplf.takeda.data import read_csv, TakedaDataset, kfold, add_noise
+from aplf.takeda.data import read_csv, TakedaDataset, kfold, add_noise, save_submit
 from torch.utils.data import Dataset
 import typing as t
 import pandas as pd
@@ -50,3 +50,17 @@ def test_kfold() -> None:
     dataset = DatasetMock()
     res = kfold(dataset, n_splits=3)
     assert len(res) == 3
+
+
+def test_save_submit() -> None:
+    df = pd.DataFrame({
+        'Score': [0., 1., 2.5, 10],
+        'col1': [0., 1., 0., 1, ],
+        'col2': [0., 1., 1.5, 20],
+        'col3': [0., 1., 3, 0.5],
+    }, index=[0, 1, 2, 3])
+    preds = [11, 22, 33, 44]
+    df = save_submit(df, preds, '/store/submit.csv')
+
+
+
