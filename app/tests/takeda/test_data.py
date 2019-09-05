@@ -10,6 +10,8 @@ def test_read_csv() -> None:
     df = read_csv('/store/takeda/train.csv')
     print(df.std())
     print(df.mean())
+    print(df.min())
+    print(df.max())
     assert len(df.columns) == 3806
 
 
