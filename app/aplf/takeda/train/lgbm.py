@@ -29,7 +29,7 @@ def train(
         params=params,
         valid_sets=[train_set, val_set],
         valid_names=['Train', 'Test'],
-        num_boost_round=100000,
+        num_boost_round=150000,
         feval=eval,
         early_stopping_rounds=100,
         verbose_eval=20

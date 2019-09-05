@@ -1,6 +1,9 @@
 from aplf.takeda.app import run, submit
 
 def test_run_0() -> None:
+    """
+    submit 0.615
+    """
     lgbm_params = {
         'min_data_in_leaf': 20,
         'feature_fraction': 0.7,
@@ -15,9 +18,12 @@ def test_run_0() -> None:
     run(n_splits=10, fold_idx=0, lgbm_params=lgbm_params)
 
 def test_run_1() -> None:
+    """
+    feature_fraction 0.7 -> 0.8
+    """
     lgbm_params = {
         'min_data_in_leaf': 20,
-        'feature_fraction': 0.7,
+        'feature_fraction': 0.8,
         'max_bin_by_feature': 20,
         'learning_rate': 0.01,
         'num_leaves': 10,
@@ -27,9 +33,10 @@ def test_run_1() -> None:
         "l2_leaf_reg": 0.01,
     }
     run(
-        lgbm_params=lgbm_params,
+        prefix="feature_fraction",
         n_splits=10,
-        fold_idx=1,
+        fold_idx=0,
+        lgbm_params=lgbm_params,
     )
 
 def test_submit() -> None:

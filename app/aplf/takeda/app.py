@@ -8,6 +8,7 @@ logger = getLogger("takeda.app")
 
 
 def run(
+    prefix:str,
     n_splits: int,
     fold_idx: int,
     lgbm_params,
@@ -20,7 +21,7 @@ def run(
         tr_set,
         val_set,
         lgbm_params,
-        path=f"/store/lgbm-model-{n_splits}-{fold_idx}.pkl"
+        path=f"/store/{prefix}-lgbm-model-{n_splits}-{fold_idx}.pkl"
     )
 
 
