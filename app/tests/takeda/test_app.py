@@ -40,4 +40,7 @@ def test_run_1() -> None:
     )
 
 def test_submit() -> None:
-    submit('/store/lgbm-model-10-0.pkl')
+    submit([
+        '/store/lgbm-model-10-0.pkl',
+        '/store/feature_fraction-lgbm-model-10-0.pkl',
+    ])

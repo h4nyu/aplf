@@ -1,5 +1,7 @@
 from .data import read_csv, TakedaDataset, kfold, create_dataset, save_model, load_model, TakedaPredDataset, save_submit
 from torch.utils.data import Subset
+from cytoolz.curried import reduce
+import typing as t
 from .models import Model
 from .train.lgbm import train
 from logging import getLogger
@@ -25,12 +27,19 @@ def run(
     )
 
 
-def submit(path:str) -> None:
+def submit(paths:t.List[str]) -> None:
     df = read_csv('/store/takeda/test.csv')
-    with open(path, 'rb') as f:
-        model = pickle.load(f)
+    models = []
+    for p in paths:
+        with open(p, 'rb') as f:
+            models.append(pickle.load(f))
 
-    preds = model.predict(df)
+    preds = [
+        model.predict(df)
+        for model
+        in models
+    ]
+    preds = reduce(lambda x, y: x+y)(preds)/len(preds)
 
     save_submit(
         df,
