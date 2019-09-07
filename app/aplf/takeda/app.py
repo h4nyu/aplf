@@ -17,8 +17,8 @@ def run(
 ) -> None:
     df = read_csv('/store/takeda/train.csv')
     indices = kfold(df, n_splits=n_splits)
-    tr_set = create_dataset(df.iloc[indices[0][fold_idx]])
-    val_set = create_dataset(df.iloc[indices[1][fold_idx]])
+    tr_set = create_dataset(df.iloc[indices[fold_idx][0]])
+    val_set = create_dataset(df.iloc[indices[fold_idx][1]])
     train(
         tr_set,
         val_set,
