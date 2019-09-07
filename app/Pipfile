@@ -7,10 +7,13 @@ verify_ssl = true
 
 [packages]
 aplf = {editable = true,extras = ["dev"],path = "."}
+jupyterlab = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.6"
 
 [scripts]
 format = ""
+notebook = "jupyter notebook --config=./jupyter_notebook_config.py"
 lint = "bash -c 'autopep8 -ivr . && flake8 --show-source .'"

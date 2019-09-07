@@ -10,22 +10,92 @@ from sklearn.model_selection import KFold
 from pathlib import Path
 import torch
 import lightgbm as lgbm
+from aplf.utils.decorators import skip_if
+from pathlib import Path
 from .models import Model
 
 
 logger = getLogger("takeda.data")
 
 
-def read_csv(path: str) -> t.Any:
-    df = pd.read_csv(path)
+@skip_if(
+    lambda *args: Path(args[1]).is_file(),
+    lambda *args: args[1],
+)
+def csv_to_pkl(
+    in_path: str,
+    out_path: str,
+) -> t.Any:
+    df = pd.read_csv(in_path)
     df = df.set_index('ID')
-    return df
+    df.to_pickle(out_path)
+    return out_path
 
-def save_parquet(df, path: str) -> t.Any:
-    df = pd.read_csv(path)
-    df = df.set_index('ID')
-    return df
+@skip_if(
+    lambda *args: Path(args[1]).is_file(),
+    lambda *args: args[1],
+)
+def extracet_summary(
+    in_path: str,
+    out_path: str,
+) -> t.Any:
+    df = pd.read_pickle(in_path)
+    ds = df.describe()
+    ds.to_json(out_path)
+    return out_path
 
+@skip_if(
+    lambda *args: Path(args[1]).is_file(),
+    lambda *args: args[1],
+)
+def extract_col_type(
+    in_path: str,
+    out_path: str,
+) -> t.Any:
+    df = pd.read_json(in_path)
+    for i in df.iterrows():
+        print(i)
+    return out_path
+
+
+@skip_if(
+    lambda *args: Path(args[2]).is_file(),
+    lambda *args: args[2],
+)
+def compare_feature(
+    source_path: str,
+    dest_path: str,
+    out_path: str,
+) -> t.Any:
+    source = pd.read_json(source_path)
+    dest = pd.read_json(dest_path)
+    interaction = set(dest.columns) & set(source.columns)
+    df = dest[interaction] - source[interaction]
+    df.to_json(out_path)
+    return out_path
+
+@skip_if(
+    lambda *args: Path(args[2]).is_file(),
+    lambda *args: args[2],
+)
+def detect_col_type(
+    in_path: str,
+    out_path: str,
+) -> t.Any:
+    souce_df = pd.read_json(source_path)
+    return out_path
+
+@skip_if(
+    lambda *args: Path(args[2]).is_file(),
+    lambda *args: args[2],
+)
+def extract_score_distorsion(
+    in_path: str,
+    out_path: str,
+) -> t.Any:
+    souce_df = pd.read_pickle(source_path)
+    score = souce_df['Score']
+    return out_path
 
 def kfold(
     dataset: Dataset,
