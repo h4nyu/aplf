@@ -48,7 +48,7 @@ def test_kfold() -> None:
             return 10
 
         def __getitem__(self, index: int) -> t.Tuple[float, Tensor]:
-            return rand(10), randn(1)
+            return rand(10), rand(1)
     dataset = DatasetMock()
     res = kfold(dataset, n_splits=3)
     assert len(res) == 3
@@ -63,6 +63,3 @@ def test_save_submit() -> None:
     }, index=[0, 1, 2, 3])
     preds = [11, 22, 33, 44]
     df = save_submit(df, preds, '/store/submit.csv')
-
-
-

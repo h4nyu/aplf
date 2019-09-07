@@ -7,6 +7,7 @@ import numpy as np
 from torch import Tensor, tensor, float32
 from typing_extensions import Protocol
 from sklearn.model_selection import KFold
+from pathlib import Path
 import torch
 import lightgbm as lgbm
 from .models import Model
@@ -30,20 +31,10 @@ def kfold(
     return list(kf.split(dataset))
 
 
-def add_noise(df, unique_threshold=2):
-    indices = []
-    for idx in range(len(df.columns)):
-        print(df.iloc[:, idx].unique())
-        print(idx)
-        if len(df.iloc[:, idx].unique()) > unique_threshold:
-            indices.append(idx)
-
-
 class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
         self.x = df.drop('Score', axis=1).values
         self.y = df['Score'].values
-
 
     def __len__(self) -> int:
         return self.y.shape[0]
@@ -53,6 +44,7 @@ class TakedaDataset(Dataset):
         y = self.y[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
+
 class TakedaPredDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
         self.x = df.values
@@ -60,28 +52,34 @@ class TakedaPredDataset(Dataset):
     def __len__(self) -> int:
         return self.x.shape[0]
 
-    def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
+    def __getitem__(self, idx: int) -> Tensor:
         x = self.x[idx]
         return tensor(x, dtype=float32)
 
 
-def create_dataset(df) -> lgbm.Dataset:
+def create_dataset(df: t.Any) -> t.Tuple[t.Any, t.Any]:
     y = df['Score'].values
     x = df.drop('Score', axis=1).values
-    return lgbm.Dataset(data=x, label=y)
+    return lgbm.Dataset(x, y)
 
-def save_model(model, path:str):
+
+def save_model(model: Model, path: str) -> None:
     torch.save(model.state_dict(), path)
 
 
-def load_model(path:str):
+def load_model(path: str) -> Model:
     model = Model(
         size_in=3805,
     )
     model.load_state_dict(torch.load(path))
     return model
 
-def save_submit(df, preds, path):
+
+def save_submit(
+    df,
+    preds,
+    path,
+) -> Path:
     submit_df = pd.DataFrame({
         'Score': preds
     }, index=df.index)

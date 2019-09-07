@@ -17,7 +17,7 @@ def train_epoch(
     model: Model,
     dataset: Dataset,
     batch_size: int,
-) -> t.Tuple[float,float]:
+) -> t.Tuple[float, float]:
     cuda = device('cuda')
     model = model.train().to(cuda)
     loader = DataLoader(
@@ -50,7 +50,7 @@ def train_epoch(
         sum_r2_loss += r2_loss.item()
 
     mean_loss = sum_loss / batch_len
-    mean_r2_loss =  sum_r2_loss / batch_len
+    mean_r2_loss = sum_r2_loss / batch_len
     return (mean_loss, mean_r2_loss)
 
 
@@ -79,6 +79,7 @@ def eval_epoch(
             sum_loss += loss.item()
     mean_loss = sum_loss / batch_len
     return (mean_loss, )
+
 
 def pred_epoch(
     model: Model,

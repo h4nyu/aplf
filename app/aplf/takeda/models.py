@@ -76,8 +76,7 @@ class Model(nn.Module):
             )
         )
 
-
-    def forward(self, x:Tensor) -> Tensor: # type: ignore
+    def forward(self, x: Tensor) -> Tensor:  # type: ignore
         y = self.fc00(x)
         y = self.fc01(y)
         y = self.fc11(y)

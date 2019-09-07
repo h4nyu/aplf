@@ -1,6 +1,5 @@
 from aplf.takeda.models import Model
 from torch import tensor, rand
-import torchvision
 
 
 def test_model() -> None:

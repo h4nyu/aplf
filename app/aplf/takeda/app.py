@@ -10,10 +10,10 @@ logger = getLogger("takeda.app")
 
 
 def run(
-    prefix:str,
+    prefix: str,
     n_splits: int,
     fold_idx: int,
-    lgbm_params,
+    lgbm_params: t.Dict[str, t.Any],
 ) -> None:
     df = read_csv('/store/takeda/train.csv')
     indices = kfold(df, n_splits=n_splits)
@@ -27,7 +27,7 @@ def run(
     )
 
 
-def submit(paths:t.List[str]) -> None:
+def submit(paths: t.List[str]) -> None:
     df = read_csv('/store/takeda/test.csv')
     models = []
     for p in paths:
