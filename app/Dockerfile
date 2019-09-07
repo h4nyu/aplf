@@ -19,4 +19,4 @@ ENV PATH /opt/conda/bin:$PATH
 RUN pip install pipenv
 WORKDIR /srv
 COPY ./ /srv
-RUN pipenv install --system
+RUN pipenv install
