@@ -1,4 +1,13 @@
-from .data import read_csv, TakedaDataset, kfold, create_dataset, save_model, load_model, TakedaPredDataset, save_submit
+from .data import(
+    read_csv, 
+    TakedaDataset, 
+    kfold, 
+    create_dataset, 
+    save_model, 
+    load_model, 
+    TakedaPredDataset, 
+    save_submit,
+)
 from torch.utils.data import Subset
 from cytoolz.curried import reduce
 import typing as t
@@ -16,15 +25,16 @@ def run(
     lgbm_params: t.Dict[str, t.Any],
 ) -> None:
     df = read_csv('/store/takeda/train.csv')
-    indices = kfold(df, n_splits=n_splits)
-    tr_set = create_dataset(df.iloc[indices[fold_idx][0]])
-    val_set = create_dataset(df.iloc[indices[fold_idx][1]])
-    train(
-        tr_set,
-        val_set,
-        lgbm_params,
-        path=f"/store/{prefix}-lgbm-model-{n_splits}-{fold_idx}.pkl"
-    )
+
+    #  indices = kfold(df, n_splits=n_splits)
+    #  tr_set = create_dataset(df.iloc[indices[fold_idx][0]])
+    #  val_set = create_dataset(df.iloc[indices[fold_idx][1]])
+    #  train(
+    #      tr_set,
+    #      val_set,
+    #      lgbm_params,
+    #      path=f"/store/{prefix}-lgbm-model-{n_splits}-{fold_idx}.pkl"
+    #  )
 
 
 def submit(paths: t.List[str]) -> None:

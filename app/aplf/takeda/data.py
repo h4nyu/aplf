@@ -21,6 +21,11 @@ def read_csv(path: str) -> t.Any:
     df = df.set_index('ID')
     return df
 
+def save_parquet(df, path: str) -> t.Any:
+    df = pd.read_csv(path)
+    df = df.set_index('ID')
+    return df
+
 
 def kfold(
     dataset: Dataset,
