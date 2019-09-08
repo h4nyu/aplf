@@ -120,8 +120,7 @@ def train_epoch(
         loss.backward()
         optimizer.step()
         sum_loss += loss.item()
-        r2_loss = r2(y.view(-1), ans.view(-1))
-        sum_r2_loss += r2_loss.item()
+        sum_r2_loss += r2(y.view(-1), ans.view(-1)).item()
 
     mean_loss = sum_loss / batch_len
     mean_r2_loss = sum_r2_loss / batch_len
