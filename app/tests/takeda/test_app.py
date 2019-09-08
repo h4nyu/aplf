@@ -1,4 +1,4 @@
-from aplf.takeda.app import run, submit
+from aplf.takeda.app import run, submit, pre_submit
 
 def test_run_0() -> None:
     """
@@ -17,3 +17,6 @@ def test_run_1() -> None:
 
 def test_submit() -> None:
     submit(base_dir="/store/aug")
+
+def test_pre_submit() -> None:
+    pre_submit(base_dir="/store/aug")

@@ -60,6 +60,31 @@ def run(
         val_indices
     )
 
+def pre_submit(base_dir: str) -> None:
+    tr_df = csv_to_pkl(
+        '/store/takeda/train.csv',
+        f'{base_dir}/train.pkl',
+    )
+    tr_dataset = TakedaDataset(tr_df)
+    model_paths = glob(f'{base_dir}/model-*.pkl')
+    models = [
+        load_model(p)
+        for p
+        in model_paths
+    ]
+    preds = [
+        pred(model, tr_dataset)
+        for model
+        in models
+    ]
+    preds = reduce(lambda x, y: x+y)(preds)/len(preds)
+
+    save_submit(
+        tr_df,
+        preds,
+        f'{base_dir}/pre_submit.csv'
+    )
+
 
 def submit(base_dir: str) -> None:
     ev_df = csv_to_pkl(
