@@ -13,7 +13,9 @@ import torch
 import lightgbm as lgbm
 from aplf.utils.decorators import skip_if
 from pathlib import Path
+import matplotlib.pyplot as plt
 from .models import Model
+
 
 
 logger = getLogger("takeda.data")
@@ -179,3 +181,12 @@ def save_submit(
     submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x > -1  else -1. )
     submit_df.to_csv(path, header=False)
     return submit_df
+
+
+def dump_hist_plot(series:t.Any, path:str) -> None:
+    if Path(path).is_file():
+        return
+    ax = series.hist(bins=100)  # s is an instance of Series
+    fig = ax.get_figure()
+    fig.savefig(path)
+    plt.close()

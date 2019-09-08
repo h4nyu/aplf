@@ -10,6 +10,7 @@ from .data import(
     save_submit,
     extract_col_type,
     compare_feature,
+    dump_hist_plot,
 )
 from cytoolz.curried import reduce
 import typing as t
@@ -20,8 +21,31 @@ import pickle
 import pandas as pd
 from multiprocessing import Pool
 from glob import glob
+from concurrent.futures import ProcessPoolExecutor
+import asyncio
 logger = getLogger("takeda.app")
 
+
+async def explore(
+    base_dir:str,
+) -> None:
+    tr_df = csv_to_pkl(
+        '/store/takeda/train.csv',
+        f'{base_dir}/train.pkl',
+    )
+    loop = asyncio.get_event_loop()
+    with ProcessPoolExecutor(max_workers=12) as pool:
+         futures = [
+             loop.run_in_executor(
+                 pool,
+                 dump_hist_plot,
+                 tr_df[c],
+                 f"{base_dir}/hist-{c}.png"
+             )
+             for c
+             in tr_df.columns
+         ]
+         asyncio.gather(*futures)
 
 def run(
     base_dir:str,
@@ -60,6 +84,7 @@ def run(
         val_indices
     )
 
+
 def pre_submit(base_dir: str) -> None:
     tr_df = csv_to_pkl(
         '/store/takeda/train.csv',
@@ -84,7 +109,6 @@ def pre_submit(base_dir: str) -> None:
         preds,
         f'{base_dir}/pre_submit.csv'
     )
-
 
 def submit(base_dir: str) -> None:
     ev_df = csv_to_pkl(

@@ -1,4 +1,5 @@
-from aplf.takeda.app import run, submit, pre_submit
+from aplf.takeda.app import run, submit, pre_submit, explore
+import pytest
 
 def test_run_0() -> None:
     """
@@ -20,3 +21,7 @@ def test_submit() -> None:
 
 def test_pre_submit() -> None:
     pre_submit(base_dir="/store/aug")
+
+@pytest.mark.asyncio
+async def test_explore() -> None:
+    await explore(base_dir="/store/aug")
