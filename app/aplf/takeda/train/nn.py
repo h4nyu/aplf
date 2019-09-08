@@ -26,10 +26,6 @@ def add_noise(means, device):
         return x * neg_mask + pos_mask * _means
     return _inner
 
-@skip_if(
-    lambda *args: Path(args[0]).is_file(),
-    lambda *args: load_model(args[0]),
-)
 def train(
     path:str,
     tr_dataset,
@@ -38,11 +34,14 @@ def train(
     val_indices,
 ):
     cuda = device('cuda')
-    model = Model(
-        size_in=3805,
-    )
-    model = model.to(cuda)
+    if Path(path).is_file():
+        model = load_model(path)
+    else:
+        model = Model(
+            size_in=3805,
+        )
 
+    model = model.to(cuda)
     tr_set = Subset(tr_dataset, indices=tr_indices)
     val_set = Subset(tr_dataset, indices=val_indices)
     tr_all_loader = DataLoader(
@@ -63,7 +62,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=1024,
+        batch_size=256,
         shuffle=True,
         pin_memory=True,
         num_workers=4,
@@ -90,7 +89,7 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        tr_dist_loss, = train_distorsion(
+        tr_dist_loss, = train_regulation(
             model,
             tr_all_loader,
         )
@@ -116,7 +115,7 @@ def train_epoch(
         source = source.to(cuda)
         ans = ans.to(cuda)
         y = model(source)
-        loss = l1_loss(y.view(-1), ans.view(-1))
+        loss = mse_loss(y.view(-1), ans.view(-1))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -128,14 +127,14 @@ def train_epoch(
     mean_r2_loss = sum_r2_loss / batch_len
     return (mean_loss, mean_r2_loss)
 
-def regular_loss(pred, lower, heigher, mean=2.0248391529):
+def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
     heigher_mask = (pred > heigher).to(pred.device)
     mask = (lower_mask | heigher_mask).float()
     masked_pred = pred * mask
-    ans = mean * ones(*pred.size()).to(pred.device) * lower_mask.float()
-    + mean * ones(*pred.size()).to(pred.device) * heigher_mask.float()
-    return l1_loss(masked_pred, ans)
+    ans = lower * ones(*pred.size()).to(pred.device) * lower_mask.float()
+    + heigher * ones(*pred.size()).to(pred.device) * heigher_mask.float()
+    return mse_loss(masked_pred, ans)
 
 def train_regulation(
     model,
@@ -151,7 +150,7 @@ def train_regulation(
     for source, _ in loader:
         source = source.to(cuda)
         y = model(source).view(-1)
-        loss = regular_loss(y, -1, 5.)
+        loss = 0.1*regular_loss(y, -1, 5.)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -177,7 +176,7 @@ def train_distorsion(
         y = model(source).view(-1)
         y_mean = y.mean()
         y_std = y.std()
-        loss = l1_loss(y_mean, tensor([2.02]).to(cuda)) + mse_loss(y_std, tensor([0.92]).to(cuda))
+        loss = mse_loss(y_mean, tensor([2.02]).to(cuda)) + mse_loss(y_std, tensor([0.92]).to(cuda))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

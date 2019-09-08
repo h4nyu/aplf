@@ -40,38 +40,35 @@ class Model(nn.Module):
     ) -> None:
         super().__init__()
         r = 8
-        self.fc00 = ResBlock(
-            size_in // (r**0),
-            size_in // (r**0),
+        self.input = nn.Sequential(
+            nn.BatchNorm1d(size_in)
         )
-
-        self.fc01 = ResBlock(
+        self.fc0 = ResBlock(
             size_in // (r**0),
             size_in // (r**1),
         )
 
-        self.fc11 = ResBlock(
-            size_in // (r**1),
-            size_in // (r**1),
-        )
-
-        self.fc12 = ResBlock(
+        self.fc1 = ResBlock(
             size_in // (r**1),
             size_in // (r**2),
         )
 
+        self.fc2 = ResBlock(
+            size_in // (r**2),
+            size_in // (r**3),
+        )
+
         self.out = nn.Sequential(
-            nn.BatchNorm1d(size_in // (r**2)),
             nn.Linear(
-                size_in // (r**2),
+                size_in // (r**3),
                 1,
             ),
         )
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
-        y = self.fc00(x)
-        y = self.fc01(y)
-        y = self.fc11(y)
-        y = self.fc12(y)
+        y = self.input(x)
+        y = self.fc0(x)
+        y = self.fc1(y)
+        y = self.fc2(y)
         y = self.out(y)
         return y

@@ -9,6 +9,7 @@ verify_ssl = true
 aplf = {editable = true,extras = ["dev"],path = "."}
 jupyterlab = "*"
 matplotlib = "*"
+imbalanced-learn = "*"
 
 [requires]
 python_version = "3.6"
