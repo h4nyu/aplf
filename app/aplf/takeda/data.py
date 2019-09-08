@@ -40,7 +40,6 @@ def extracet_summary(
     df: str,
     out_path: str,
 ) -> t.Any:
-    df = pd.read_pickle(in_path)
     ds = df.describe()
     ds.to_json(out_path)
     return df
