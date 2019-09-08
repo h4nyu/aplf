@@ -13,6 +13,7 @@ from .data import(
     dump_hist_plot,
 )
 from cytoolz.curried import reduce
+from sklearn.metrics import r2_score
 import typing as t
 from .models import Model
 from .train.nn import train, pred
@@ -92,6 +93,7 @@ def pre_submit(base_dir: str) -> None:
     )
     tr_dataset = TakedaDataset(tr_df)
     model_paths = glob(f'{base_dir}/model-*.pkl')
+    logger.info(f"{model_paths}")
     models = [
         load_model(p)
         for p
@@ -104,6 +106,7 @@ def pre_submit(base_dir: str) -> None:
     ]
     preds = reduce(lambda x, y: x+y)(preds)/len(preds)
 
+    print(r2_score(tr_df['Score'], preds))
     save_submit(
         tr_df,
         preds,

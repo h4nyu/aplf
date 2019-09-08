@@ -55,8 +55,8 @@ def train(
 
     ev_loader = DataLoader(
         dataset=ev_dataset,
-        batch_size=1024,
-        shuffle=True,
+        batch_size=1,
+        shuffle=False,
         pin_memory=True,
         num_workers=4,
     )
@@ -96,9 +96,11 @@ def train(
             model,
             val_loader,
         )
-        save_model(model, path)
+        if best_score < val_loss:
+            best_score = val_loss
+            save_model(model, path)
 
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss} val: {val_loss} best:{best_score}")
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss}, val: {val_loss} bs:{best_score}")
 
 
 
@@ -119,7 +121,7 @@ def train_epoch(
         labels.append(label)
     labels = cat(labels).to(cuda).view(-1)
     sources = cat(sources).to(cuda)
-    preds = model(sources)
+    preds = model(sources).view(-1)
     loss = mse_loss(preds, labels)
     optimizer.zero_grad()
     loss.backward()
@@ -219,16 +221,15 @@ def eval_epoch(
     sum_loss = 0
     preds = []
     labels = []
+    sources = []
     with no_grad():
         for source, label in loader:
-            source = source.to(cuda)
-            label = label.to(cuda)
-            pred = model(source)
-            preds.append(pred)
+            sources.append(source)
             labels.append(label)
 
-    preds = cat(preds)
-    labels = cat(labels)
+    sources = cat(sources).to(cuda)
+    labels = cat(labels).to(cuda)
+    preds = model(sources).view(-1)
     loss = r2(preds, labels)
     return (loss.item(), )
 
@@ -250,10 +251,16 @@ def pred(
     batch_len = len(loader)
     sum_loss = 0
     preds = []
+    sources = []
+    labels = []
     with no_grad():
-        for source, _ in loader:
-            source = source.to(cuda)
-            pred = model(source).view(-1)
-            preds.append(pred)
-    preds = cat(preds).view(-1)
-    return preds.cpu().numpy()
+        for source, label in loader:
+            sources.append(source)
+            labels.append(label)
+
+    labels = cat(labels).to(cuda)
+    sources = cat(sources).to(cuda)
+    preds = model(sources).view(-1)
+    loss = r2(preds, labels)
+    logger.info(f"loss:{loss.item()}")
+    return preds.detach().cpu().numpy()

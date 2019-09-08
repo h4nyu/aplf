@@ -127,14 +127,13 @@ class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
         self.x = df.drop('Score', axis=1).values
         self.y = df['Score'].values
-        self.stds = df.drop('Score', axis=1).std().values
-        self.means = df.drop('Score', axis=1).mean().values
+        self.df = df
 
     def __len__(self) -> int:
         return self.y.shape[0]
 
     def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
-        x = self.x[idx] 
+        x = self.x[idx]
         y = self.y[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
@@ -177,8 +176,6 @@ def save_submit(
     submit_df = pd.DataFrame({
         'Score': preds
     }, index=df.index)
-    #  submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x < 5  else 5. )
-    #  submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x > -1  else -1. )
     submit_df.to_csv(path, header=False)
     return submit_df
 
