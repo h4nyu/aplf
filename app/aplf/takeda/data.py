@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import typing as t
 import pandas as pd
 import numpy as np
+from numpy.random import random_integers, randint
 from torch import Tensor, tensor, float32
 from typing_extensions import Protocol
 from sklearn.model_selection import KFold
@@ -20,7 +21,7 @@ logger = getLogger("takeda.data")
 
 @skip_if(
     lambda *args: Path(args[1]).is_file(),
-    lambda *args: args[1],
+    lambda *args: pd.read_pickle(args[1]),
 )
 def csv_to_pkl(
     in_path: str,
@@ -29,24 +30,24 @@ def csv_to_pkl(
     df = pd.read_csv(in_path)
     df = df.set_index('ID')
     df.to_pickle(out_path)
-    return out_path
+    return df
 
 @skip_if(
     lambda *args: Path(args[1]).is_file(),
-    lambda *args: args[1],
+    lambda *args: pd.read_json(args[1]),
 )
 def extracet_summary(
-    in_path: str,
+    df: str,
     out_path: str,
 ) -> t.Any:
     df = pd.read_pickle(in_path)
     ds = df.describe()
     ds.to_json(out_path)
-    return out_path
+    return df
 
 @skip_if(
     lambda *args: Path(args[1]).is_file(),
-    lambda *args: args[1],
+    lambda *args: pd.read_json(args[1]),
 )
 def extract_col_type(
     in_path: str,
@@ -97,6 +98,21 @@ def extract_score_distorsion(
     score = souce_df['Score']
     return out_path
 
+@skip_if(
+    lambda *args: Path(args[2]).is_file(),
+    lambda *args: args[2],
+)
+def create_dateaset(
+    in_path: str,
+    out_path: str,
+) -> t.Any:
+    df = pd.read_pickle(source_path)
+    dataset = TakedaDataset(df)
+    with open(out_path, 'wb') as f:
+        pickle.dump(dataset, f)
+    score = souce_df['Score']
+    return out_path
+
 def kfold(
     dataset: Dataset,
     n_splits: int,
@@ -110,12 +126,14 @@ class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
         self.x = df.drop('Score', axis=1).values
         self.y = df['Score'].values
+        self.stds = df.drop('Score', axis=1).std().values
+        self.means = df.drop('Score', axis=1).mean().values
 
     def __len__(self) -> int:
         return self.y.shape[0]
 
     def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
-        x = self.x[idx]
+        x = self.x[idx] 
         y = self.y[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
@@ -129,7 +147,7 @@ class TakedaPredDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tensor:
         x = self.x[idx]
-        return tensor(x, dtype=float32)
+        return tensor(x, dtype=float32), tensor(0, dtype=float32)
 
 
 def create_dataset(df: t.Any) -> t.Tuple[t.Any, t.Any]:

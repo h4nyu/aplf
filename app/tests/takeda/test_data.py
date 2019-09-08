@@ -25,16 +25,14 @@ def test_csv_to_pkl() -> None:
 def test_dataset() -> None:
     df = pd.DataFrame({
         'Score': [0., 1.],
-        'col1': [0., 1.],
+        'col1': [10., 20.],
         'col2': [0., 1.],
     }, index=[0, 1])
     dataset = TakedaDataset(df)
     assert len(dataset) == 2
     print(dataset[0])
 
-    assert all(tensor([0., 0.]) == dataset[0][0])
     assert 0. == dataset[0][1]
-    assert all(tensor([1., 1.]) == dataset[1][0])
     assert 1. == dataset[1][1]
 
 

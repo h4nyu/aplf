@@ -1,4 +1,4 @@
-from aplf.takeda.train import train_epoch
+from aplf.takeda.train.nn import regular_loss
 from aplf.takeda.models import Model
 from torch.utils.data import Dataset
 from torch import tensor, rand, Tensor, randn
@@ -15,14 +15,8 @@ class DatasetMock(Dataset):
         return rand(10), randn(1)
 
 
-def test_train_epoch() -> None:
-    dataset = DatasetMock()
-    model = Model(
-        size_in=10,
-    )
 
-    out = train_epoch(
-        model,
-        dataset,
-        batch_size=10,
-    )
+def test_regular_loss() -> None:
+    pres = randn(4, 2)
+    loss = regular_loss(pres, -0.5, 5)
+    print(loss)

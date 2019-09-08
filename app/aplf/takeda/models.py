@@ -1,5 +1,6 @@
 import torch.nn as nn
 from torch import Tensor
+from torch.nn.functional import relu
 
 
 class ResBlock(nn.Module):
@@ -21,16 +22,13 @@ class ResBlock(nn.Module):
             nn.Linear(in_ch, in_ch),
             nn.BatchNorm1d(in_ch),
             nn.ReLU(),
-            nn.Linear(in_ch, in_ch),
-            nn.BatchNorm1d(in_ch),
-            nn.ReLU(),
-            nn.Linear(in_ch, in_ch),
         )
 
     def forward(self, x: Tensor) -> Tensor:
         residual = x
         out = self.block(x)
         out += residual
+        out = relu(out)
         if self.projection:
             out = self.projection(out)
         return out
