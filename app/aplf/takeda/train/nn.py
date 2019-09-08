@@ -89,12 +89,12 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        tr_dist_loss, = train_distorsion(
-            model,
-            tr_all_loader,
-        )
+        #  tr_dist_loss, = train_distorsion(
+        #      model,
+        #      tr_all_loader,
+        #  )
 
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist: {tr_dist_loss} val: {val_loss} best:{best_score}")
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss}  val: {val_loss} best:{best_score}")
 
 
 
@@ -115,7 +115,7 @@ def train_epoch(
         source = source.to(cuda)
         ans = ans.to(cuda)
         y = model(source)
-        loss = 1 - r2(y.view(-1), ans.view(-1))
+        loss = 1 - r2( y.view(-1), ans.view(-1))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
