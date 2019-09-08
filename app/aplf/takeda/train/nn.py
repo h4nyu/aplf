@@ -90,16 +90,6 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        tr_reg_loss, = train_regulation(
-            model,
-            tr_all_loader,
-        )
-
-        ev_reg_loss, = train_regulation(
-            model,
-            ev_loader,
-        )
-
         tr_dist_loss, = train_distorsion(
             model,
             tr_all_loader,
@@ -109,7 +99,7 @@ def train(
             model,
             ev_loader,
         )
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss + ev_reg_loss} dist: {tr_dist_loss+ev_dist_loss} val: {val_loss} best:{best_score}")
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist: {tr_dist_loss+ev_dist_loss} val: {val_loss} best:{best_score}")
 
 
 
