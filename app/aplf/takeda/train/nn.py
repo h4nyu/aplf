@@ -115,7 +115,7 @@ def train_epoch(
         source = source.to(cuda)
         ans = ans.to(cuda)
         y = model(source)
-        loss = r2_loss(y.view(-1), ans.view(-1))
+        loss = r2(y.view(-1), ans.view(-1))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
