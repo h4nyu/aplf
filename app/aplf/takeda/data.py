@@ -190,3 +190,9 @@ def dump_hist_plot(series:t.Any, path:str) -> None:
     fig = ax.get_figure()
     fig.savefig(path)
     plt.close()
+
+def extract_no_change_colums(df:t.Any, path:str) -> t.List[str]:
+    if Path(path).is_file():
+        return
+    std = df.std()
+    return std[std==0].index.tolist()

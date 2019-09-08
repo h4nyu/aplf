@@ -62,12 +62,9 @@ class Model(nn.Module):
 
         self.out = nn.Sequential(
             nn.BatchNorm1d(size_in // r**2),
+            nn.Tanh(),
             nn.Linear(
                 size_in // (r**2),
-                size_in // (r**3),
-            ),
-            nn.Linear(
-                size_in // (r**3),
                 1,
             ),
         )
