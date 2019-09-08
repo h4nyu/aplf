@@ -99,7 +99,17 @@ def train(
             model,
             ev_loader,
         )
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss + ev_reg_loss} val: {val_loss} best:{best_score}")
+
+        tr_dist_loss, = train_distorsion(
+            model,
+            tr_all_loader,
+        )
+
+        ev_dist_loss, = train_distorsion(
+            model,
+            ev_loader,
+        )
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss + ev_reg_loss} dist: {tr_dist_loss+ev_dist_loss} val: {val_loss} best:{best_score}")
 
 
 
@@ -156,6 +166,32 @@ def train_regulation(
         source = source.to(cuda)
         y = model(source).view(-1)
         loss = regular_loss(y, -1, 5.)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        sum_loss += loss.item()
+
+    mean_loss = sum_loss / batch_len
+    return (mean_loss, )
+
+
+def train_distorsion(
+    model,
+    loader,
+) -> t.Tuple[float]:
+    cuda = device('cuda')
+    batch_len = len(loader)
+    optimizer = Adam(
+        model.parameters(),
+        amsgrad=True,
+    )
+    sum_loss = 0.
+    for source, _ in loader:
+        source = source.to(cuda)
+        y = model(source).view(-1)
+        y_mean = y.mean()
+        y_std = y.std()
+        loss = mse_loss(y_mean, tensor([2.02]).to(cuda)) + mse_loss(y_std, tensor([0.92]).to(cuda))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
