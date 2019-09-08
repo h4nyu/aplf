@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 import multiprocessing
 from torch.optim import Adam
 from torch import device, no_grad, randn, tensor, ones
-from torch.nn.functional import mse_loss
+from torch.nn.functional import mse_loss, l1_loss
 import numpy as np
 from pathlib import Path
 import typing as t
@@ -116,7 +116,7 @@ def train_epoch(
         source = source.to(cuda)
         ans = ans.to(cuda)
         y = model(source)
-        loss = mse_loss(y.view(-1), ans.view(-1))
+        loss = l1_loss(y.view(-1), ans.view(-1))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -135,7 +135,7 @@ def regular_loss(pred, lower, heigher, mean=2.0248391529):
     masked_pred = pred * mask
     ans = mean * ones(*pred.size()).to(pred.device) * lower_mask.float()
     + mean * ones(*pred.size()).to(pred.device) * heigher_mask.float()
-    return mse_loss(masked_pred, ans)
+    return l1_loss(masked_pred, ans)
 
 def train_regulation(
     model,
@@ -177,7 +177,7 @@ def train_distorsion(
         y = model(source).view(-1)
         y_mean = y.mean()
         y_std = y.std()
-        loss = mse_loss(y_mean, tensor([2.02]).to(cuda)) + mse_loss(y_std, tensor([0.92]).to(cuda))
+        loss = l1_loss(y_mean, tensor([2.02]).to(cuda)) + mse_loss(y_std, tensor([0.92]).to(cuda))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
