@@ -22,6 +22,9 @@ class ResBlock(nn.Module):
             nn.Linear(in_ch, in_ch),
             nn.BatchNorm1d(in_ch),
             nn.ReLU(),
+            nn.Linear(in_ch, in_ch),
+            nn.BatchNorm1d(in_ch),
+            nn.ReLU(),
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -39,7 +42,7 @@ class Model(nn.Module):
         size_in: int,
     ) -> None:
         super().__init__()
-        r = 8
+        r = 4
         self.input = nn.Sequential(
             nn.BatchNorm1d(size_in)
         )

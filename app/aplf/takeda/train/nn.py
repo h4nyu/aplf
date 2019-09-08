@@ -62,7 +62,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=256,
+        batch_size=64,
         shuffle=True,
         pin_memory=True,
         num_workers=4,
@@ -74,12 +74,22 @@ def train(
         pin_memory=True,
         num_workers=4,
     )
+    tr_optim = Adam(
+        model.parameters(),
+        amsgrad=True,
+    )
+
+    dist_optim = Adam(
+        model.parameters(),
+        amsgrad=True,
+    )
     best_score = 0.
     tr_reg_loss = 0.
     for i in range(10000):
         tr_loss, tr_r2_loss = train_epoch(
             model,
             tr_loader,
+            tr_optim,
         )
         val_loss, = eval_epoch(
             model,
@@ -89,12 +99,13 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        #  tr_dist_loss, = train_distorsion(
-        #      model,
-        #      tr_all_loader,
-        #  )
+        tr_dist_loss, = train_distorsion(
+            model,
+            tr_all_loader,
+            dist_optim,
+        )
 
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss}  val: {val_loss} best:{best_score}")
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss} val: {val_loss} best:{best_score}")
 
 
 
@@ -102,13 +113,10 @@ def train(
 def train_epoch(
     model,
     loader,
+    optimizer,
 ) -> t.Tuple[float, float]:
     cuda = device('cuda')
     batch_len = len(loader)
-    optimizer = Adam(
-        model.parameters(),
-        amsgrad=True,
-    )
     sum_loss = 0.
     sum_r2_loss = 0.
     for source, ans in loader:
@@ -162,13 +170,10 @@ def train_regulation(
 def train_distorsion(
     model,
     loader,
+    optimizer,
 ) -> t.Tuple[float]:
     cuda = device('cuda')
     batch_len = len(loader)
-    optimizer = Adam(
-        model.parameters(),
-        amsgrad=True,
-    )
     sum_loss = 0.
     for source, _ in loader:
         source = source.to(cuda)
