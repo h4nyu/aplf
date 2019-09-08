@@ -3,6 +3,7 @@ import multiprocessing
 from torch.optim import Adam
 from torch import device, no_grad, randn, tensor, ones
 from torch.nn.functional import mse_loss
+import numpy as np
 from pathlib import Path
 import typing as t
 from logging import getLogger
@@ -74,22 +75,14 @@ def train(
         pin_memory=True,
         num_workers=4,
     )
-    best_score = 0.0
+    best_score = 0.
+    tr_reg_loss = 0.
     for i in range(10000):
         tr_loss, tr_r2_loss = train_epoch(
             model,
             tr_loader,
         )
-        tr_reg_loss, = train_regulation(
-            model,
-            tr_all_loader,
-        )
-
-        ev_reg_loss, = train_regulation(
-            model,
-            ev_loader,
-        )
-        val_loss,  = eval_epoch(
+        val_loss, = eval_epoch(
             model,
             val_loader,
         )
@@ -97,7 +90,14 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss+ev_reg_loss} val: {val_loss} best:{best_score}")
+        if val_loss > 0.:
+            tr_reg_loss, = train_regulation(
+                model,
+                tr_all_loader,
+            )
+
+
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss} val: {val_loss} best:{best_score}")
 
 
 
@@ -211,7 +211,7 @@ def eval_epoch(
     return (mean_loss, )
 
 
-def pred_epoch(
+def pred(
     model: Model,
     dataset: Dataset,
 ) -> t.Tuple[float]:
@@ -220,17 +220,17 @@ def pred_epoch(
     model = model.train().to(cuda)
     loader = DataLoader(
         dataset=dataset,
-        batch_size=batch_size,
+        batch_size=2048,
         pin_memory=True,
-        shuffle=2048,
+        shuffle=False,
         num_workers=1,
     )
     batch_len = len(loader)
     sum_loss = 0
     preds = []
     with no_grad():
-        for source in loader:
+        for source, _ in loader:
             source = source.to(cuda)
             y = model(source).view(-1)
             preds += y.tolist()
-    return preds
+    return np.array(preds)

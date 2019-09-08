@@ -28,7 +28,6 @@ class ResBlock(nn.Module):
         residual = x
         out = self.block(x)
         out += residual
-        out = relu(out)
         if self.projection:
             out = self.projection(out)
         return out
@@ -40,7 +39,7 @@ class Model(nn.Module):
         size_in: int,
     ) -> None:
         super().__init__()
-        r = 2
+        r = 8
         self.fc00 = ResBlock(
             size_in // (r**0),
             size_in // (r**0),
@@ -62,16 +61,11 @@ class Model(nn.Module):
         )
 
         self.out = nn.Sequential(
-            nn.Linear(
-                size_in // (r**2),
-                size_in // (r**2),
-            ),
-            nn.BatchNorm1d(size_in // (r**2)),
-            nn.ReLU(),
+            nn.BatchNorm1d(size_in // r**2),
             nn.Linear(
                 size_in // (r**2),
                 1
-            )
+            ),
         )
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore

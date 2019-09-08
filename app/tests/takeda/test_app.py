@@ -16,6 +16,4 @@ def test_run_1() -> None:
 
 
 def test_submit() -> None:
-    submit([
-        '/store/-lgbm-model-6-2.pkl',
-    ])
+    submit(base_dir="/store/aug")

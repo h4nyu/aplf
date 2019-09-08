@@ -14,11 +14,12 @@ from .data import(
 from cytoolz.curried import reduce
 import typing as t
 from .models import Model
-from .train.nn import train
+from .train.nn import train, pred
 from logging import getLogger
 import pickle
 import pandas as pd
 from multiprocessing import Pool
+from glob import glob
 logger = getLogger("takeda.app")
 
 
@@ -60,22 +61,27 @@ def run(
     )
 
 
-def submit(paths: t.List[str]) -> None:
-    df = read_csv('/store/takeda/test.csv')
-    models = []
-    for p in paths:
-        with open(p, 'rb') as f:
-            models.append(pickle.load(f))
-
+def submit(base_dir: str) -> None:
+    ev_df = csv_to_pkl(
+        '/store/takeda/test.csv',
+        f'{base_dir}/test.pkl',
+    )
+    ev_dataset = TakedaPredDataset(ev_df)
+    model_paths = glob(f'{base_dir}/model-*.pkl')
+    models = [
+        load_model(p)
+        for p
+        in model_paths
+    ]
     preds = [
-        model.predict(df)
+        pred(model, ev_dataset)
         for model
         in models
     ]
     preds = reduce(lambda x, y: x+y)(preds)/len(preds)
 
     save_submit(
-        df,
+        ev_df,
         preds,
-        '/store/submit.csv'
+        f'{base_dir}/submit.csv'
     )
