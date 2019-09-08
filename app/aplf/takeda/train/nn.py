@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader, Dataset, Subset
 import multiprocessing
 from torch.optim import Adam
-from torch import device, no_grad, randn, tensor, ones
+from torch import device, no_grad, randn, tensor, ones, cat
 from torch.nn.functional import mse_loss, l1_loss
 import numpy as np
 from pathlib import Path
@@ -62,7 +62,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=64,
+        batch_size=1024,
         shuffle=True,
         pin_memory=True,
         num_workers=4,
@@ -100,12 +100,12 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        #  tr_dist_loss, = train_distorsion(
+        #  tr_dist_loss, = train_regulation(
         #      model,
         #      tr_all_loader,
         #      dist_optim,
         #  )
-
+        #
         logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss} val: {val_loss} best:{best_score}")
 
 
@@ -118,22 +118,21 @@ def train_epoch(
 ) -> t.Tuple[float, float]:
     cuda = device('cuda')
     batch_len = len(loader)
-    sum_loss = 0.
-    sum_r2_loss = 0.
-    for source, ans in loader:
+    preds = []
+    labels = []
+    for source, label in loader:
         source = source.to(cuda)
-        ans = ans.to(cuda)
-        y = model(source)
-        loss = r2_loss(y.view(-1), ans.view(-1))
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        sum_loss += loss.item()
-        sum_r2_loss += r2(y.view(-1), ans.view(-1)).item()
-
-    mean_loss = sum_loss / batch_len
-    mean_r2_loss = sum_r2_loss / batch_len
-    return (mean_loss, mean_r2_loss)
+        label = label.to(cuda)
+        pred = model(source)
+        preds.append(pred)
+        labels.append(label)
+    preds = cat(preds)
+    labels = cat(labels)
+    loss = mse_loss(preds, labels)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    return (loss.item(), r2(preds, labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
@@ -147,13 +146,10 @@ def regular_loss(pred, lower, heigher):
 def train_regulation(
     model,
     loader,
+    optimizer,
 ) -> t.Tuple[float]:
     cuda = device('cuda')
     batch_len = len(loader)
-    optimizer = Adam(
-        model.parameters(),
-        amsgrad=True,
-    )
     sum_loss = 0.
     for source, _ in loader:
         source = source.to(cuda)
@@ -224,19 +220,24 @@ def eval_epoch(
     model: Model,
     loader,
 ) -> t.Tuple[float]:
-    cuda = device('cuda') 
+    cuda = device('cuda')
     model.eval()
     batch_len = len(loader)
     sum_loss = 0
+    preds = []
+    labels = []
     with no_grad():
-        for source, ans in loader:
+        for source, label in loader:
             source = source.to(cuda)
-            ans = ans.to(cuda)
-            y = model(source).view(-1)
-            loss = r2(y, ans.view(-1))
-            sum_loss += loss.item()
-    mean_loss = sum_loss / batch_len
-    return (mean_loss, )
+            label = label.to(cuda)
+            pred = model(source).view(-1)
+            preds.append(pred)
+            labels.append(label)
+
+    preds = cat(preds)
+    labels = cat(labels)
+    loss = r2(preds, labels)
+    return (loss.item(), )
 
 
 def pred(

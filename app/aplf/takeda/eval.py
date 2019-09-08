@@ -5,7 +5,7 @@ def r2_loss(
     pred: t.Any,
     gt: t.Any,
 ) -> t.Any:
-    return (((gt - pred)**2).mean() - ((gt - gt.mean())**2).mean()).abs()
+    return (((gt - pred)**2).mean() / ((gt - gt.mean())**2).mean()).abs()
 
 
 def r2(
