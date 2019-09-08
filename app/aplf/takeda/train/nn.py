@@ -90,14 +90,16 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        if val_loss > 0.:
-            tr_reg_loss, = train_regulation(
-                model,
-                tr_all_loader,
-            )
+        tr_reg_loss, = train_regulation(
+            model,
+            tr_all_loader,
+        )
 
-
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss} val: {val_loss} best:{best_score}")
+        ev_reg_loss, = train_regulation(
+            model,
+            ev_loader,
+        )
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} reg: {tr_reg_loss + ev_reg_loss} val: {val_loss} best:{best_score}")
 
 
 
@@ -130,13 +132,13 @@ def train_epoch(
     mean_r2_loss = sum_r2_loss / batch_len
     return (mean_loss, mean_r2_loss)
 
-def regular_loss(pred, lower, heigher,):
+def regular_loss(pred, lower, heigher, mean=2.0248391529):
     lower_mask = (pred < lower).to(pred.device)
     heigher_mask = (pred > heigher).to(pred.device)
     mask = (lower_mask | heigher_mask).float()
     masked_pred = pred * mask
-    ans = lower * ones(*pred.size()).to(pred.device) * lower_mask.float()
-    + heigher * ones(*pred.size()).to(pred.device) * heigher_mask.float()
+    ans = mean * ones(*pred.size()).to(pred.device) * lower_mask.float()
+    + mean * ones(*pred.size()).to(pred.device) * heigher_mask.float()
     return mse_loss(masked_pred, ans)
 
 def train_regulation(
