@@ -64,7 +64,11 @@ class Model(nn.Module):
             nn.BatchNorm1d(size_in // r**2),
             nn.Linear(
                 size_in // (r**2),
-                1
+                size_in // (r**3),
+            ),
+            nn.Linear(
+                size_in // (r**3),
+                1,
             ),
         )
 
