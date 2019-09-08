@@ -95,11 +95,7 @@ def train(
             tr_all_loader,
         )
 
-        ev_dist_loss, = train_distorsion(
-            model,
-            ev_loader,
-        )
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist: {tr_dist_loss+ev_dist_loss} val: {val_loss} best:{best_score}")
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist: {tr_dist_loss} val: {val_loss} best:{best_score}")
 
 
 
