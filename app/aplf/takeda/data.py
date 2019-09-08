@@ -177,8 +177,8 @@ def save_submit(
     submit_df = pd.DataFrame({
         'Score': preds
     }, index=df.index)
-    submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x < 5  else 5. )
-    submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x > -1  else -1. )
+    #  submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x < 5  else 5. )
+    #  submit_df['Score'] = submit_df['Score'].apply(lambda x: x if x > -1  else -1. )
     submit_df.to_csv(path, header=False)
     return submit_df
 

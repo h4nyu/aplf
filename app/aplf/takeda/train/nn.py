@@ -1,5 +1,6 @@
 from torch.utils.data import DataLoader, Dataset, Subset
 import multiprocessing
+from sklearn.metrics import r2_score
 from torch.optim import Adam
 from torch import device, no_grad, randn, tensor, ones, cat
 from torch.nn.functional import mse_loss, l1_loss
@@ -10,7 +11,7 @@ from logging import getLogger
 from aplf.utils.decorators import skip_if
 
 from ..models import Model
-from ..eval import r2, r2_loss
+from ..eval import r2
 from ..data import load_model, save_model
 
 
@@ -62,7 +63,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=1024,
+        batch_size=128,
         shuffle=True,
         pin_memory=True,
         num_workers=4,
@@ -76,7 +77,6 @@ def train(
     )
     tr_optim = Adam(
         model.parameters(),
-        amsgrad=True,
     )
 
     dist_optim = Adam(
@@ -96,16 +96,8 @@ def train(
             model,
             val_loader,
         )
-        if val_loss > best_score:
-            best_score = val_loss
-            save_model(model, path)
+        save_model(model, path)
 
-        #  tr_dist_loss, = train_regulation(
-        #      model,
-        #      tr_all_loader,
-        #      dist_optim,
-        #  )
-        #
         logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss} val: {val_loss} best:{best_score}")
 
 
@@ -120,19 +112,20 @@ def train_epoch(
     batch_len = len(loader)
     preds = []
     labels = []
+    sources = []
+    sum_mse_loss = 0.
     for source, label in loader:
-        source = source.to(cuda)
-        label = label.to(cuda)
-        pred = model(source)
-        preds.append(pred)
+        sources.append(source)
         labels.append(label)
-    preds = cat(preds)
-    labels = cat(labels)
+    labels = cat(labels).to(cuda).view(-1)
+    sources = cat(sources).to(cuda)
+    preds = model(sources)
     loss = mse_loss(preds, labels)
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    return (loss.item(), r2(preds, labels).item())
+    sum_mse_loss = loss.item()
+    return (sum_mse_loss, r2(preds, labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
@@ -230,7 +223,7 @@ def eval_epoch(
         for source, label in loader:
             source = source.to(cuda)
             label = label.to(cuda)
-            pred = model(source).view(-1)
+            pred = model(source)
             preds.append(pred)
             labels.append(label)
 
@@ -249,7 +242,7 @@ def pred(
     model = model.train().to(cuda)
     loader = DataLoader(
         dataset=dataset,
-        batch_size=2048,
+        batch_size=1024,
         pin_memory=True,
         shuffle=False,
         num_workers=1,
@@ -260,6 +253,7 @@ def pred(
     with no_grad():
         for source, _ in loader:
             source = source.to(cuda)
-            y = model(source).view(-1)
-            preds += y.tolist()
-    return np.array(preds)
+            pred = model(source).view(-1)
+            preds.append(pred)
+    preds = cat(preds).view(-1)
+    return preds.cpu().numpy()
