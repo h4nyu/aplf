@@ -18,7 +18,6 @@ import typing as t
 from .models import Model
 from .train.nn import train, pred
 from logging import getLogger
-import pickle
 import pandas as pd
 from multiprocessing import Pool
 from glob import glob

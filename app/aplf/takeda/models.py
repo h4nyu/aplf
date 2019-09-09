@@ -18,12 +18,11 @@ class ResBlock(nn.Module):
             )
         self.block = nn.Sequential(
             nn.BatchNorm1d(in_ch),
-            nn.PReLU(),
+            nn.ReLU(),
             nn.Linear(in_ch, in_ch),
             nn.BatchNorm1d(in_ch),
-            nn.PReLU(),
+            nn.ReLU(),
         )
-        self.activation = nn.PReLU()
 
     def forward(self, x: Tensor) -> Tensor:
         residual = x
@@ -44,26 +43,14 @@ class Model(nn.Module):
             size_in // (r**0),
             size_in // (r**1),
         )
-
-        self.fc1 = ResBlock(
-            size_in // (r**1),
-            size_in // (r**2),
-        )
-
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**2),
-                size_in // (r**3),
-            ),
-            nn.PReLU(),
-            nn.Linear(
-                size_in // (r**3),
+                size_in // (r**1),
                 1
             ),
         )
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
         y = self.fc0(x)
-        y = self.fc1(y)
         y = self.out(y)
         return y

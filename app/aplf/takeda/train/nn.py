@@ -55,7 +55,7 @@ def train(
 
     ev_loader = DataLoader(
         dataset=ev_dataset,
-        batch_size=1,
+        batch_size=1024,
         shuffle=False,
         pin_memory=True,
         num_workers=4,
@@ -63,7 +63,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=128,
+        batch_size=8,
         shuffle=True,
         pin_memory=True,
         num_workers=4,
@@ -117,17 +117,21 @@ def train_epoch(
     sources = []
     sum_mse_loss = 0.
     for source, label in loader:
+        source = source.to(cuda)
+        label = label.to(cuda)
         sources.append(source)
         labels.append(label)
-    labels = cat(labels).to(cuda).view(-1)
-    sources = cat(sources).to(cuda)
+        pred = model(source).view(-1)
+        loss = mse_loss(pred, label)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        sum_mse_loss += loss.item()
+
+    labels = cat(labels).view(-1)
+    sources = cat(sources)
     preds = model(sources).view(-1)
-    loss = mse_loss(preds, labels)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-    sum_mse_loss = loss.item()
-    return (sum_mse_loss, r2(preds, labels).item())
+    return (sum_mse_loss/batch_len, r2(preds, labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
@@ -215,7 +219,6 @@ def eval_epoch(
     model: Model,
     loader,
 ) -> t.Tuple[float]:
-    cuda = device('cuda')
     model.eval()
     batch_len = len(loader)
     sum_loss = 0
@@ -240,7 +243,7 @@ def pred(
 ) -> t.Tuple[float]:
     model.eval()
     cuda = device('cuda')
-    model = model.train().to(cuda)
+    model = model.eval().to(cuda)
     loader = DataLoader(
         dataset=dataset,
         batch_size=1024,

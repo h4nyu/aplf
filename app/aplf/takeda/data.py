@@ -1,3 +1,4 @@
+import pickle
 from logging import getLogger
 from pathlib import Path
 from torch.utils.data import Dataset
@@ -125,22 +126,29 @@ def kfold(
 
 class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
-        self.x = df.drop('Score', axis=1).values
-        self.y = df['Score'].values
+        x = df.drop('Score', axis=1)
+        x = (x - x.mean()) / x.std()
+        x = x.fillna(0)
+        self.x = x
+        y = df['Score']
+        self.y = y
         self.df = df
 
     def __len__(self) -> int:
         return self.y.shape[0]
 
     def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
-        x = self.x[idx]
-        y = self.y[idx]
+        x = self.x.iloc[idx].values
+        y = self.y.iloc[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
 
 class TakedaPredDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
-        self.x = df.values
+        x = df
+        x = (x - x.mean()) / x.std()
+        x = x.fillna(0)
+        self.x = x.values
 
     def __len__(self) -> int:
         return self.x.shape[0]
@@ -157,14 +165,13 @@ def create_dataset(df: t.Any) -> t.Tuple[t.Any, t.Any]:
 
 
 def save_model(model: Model, path: str) -> None:
-    torch.save(model.state_dict(), path)
+    with open(path, 'wb') as f:
+        pickle.dump(model, f)
 
 
 def load_model(path: str) -> Model:
-    model = Model(
-        size_in=3805,
-    )
-    model.load_state_dict(torch.load(path))
+    with open(path, 'rb') as f:
+        model = pickle.load(f)
     return model
 
 
