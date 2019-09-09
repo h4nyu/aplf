@@ -193,3 +193,7 @@ def extract_no_change_colums(df:t.Any, path:str) -> t.List[str]:
         return
     std = df.std()
     return std[std==0].index.tolist()
+
+def interpolate(df):
+    meandiff = df.sort_values('Score').rolling(window=2).mean().dropna()
+    return df.append(meandiff)

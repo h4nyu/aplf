@@ -4,6 +4,7 @@ from aplf.takeda.data import (
     save_submit,
     csv_to_pkl,
     extract_col_type,
+    interpolate,
 )
 from torch.utils.data import Dataset
 import typing as t
@@ -58,3 +59,14 @@ def test_save_submit() -> None:
     }, index=[0, 1, 2, 3])
     preds = [11, 22, 33, 44]
     df = save_submit(df, preds, '/store/submit.csv')
+
+def test_interpolate() -> None:
+    df = pd.DataFrame({
+        'Score': [0., 1., 2.5, 10],
+        'col1': [0., 1., 0., 1, ],
+        'col2': [0., 1., 1.5, 20],
+        'col3': [0., 1., 3, 0.5],
+    }, index=[0, 1, 2, 3])
+    out_df = interpolate(df)
+    assert len(out_df) == 7
+    print(out_df)

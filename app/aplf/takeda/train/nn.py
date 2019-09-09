@@ -12,7 +12,7 @@ from aplf.utils.decorators import skip_if
 
 from ..models import Model
 from ..eval import r2
-from ..data import load_model, save_model
+from ..data import load_model, save_model, interpolate, TakedaDataset
 
 
 logger = getLogger("takeda.train")
@@ -43,15 +43,11 @@ def train(
         )
 
     model = model.to(DEVICE)
-    tr_set = Subset(tr_dataset, indices=tr_indices)
     val_set = Subset(tr_dataset, indices=val_indices)
-    tr_all_loader = DataLoader(
-        dataset=tr_dataset,
-        batch_size=1024,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=3,
-    )
+
+    tr_df = tr_dataset.df.iloc[tr_indices]
+    interpolated_df = interpolate(tr_df)
+    tr_set = TakedaDataset(interpolated_df)
 
     ev_loader = DataLoader(
         dataset=ev_dataset,
@@ -120,32 +116,26 @@ def train_epoch(
     sum_m_loss = 0.
     sum_s_loss = 0.
     model = model.train()
-    for (m_source, m_label),  (s_source, s_label) in zip(main_loader, sub_loader):
-        m_source = m_source.to(DEVICE)
-        m_label = m_label.to(DEVICE)
-        s_source = s_source.to(DEVICE)
-        s_label = s_label.to(DEVICE)
+    for source, label in main_loader:
+        source = source.to(DEVICE)
+        label = label.to(DEVICE)
 
-        sources.append(m_source)
-        labels.append(m_label)
+        sources.append(source)
+        labels.append(label)
 
-        m_out =model(m_source).view(-1)
-        s_out =model(s_source).view(-1)
-        m_loss = mse_loss(m_out, m_label)
-        s_loss = mse_loss(m_out.std(), s_out.std()) + mse_loss(m_out.mean(), s_out.mean())
+        out =model(source).view(-1)
+        loss = mse_loss(out, label)
 
-        loss = m_loss + s_loss
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        sum_m_loss += m_loss.item()
-        sum_s_loss += s_loss.item()
+        sum_m_loss += loss.item()
         count += 1
 
     labels = cat(labels).view(-1)
     sources = cat(sources)
     preds = model(sources).view(-1)
-    return (sum_m_loss/count, sum_s_loss/count, r2(preds, labels).item())
+    return (sum_m_loss/count, r2(preds, labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)

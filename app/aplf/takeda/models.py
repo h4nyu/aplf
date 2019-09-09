@@ -19,10 +19,10 @@ class ResBlock(nn.Module):
         self.block = nn.Sequential(
             nn.BatchNorm1d(in_ch),
             nn.ReLU(),
-            nn.Linear(in_ch, in_ch//2),
-            nn.BatchNorm1d(in_ch//2),
+            nn.Linear(in_ch, 2*in_ch),
+            nn.BatchNorm1d(2*in_ch),
             nn.ReLU(),
-            nn.Linear(in_ch//2, in_ch),
+            nn.Linear(2*in_ch, in_ch),
             nn.BatchNorm1d(in_ch),
             nn.ReLU(),
         )
@@ -42,22 +42,14 @@ class Model(nn.Module):
         size_in: int,
     ) -> None:
         super().__init__()
-        r = 8
+        r = 4
         self.fc0 = ResBlock(
             size_in // (r**0),
             size_in // (r**1),
         )
-        self.fc1 = ResBlock(
-            size_in // (r**1),
-            size_in // (r**2),
-        )
-        self.fc2 = ResBlock(
-            size_in // (r**2),
-            size_in // (r**3),
-        )
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**3),
+                size_in // (r**1),
                 1
             ),
         )
@@ -65,7 +57,5 @@ class Model(nn.Module):
 
     def forward(self, x: Tensor, drop_p=0.1) -> Tensor:  # type: ignore
         y = self.fc0(x)
-        y = self.fc1(y)
-        y = self.fc2(y)
         y = self.out(y)
         return y
