@@ -18,9 +18,11 @@ class ResBlock(nn.Module):
             )
         self.block = nn.Sequential(
             nn.BatchNorm1d(in_ch),
+            nn.Dropout(p=0.3),
             nn.ReLU(),
             nn.Linear(in_ch, in_ch),
             nn.BatchNorm1d(in_ch),
+            nn.Dropout(p=0.3),
             nn.ReLU(),
         )
 
@@ -61,8 +63,7 @@ class Model(nn.Module):
 
 
     def forward(self, x: Tensor, drop_p=0.1) -> Tensor:  # type: ignore
-        y = dropout(x, p=drop_p, training=self.training)
-        y = self.fc0(y)
+        y = self.fc0(x)
         y = self.fc1(y)
         y = self.fc2(y)
         y = self.out(y)

@@ -90,7 +90,7 @@ def train(
         tr_metrics = train_epoch(
             model,
             tr_loader,
-            ev_loader,
+            val_loader,
             tr_optim,
         )
 
@@ -132,7 +132,7 @@ def train_epoch(
         m_out =model(m_source).view(-1)
         s_out =model(s_source).view(-1)
         m_loss = mse_loss(m_out, m_label)
-        s_loss = regular_loss(s_out, -1, 5.) + regular_loss(m_out, -1., 5.)
+        s_loss = mse_loss(m_out.std(), s_out.std()) + mse_loss(m_out.mean(), s_out.mean())
 
         loss = m_loss + s_loss
         optimizer.zero_grad()
