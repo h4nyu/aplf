@@ -126,29 +126,22 @@ def kfold(
 
 class TakedaDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
-        x = df.drop('Score', axis=1)
-        x = (x - x.mean()) / x.std()
-        x = x.fillna(0)
-        self.x = x
-        y = df['Score']
-        self.y = y
+        self.x = df.drop('Score', axis=1).values
+        self.y = df['Score'].values
         self.df = df
 
     def __len__(self) -> int:
         return self.y.shape[0]
 
     def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
-        x = self.x.iloc[idx].values
-        y = self.y.iloc[idx]
+        x = self.x[idx]
+        y = self.y[idx]
         return tensor(x, dtype=float32), tensor(y, dtype=float32)
 
 
 class TakedaPredDataset(Dataset):
     def __init__(self, df: t.Any) -> None:
-        x = df
-        x = (x - x.mean()) / x.std()
-        x = x.fillna(0)
-        self.x = x.values
+        self.x = df.values
 
     def __len__(self) -> int:
         return self.x.shape[0]

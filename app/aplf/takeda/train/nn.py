@@ -17,6 +17,7 @@ from ..data import load_model, save_model
 
 logger = getLogger("takeda.train")
 
+DEVICE = device('cuda')
 
 
 def add_noise(means, device):
@@ -34,7 +35,6 @@ def train(
     tr_indices,
     val_indices,
 ):
-    cuda = device('cuda')
     if Path(path).is_file():
         model = load_model(path)
     else:
@@ -42,7 +42,7 @@ def train(
             size_in=3805,
         )
 
-    model = model.to(cuda)
+    model = model.to(DEVICE)
     tr_set = Subset(tr_dataset, indices=tr_indices)
     val_set = Subset(tr_dataset, indices=val_indices)
     tr_all_loader = DataLoader(
@@ -63,7 +63,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=8,
+        batch_size=256,
         shuffle=True,
         pin_memory=True,
         num_workers=4,
@@ -92,6 +92,18 @@ def train(
             tr_loader,
             tr_optim,
         )
+        tr_dist_loss, = train_regulation(
+            model,
+            tr_all_loader,
+            dist_optim,
+        )
+
+        ev_dist_loss, = train_regulation(
+            model,
+            ev_loader,
+            dist_optim,
+        )
+
         val_loss, = eval_epoch(
             model,
             val_loader,
@@ -100,7 +112,7 @@ def train(
             best_score = val_loss
             save_model(model, path)
 
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss}, val: {val_loss} bs:{best_score}")
+        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss + ev_dist_loss}, val: {val_loss} bs:{best_score}")
 
 
 
@@ -110,15 +122,14 @@ def train_epoch(
     loader,
     optimizer,
 ) -> t.Tuple[float, float]:
-    cuda = device('cuda')
     batch_len = len(loader)
     preds = []
     labels = []
     sources = []
     sum_mse_loss = 0.
     for source, label in loader:
-        source = source.to(cuda)
-        label = label.to(cuda)
+        source = source.to(DEVICE)
+        label = label.to(DEVICE)
         sources.append(source)
         labels.append(label)
         pred = model(source).view(-1)
@@ -147,11 +158,10 @@ def train_regulation(
     loader,
     optimizer,
 ) -> t.Tuple[float]:
-    cuda = device('cuda')
     batch_len = len(loader)
     sum_loss = 0.
     for source, _ in loader:
-        source = source.to(cuda)
+        source = source.to(DEVICE)
         y = model(source).view(-1)
         loss = 0.1*regular_loss(y, -1, 5.)
         optimizer.zero_grad()
@@ -168,15 +178,14 @@ def train_distorsion(
     loader,
     optimizer,
 ) -> t.Tuple[float]:
-    cuda = device('cuda')
     batch_len = len(loader)
     sum_loss = 0.
     for source, _ in loader:
-        source = source.to(cuda)
+        source = source.to(DEVICE)
         y = model(source).view(-1)
         y_mean = y.mean()
         y_std = y.std()
-        loss = 0.1*(mse_loss(y_mean, tensor([2.02]).to(cuda)) + mse_loss(y_std, tensor([0.92]).to(cuda)))
+        loss = 0.1*(mse_loss(y_mean, tensor([2.02]).to(DEVICE)) + mse_loss(y_std, tensor([0.92]).to(DEVICE)))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -188,23 +197,17 @@ def train_distorsion(
 def train_pi(
     model,
     loader,
-    aug,
-    weight,
+    optimizer,
 ) -> t.Tuple[float]:
-    cuda = device('cuda')
+    model.train()
     batch_len = len(loader)
-    optimizer = Adam(
-        model.parameters(),
-        amsgrad=True,
-    )
     sum_loss = 0.
     for source, _ in loader:
-        source = source.to(cuda)
-        source_0 = aug(source)
-        source_1 = aug(source)
-        loss = weight * mse_loss(
-            model(source_1).view(-1),
-            model(source_0).view(-1),
+        source0 = source.to(DEVICE)
+        source1 = source.to(DEVICE)
+        loss = mse_loss(
+            model(source0).view(-1),
+            model(source1).view(-1),
         )
         optimizer.zero_grad()
         loss.backward()
@@ -230,8 +233,8 @@ def eval_epoch(
             sources.append(source)
             labels.append(label)
 
-    sources = cat(sources).to(cuda)
-    labels = cat(labels).to(cuda)
+    sources = cat(sources).to(DEVICE)
+    labels = cat(labels).to(DEVICE)
     preds = model(sources).view(-1)
     loss = r2(preds, labels)
     return (loss.item(), )
@@ -242,8 +245,7 @@ def pred(
     dataset: Dataset,
 ) -> t.Tuple[float]:
     model.eval()
-    cuda = device('cuda')
-    model = model.eval().to(cuda)
+    model = model.eval().to(DEVICE)
     loader = DataLoader(
         dataset=dataset,
         batch_size=1024,
@@ -261,8 +263,8 @@ def pred(
             sources.append(source)
             labels.append(label)
 
-    labels = cat(labels).to(cuda)
-    sources = cat(sources).to(cuda)
+    labels = cat(labels).to(DEVICE)
+    sources = cat(sources).to(DEVICE)
     preds = model(sources).view(-1)
     loss = r2(preds, labels)
     logger.info(f"loss:{loss.item()}")

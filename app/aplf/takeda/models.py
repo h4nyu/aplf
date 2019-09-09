@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch import Tensor
-from torch.nn.functional import relu
+from torch.nn.functional import relu, dropout
 
 
 class ResBlock(nn.Module):
@@ -27,6 +27,7 @@ class ResBlock(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         residual = x
         out = self.block(x)
+        out += residual
         if self.projection:
             out = self.projection(out)
         return out
@@ -39,18 +40,29 @@ class Model(nn.Module):
     ) -> None:
         super().__init__()
         r = 8
+        self.input = nn.Sequential(
+            nn.BatchNorm1d(size_in),
+        )
+
         self.fc0 = ResBlock(
             size_in // (r**0),
             size_in // (r**1),
         )
+        self.fc1 = ResBlock(
+            size_in // (r**1),
+            size_in // (r**2),
+        )
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**1),
+                size_in // (r**2),
                 1
             ),
         )
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
-        y = self.fc0(x)
+        y = self.input(x)
+        y = dropout(y, p=0.3, training=self.training)
+        y = self.fc0(y)
+        y = self.fc1(y)
         y = self.out(y)
         return y
