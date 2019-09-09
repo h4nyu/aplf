@@ -50,30 +50,30 @@ def train(
         batch_size=1024,
         shuffle=True,
         pin_memory=True,
-        num_workers=4,
+        num_workers=3,
     )
 
     ev_loader = DataLoader(
         dataset=ev_dataset,
         batch_size=1024,
-        shuffle=False,
+        shuffle=True,
         pin_memory=True,
-        num_workers=4,
+        num_workers=2,
     )
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=256,
+        batch_size=1024,
         shuffle=True,
         pin_memory=True,
-        num_workers=4,
+        num_workers=2,
     )
     val_loader = DataLoader(
         dataset=val_set,
         batch_size=1024,
         shuffle=False,
         pin_memory=True,
-        num_workers=4,
+        num_workers=3,
     )
     tr_optim = Adam(
         model.parameters(),
@@ -87,62 +87,65 @@ def train(
     tr_reg_loss = 0.
     tr_dist_loss = 0.
     for i in range(10000):
-        tr_loss, tr_r2_loss = train_epoch(
+        tr_metrics = train_epoch(
             model,
             tr_loader,
+            ev_loader,
             tr_optim,
         )
-        tr_dist_loss, = train_regulation(
-            model,
-            tr_all_loader,
-            dist_optim,
-        )
 
-        ev_dist_loss, = train_regulation(
-            model,
-            ev_loader,
-            dist_optim,
-        )
-
-        val_loss, = eval_epoch(
+        val_metrics = eval_epoch(
             model,
             val_loader,
         )
-        if best_score < val_loss:
-            best_score = val_loss
+        if best_score < val_metrics[0]:
+            best_score = val_metrics[0]
             save_model(model, path)
 
-        logger.info(f"tr: {tr_loss}, {tr_r2_loss} dist:{tr_dist_loss + ev_dist_loss}, val: {val_loss} bs:{best_score}")
+        logger.info(f"tr: {tr_metrics} val: {val_metrics} bs:{best_score}")
 
 
 
 
 def train_epoch(
     model,
-    loader,
+    main_loader,
+    sub_loader,
     optimizer,
 ) -> t.Tuple[float, float]:
-    batch_len = len(loader)
+    count = 0
     preds = []
     labels = []
     sources = []
-    sum_mse_loss = 0.
-    for source, label in loader:
-        source = source.to(DEVICE)
-        label = label.to(DEVICE)
-        sources.append(source)
-        labels.append(label)
-        pred = model(source).view(-1)
-        loss = mse_loss(pred, label)
+    sum_m_loss = 0.
+    sum_s_loss = 0.
+    model = model.train()
+    for (m_source, m_label),  (s_source, s_label) in zip(main_loader, sub_loader):
+        m_source = m_source.to(DEVICE)
+        m_label = m_label.to(DEVICE)
+        s_source = s_source.to(DEVICE)
+        s_label = s_label.to(DEVICE)
+
+        sources.append(m_source)
+        labels.append(m_label)
+
+        m_out =model(m_source).view(-1)
+        s_out =model(s_source).view(-1)
+        m_loss = mse_loss(m_out, m_label)
+        s_loss = regular_loss(s_out, -1, 5.) + regular_loss(m_out, -1., 5.)
+
+        loss = m_loss + s_loss
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        sum_mse_loss += loss.item()
+        sum_m_loss += m_loss.item()
+        sum_s_loss += s_loss.item()
+        count += 1
 
     labels = cat(labels).view(-1)
     sources = cat(sources)
     preds = model(sources).view(-1)
-    return (sum_mse_loss/batch_len, r2(preds, labels).item())
+    return (sum_m_loss/count, sum_s_loss/count, r2(preds, labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
@@ -152,70 +155,6 @@ def regular_loss(pred, lower, heigher):
     ans = lower * ones(*pred.size()).to(pred.device) * lower_mask.float()
     + heigher * ones(*pred.size()).to(pred.device) * heigher_mask.float()
     return mse_loss(masked_pred, ans)
-
-def train_regulation(
-    model,
-    loader,
-    optimizer,
-) -> t.Tuple[float]:
-    batch_len = len(loader)
-    sum_loss = 0.
-    for source, _ in loader:
-        source = source.to(DEVICE)
-        y = model(source).view(-1)
-        loss = 0.1*regular_loss(y, -1, 5.)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        sum_loss += loss.item()
-
-    mean_loss = sum_loss / batch_len
-    return (mean_loss, )
-
-
-def train_distorsion(
-    model,
-    loader,
-    optimizer,
-) -> t.Tuple[float]:
-    batch_len = len(loader)
-    sum_loss = 0.
-    for source, _ in loader:
-        source = source.to(DEVICE)
-        y = model(source).view(-1)
-        y_mean = y.mean()
-        y_std = y.std()
-        loss = 0.1*(mse_loss(y_mean, tensor([2.02]).to(DEVICE)) + mse_loss(y_std, tensor([0.92]).to(DEVICE)))
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        sum_loss += loss.item()
-
-    mean_loss = sum_loss / batch_len
-    return (mean_loss, )
-
-def train_pi(
-    model,
-    loader,
-    optimizer,
-) -> t.Tuple[float]:
-    model.train()
-    batch_len = len(loader)
-    sum_loss = 0.
-    for source, _ in loader:
-        source0 = source.to(DEVICE)
-        source1 = source.to(DEVICE)
-        loss = mse_loss(
-            model(source0).view(-1),
-            model(source1).view(-1),
-        )
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        sum_loss += loss.item()
-
-    mean_loss = sum_loss / batch_len
-    return (mean_loss, )
 
 
 def eval_epoch(
@@ -245,7 +184,6 @@ def pred(
     dataset: Dataset,
 ) -> t.Tuple[float]:
     model.eval()
-    model = model.eval().to(DEVICE)
     loader = DataLoader(
         dataset=dataset,
         batch_size=1024,
