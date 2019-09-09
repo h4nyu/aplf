@@ -18,11 +18,12 @@ class ResBlock(nn.Module):
             )
         self.block = nn.Sequential(
             nn.BatchNorm1d(in_ch),
-            nn.Dropout(p=0.3),
             nn.ReLU(),
-            nn.Linear(in_ch, in_ch),
+            nn.Linear(in_ch, in_ch//2),
+            nn.BatchNorm1d(in_ch//2),
+            nn.ReLU(),
+            nn.Linear(in_ch//2, in_ch),
             nn.BatchNorm1d(in_ch),
-            nn.Dropout(p=0.3),
             nn.ReLU(),
         )
 
