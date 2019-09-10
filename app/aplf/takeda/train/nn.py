@@ -47,7 +47,7 @@ def train(
     val_set = Subset(tr_dataset, indices=val_indices)
 
     tr_df = tr_dataset.df.iloc[tr_indices]
-    tr_df = interpolate(tr_df)
+    #  tr_df = interpolate(tr_df)
     #  tr_df = flat_distorsion(tr_df)
     tr_set = TakedaDataset(tr_df)
 
