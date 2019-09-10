@@ -47,7 +47,6 @@ def train(
 
     tr_df = tr_dataset.df.iloc[tr_indices]
     tr_df = interpolate(tr_df)
-    tr_df = interpolate(tr_df)
     tr_set = TakedaDataset(tr_df)
 
     ev_loader = DataLoader(

@@ -2,6 +2,9 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn.functional import relu, dropout
 
+class Swish(nn.Module):
+    def forward(self, x: Tensor) -> Tensor:
+        return x * x.sigmoid()
 
 class ResBlock(nn.Module):
     def __init__(self,
@@ -18,13 +21,13 @@ class ResBlock(nn.Module):
             )
         self.block = nn.Sequential(
             nn.BatchNorm1d(in_ch),
-            nn.ReLU(),
+            Swish(),
             nn.Linear(in_ch, in_ch // 2),
             nn.BatchNorm1d(in_ch // 2),
-            nn.ReLU(),
+            Swish(),
             nn.Linear(in_ch // 2, in_ch),
             nn.BatchNorm1d(in_ch),
-            nn.ReLU(),
+            Swish(),
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -47,15 +50,21 @@ class Model(nn.Module):
             size_in // (r**0),
             size_in // (r**1),
         )
+        self.fc1 = ResBlock(
+            size_in // (r**1),
+            size_in // (r**2),
+        )
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**1),
+                size_in // (r**2),
                 1
             ),
         )
 
 
-    def forward(self, x: Tensor, drop_p=0.1) -> Tensor:  # type: ignore
+    def forward(self, x: Tensor) -> Tensor:  # type: ignore
         y = self.fc0(x)
+        y = self.fc1(y)
+        y = y * y.sigmoid()
         y = self.out(y)
         return y
