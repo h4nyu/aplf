@@ -84,7 +84,8 @@ def train(
     best_score = 0.
     tr_reg_loss = 0.
     tr_dist_loss = 0.
-    for i in range(10000):
+    epoch = 0
+    while True:
         tr_metrics = train_epoch(
             model,
             tr_loader,
@@ -100,7 +101,8 @@ def train(
             best_score = val_metrics[0]
             save_model(model, path)
 
-        logger.info(f"tr: {tr_metrics} val: {val_metrics} bs:{best_score}")
+        epoch += 1
+        logger.info(f"{epoch}: tr: {tr_metrics} val: {val_metrics} bs:{best_score}")
 
 
 

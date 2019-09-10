@@ -45,7 +45,7 @@ class Model(nn.Module):
         size_in: int,
     ) -> None:
         super().__init__()
-        r = 10
+        r = 5
         self.input = nn.Linear(
             size_in // (r**0),
             size_in // (r**1),
