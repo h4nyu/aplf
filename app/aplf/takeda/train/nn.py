@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader, Dataset, Subset
 import multiprocessing
 from sklearn.metrics import r2_score
-from torch.optim import Adam
+from torch.optim import ASGD, Adam, AdamW
 from torch import device, no_grad, randn, tensor, ones, cat
 from torch.nn.functional import mse_loss, l1_loss
 import numpy as np
@@ -46,8 +46,9 @@ def train(
     val_set = Subset(tr_dataset, indices=val_indices)
 
     tr_df = tr_dataset.df.iloc[tr_indices]
-    interpolated_df = interpolate(tr_df)
-    tr_set = TakedaDataset(interpolated_df)
+    tr_df = interpolate(tr_df)
+    tr_df = interpolate(tr_df)
+    tr_set = TakedaDataset(tr_df)
 
     ev_loader = DataLoader(
         dataset=ev_dataset,
@@ -71,7 +72,7 @@ def train(
         pin_memory=True,
         num_workers=3,
     )
-    tr_optim = Adam(
+    tr_optim = AdamW(
         model.parameters(),
     )
 
@@ -123,10 +124,9 @@ def train_epoch(
         sources.append(source)
         labels.append(label)
 
+        optimizer.zero_grad()
         out =model(source).view(-1)
         loss = mse_loss(out, label)
-
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         sum_m_loss += loss.item()
