@@ -61,7 +61,7 @@ def train(
 
     tr_loader = DataLoader(
         dataset=tr_set,
-        batch_size=1024,
+        batch_size=256,
         shuffle=True,
         pin_memory=True,
         num_workers=2,
@@ -128,9 +128,9 @@ def train_epoch(
         optimizer.zero_grad()
         out =model(source).view(-1)
         regularization_loss = 0
-        for param in model.parameters():
+        for param in model.input.parameters():
             regularization_loss += torch.sum(torch.abs(param))
-        loss = mse_loss(out, label) + 0.01 * regularization_loss
+        loss = mse_loss(out, label) + 0.001 * regularization_loss
         loss.backward()
         optimizer.step()
         sum_m_loss += loss.item()
