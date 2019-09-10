@@ -119,6 +119,7 @@ def submit(base_dir: str) -> None:
     )
     ev_dataset = TakedaPredDataset(ev_df)
     model_paths = glob(f'{base_dir}/model-*.pkl')
+    logger.info(f"{model_paths}")
     models = [
         load_model(p)
         for p
