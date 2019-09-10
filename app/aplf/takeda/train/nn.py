@@ -12,7 +12,7 @@ from aplf.utils.decorators import skip_if
 
 from ..models import Model
 from ..eval import r2
-from ..data import load_model, save_model, interpolate, TakedaDataset
+from ..data import load_model, save_model, interpolate, TakedaDataset, flat_distorsion
 
 
 logger = getLogger("takeda.train")
@@ -47,6 +47,7 @@ def train(
 
     tr_df = tr_dataset.df.iloc[tr_indices]
     tr_df = interpolate(tr_df)
+    tr_df = flat_distorsion(tr_df)
     tr_set = TakedaDataset(tr_df)
 
     ev_loader = DataLoader(

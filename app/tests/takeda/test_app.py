@@ -7,7 +7,7 @@ def test_run_0() -> None:
     submit 0.615
     local 0.448
     """
-    run(base_dir=BASE_DIR, n_splits=10, fold_idx=1)
+    run(base_dir=BASE_DIR, n_splits=4, fold_idx=1)
 
 def test_submit() -> None:
     submit(base_dir=BASE_DIR)

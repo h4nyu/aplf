@@ -193,3 +193,13 @@ def extract_no_change_colums(df:t.Any, path:str) -> t.List[str]:
 def interpolate(df):
     meandiff = df.sort_values('Score').rolling(window=2).mean().dropna()
     return df.append(meandiff)
+
+def flat_distorsion(df, bins=50):
+    groups = df.groupby(pd.cut(df['Score'], bins))
+    max_size = groups.size().max()
+    dfs = []
+    for idx, group in groups:
+        if len(group) > 0:
+            dfs.append(group.sample(max_size-len(group), replace=True))
+    flat_df = pd.concat(dfs).append(df)
+    return flat_df
