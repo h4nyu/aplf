@@ -6,7 +6,7 @@ import typing as t
 import pandas as pd
 import numpy as np
 from numpy.random import random_integers, randint
-from torch import Tensor, tensor, float32, save, load
+from torch import Tensor, tensor, float32, save, load, float64
 from typing_extensions import Protocol
 from sklearn.model_selection import KFold
 from pathlib import Path
@@ -136,7 +136,7 @@ class TakedaDataset(Dataset):
     def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
         x = self.x[idx]
         y = self.y[idx]
-        return tensor(x, dtype=float32), tensor(y, dtype=float32)
+        return tensor(x, dtype=float64), tensor(y, dtype=float64)
 
 
 class TakedaPredDataset(Dataset):
@@ -148,7 +148,7 @@ class TakedaPredDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tensor:
         x = self.x[idx]
-        return tensor(x, dtype=float32), tensor(0, dtype=float32)
+        return tensor(x, dtype=float64), tensor(0, dtype=float64)
 
 
 def create_dataset(df: t.Any) -> t.Tuple[t.Any, t.Any]:

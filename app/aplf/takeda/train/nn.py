@@ -1,5 +1,6 @@
 from torch.utils.data import DataLoader, Dataset, Subset
 import multiprocessing
+import torch
 from sklearn.metrics import r2_score
 from torch.optim import ASGD, Adam, AdamW
 from torch import device, no_grad, randn, tensor, ones, cat
@@ -42,12 +43,12 @@ def train(
             size_in=3805,
         )
 
-    model = model.to(DEVICE)
+    model = model.double().to(DEVICE)
     val_set = Subset(tr_dataset, indices=val_indices)
 
     tr_df = tr_dataset.df.iloc[tr_indices]
     tr_df = interpolate(tr_df)
-    tr_df = flat_distorsion(tr_df)
+    #  tr_df = flat_distorsion(tr_df)
     tr_set = TakedaDataset(tr_df)
 
     ev_loader = DataLoader(
@@ -126,7 +127,10 @@ def train_epoch(
 
         optimizer.zero_grad()
         out =model(source).view(-1)
-        loss = mse_loss(out, label)
+        regularization_loss = 0
+        for param in model.parameters():
+            regularization_loss += torch.sum(torch.abs(param))
+        loss = mse_loss(out, label) + 0.01 * regularization_loss
         loss.backward()
         optimizer.step()
         sum_m_loss += loss.item()
