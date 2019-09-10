@@ -91,6 +91,7 @@ def train(
             tr_loader,
             val_loader,
             tr_optim,
+            epoch,
         )
 
         val_metrics = eval_epoch(
@@ -112,6 +113,7 @@ def train_epoch(
     main_loader,
     sub_loader,
     optimizer,
+    epoch,
 ) -> t.Tuple[float, float]:
     count = 0
     preds = []
@@ -132,7 +134,8 @@ def train_epoch(
         regularization_loss = 0
         for param in model.input.parameters():
             regularization_loss += torch.sum(torch.abs(param))
-        loss = mse_loss(out, label) + 0.001 * regularization_loss
+        loss = mse_loss(out, label)
+        loss += regularization_loss * 0.99 ** epoch
         loss.backward()
         optimizer.step()
         sum_m_loss += loss.item()
