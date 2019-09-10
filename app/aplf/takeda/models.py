@@ -46,25 +46,29 @@ class Model(nn.Module):
     ) -> None:
         super().__init__()
         r = 10
-        self.fc0 = ResBlock(
+        self.input = nn.Linear(
             size_in // (r**0),
             size_in // (r**1),
         )
-        self.fc1 = ResBlock(
+        self.fc0 = ResBlock(
             size_in // (r**1),
             size_in // (r**2),
         )
+        self.fc1 = ResBlock(
+            size_in // (r**2),
+            size_in // (r**3),
+        )
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**2),
+                size_in // (r**3),
                 1
             ),
         )
 
 
     def forward(self, x: Tensor) -> Tensor:  # type: ignore
-        y = self.fc0(x)
+        y = self.input(x)
+        y = self.fc0(y)
         y = self.fc1(y)
-        y = y * y.sigmoid()
         y = self.out(y)
         return y
