@@ -6,7 +6,7 @@ import typing as t
 import pandas as pd
 import numpy as np
 from numpy.random import random_integers, randint
-from torch import Tensor, tensor, float32
+from torch import Tensor, tensor, float32, save, load
 from typing_extensions import Protocol
 from sklearn.model_selection import KFold
 from pathlib import Path
@@ -158,15 +158,11 @@ def create_dataset(df: t.Any) -> t.Tuple[t.Any, t.Any]:
 
 
 def save_model(model: Model, path: str) -> None:
-    with open(path, 'wb') as f:
-        pickle.dump(model, f)
+    save(model, path)
 
 
 def load_model(path: str) -> Model:
-    with open(path, 'rb') as f:
-        model = pickle.load(f)
-    return model
-
+    return load(path)
 
 def save_submit(
     df,

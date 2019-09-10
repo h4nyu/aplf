@@ -21,6 +21,7 @@ from logging import getLogger
 import pandas as pd
 from multiprocessing import Pool
 from glob import glob
+
 from concurrent.futures import ProcessPoolExecutor
 import asyncio
 logger = getLogger("takeda.app")
@@ -105,7 +106,8 @@ def pre_submit(base_dir: str) -> None:
     ]
     preds = reduce(lambda x, y: x+y)(preds)/len(preds)
 
-    print(r2_score(tr_df['Score'], preds))
+    score = r2_score(tr_df['Score'], preds)
+    logger.info(f"{score}")
     save_submit(
         tr_df,
         preds,
