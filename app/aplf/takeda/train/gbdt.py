@@ -3,6 +3,7 @@ from lightgbm import Dataset
 from multiprocessing import cpu_count
 from ..eval import r2
 import pickle
+from ..data import interpolate
 
 
 def eval(preds, train_data):
@@ -17,6 +18,7 @@ def train(
     val_indices,
 ) -> None:
     tr_df = train_df.iloc[tr_indices]
+    tr_df = interpolate(tr_df)
     val_df = train_df.iloc[val_indices]
     tr_set = Dataset(
         tr_df.drop('Score', axis=1), 
@@ -44,7 +46,7 @@ def train(
         valid_names=['Train', 'Test'],
         num_boost_round=200000,
         feval=eval,
-        early_stopping_rounds=2000,
+        early_stopping_rounds=1000,
         verbose_eval=50
     )
 
