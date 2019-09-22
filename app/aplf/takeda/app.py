@@ -139,3 +139,40 @@ def submit(base_dir: str) -> None:
         preds,
         f'{base_dir}/submit.csv'
     )
+
+def run_gbdt(
+    base_dir:str,
+    n_splits: int,
+    fold_idx: int,
+) -> None:
+    tr_df = csv_to_pkl(
+        '/store/takeda/train.csv',
+        f'{base_dir}/train.pkl',
+    )
+    ev_df = csv_to_pkl(
+        '/store/takeda/test.csv',
+        f'{base_dir}/test.pkl',
+    )
+
+    feature_df = extracet_summary(
+        tr_df,
+        f'{base_dir}/tr_feature.json',
+    )
+
+    feature_df = extracet_summary(
+        ev_df,
+        f'{base_dir}/ev_feature.json',
+    )
+
+    indices = kfold(tr_df, n_splits=n_splits)
+    tr_dataset = TakedaDataset(tr_df)
+    ev_dataset = TakedaPredDataset(ev_df)
+    tr_indices, val_indices = indices[fold_idx]
+
+    train(
+        f"{base_dir}/model-{n_splits}-{fold_idx}.pkl",
+        tr_dataset,
+        ev_dataset,
+        tr_indices,
+        val_indices
+    )
