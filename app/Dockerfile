@@ -16,7 +16,6 @@ RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-la
     /opt/conda/bin/conda install -y python=3.6.8
 
 ENV PATH /opt/conda/bin:$PATH
-RUN pip install pipenv
 WORKDIR /srv
 COPY ./ /srv
-RUN pipenv install
+RUN pip install -r requirements.txt

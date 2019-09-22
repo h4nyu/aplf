@@ -40,7 +40,7 @@ def csv_to_pkl(
     lambda *args: pd.read_json(args[1]),
 )
 def extracet_summary(
-    df: str,
+    df: t.Any,
     out_path: str,
 ) -> t.Any:
     ds = df.describe()
@@ -85,7 +85,7 @@ def detect_col_type(
     in_path: str,
     out_path: str,
 ) -> t.Any:
-    souce_df = pd.read_json(source_path)
+    souce_df = pd.read_json(in_path)
     return out_path
 
 @skip_if(
@@ -96,7 +96,7 @@ def extract_score_distorsion(
     in_path: str,
     out_path: str,
 ) -> t.Any:
-    souce_df = pd.read_pickle(source_path)
+    souce_df = pd.read_pickle(in_path)
     score = souce_df['Score']
     return out_path
 
@@ -108,11 +108,11 @@ def create_dateaset(
     in_path: str,
     out_path: str,
 ) -> t.Any:
-    df = pd.read_pickle(source_path)
+    df = pd.read_pickle(in_path)
     dataset = TakedaDataset(df)
     with open(out_path, 'wb') as f:
         pickle.dump(dataset, f)
-    score = souce_df['Score']
+    score = df['Score']
     return out_path
 
 def kfold(
@@ -146,7 +146,7 @@ class TakedaPredDataset(Dataset):
     def __len__(self) -> int:
         return self.x.shape[0]
 
-    def __getitem__(self, idx: int) -> Tensor:
+    def __getitem__(self, idx: int) -> t.Tuple[Tensor, Tensor]:
         x = self.x[idx]
         return tensor(x, dtype=float64), tensor(0, dtype=float64)
 
@@ -186,7 +186,7 @@ def dump_hist_plot(series:t.Any, path:str) -> None:
 
 def extract_no_change_colums(df:t.Any, path:str) -> t.List[str]:
     if Path(path).is_file():
-        return
+        return []
     std = df.std()
     return std[std==0].index.tolist()
 

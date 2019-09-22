@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 import multiprocessing
 import torch
 from sklearn.metrics import r2_score
-from torch.optim import ASGD, Adam, AdamW
+from torch.optim import Adam
 from torch import device, no_grad, randn, tensor, ones, cat
 from torch.nn.functional import mse_loss, l1_loss
 import numpy as np
@@ -73,14 +73,10 @@ def train(
         pin_memory=True,
         num_workers=3,
     )
-    tr_optim = AdamW(
+    tr_optim = Adam(
         model.parameters(),
     )
 
-    dist_optim = Adam(
-        model.parameters(),
-        amsgrad=True,
-    )
     best_score = 0.
     tr_reg_loss = 0.
     tr_dist_loss = 0.
@@ -116,9 +112,9 @@ def train_epoch(
     epoch,
 ) -> t.Tuple[float, float]:
     count = 0
-    preds = []
-    labels = []
-    sources = []
+    preds:t.List[t.Any] = []
+    labels:t.List[t.Any] = []
+    sources:t.List[t.Any] = []
     sum_m_loss = 0.
     sum_s_loss = 0.
     model = model.train()
@@ -131,20 +127,16 @@ def train_epoch(
 
         optimizer.zero_grad()
         out =model(source).view(-1)
-        regularization_loss = 0
-        for param in model.input.parameters():
-            regularization_loss += torch.sum(torch.abs(param))
         loss = mse_loss(out, label)
-        loss += regularization_loss * 0.99 ** epoch
         loss.backward()
         optimizer.step()
         sum_m_loss += loss.item()
         count += 1
 
-    labels = cat(labels).view(-1)
-    sources = cat(sources)
-    preds = model(sources).view(-1)
-    return (sum_m_loss/count, r2(preds, labels).item())
+    _labels = cat(labels).view(-1)
+    _sources = cat(sources)
+    _preds = model(_sources).view(-1)
+    return (sum_m_loss/count, r2(_preds, labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
@@ -163,18 +155,18 @@ def eval_epoch(
     model.eval()
     batch_len = len(loader)
     sum_loss = 0
-    preds = []
-    labels = []
-    sources = []
+    preds:t.List[t.Any] = []
+    labels:t.List[t.Any] = []
+    sources:t.List[t.Any] = []
     with no_grad():
         for source, label in loader:
             sources.append(source)
             labels.append(label)
 
-    sources = cat(sources).to(DEVICE)
-    labels = cat(labels).to(DEVICE)
-    preds = model(sources).view(-1)
-    loss = r2(preds, labels)
+    _sources = cat(sources).to(DEVICE)
+    _labels = cat(labels).to(DEVICE)
+    _preds = model(_sources).view(-1)
+    loss = r2(_preds, _labels)
     return (loss.item(), )
 
 
@@ -192,17 +184,17 @@ def pred(
     )
     batch_len = len(loader)
     sum_loss = 0
-    preds = []
-    sources = []
-    labels = []
+    preds:t.List[t.Any] = []
+    sources:t.List[t.Any] = []
+    labels:t.List[t.Any] = []
     with no_grad():
         for source, label in loader:
             sources.append(source)
             labels.append(label)
 
-    labels = cat(labels).to(DEVICE)
-    sources = cat(sources).to(DEVICE)
-    preds = model(sources).view(-1)
-    loss = r2(preds, labels)
+    _labels = cat(labels).to(DEVICE)
+    _sources = cat(sources).to(DEVICE)
+    _preds = model(_sources).view(-1)
+    loss = r2(preds, _labels)
     logger.info(f"loss:{loss.item()}")
-    return preds.detach().cpu().numpy()
+    return _preds.detach().cpu().numpy()

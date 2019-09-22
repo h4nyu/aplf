@@ -1,4 +1,5 @@
 # Configuration file for jupyter-notebook.
+# type: ignore
 
 #------------------------------------------------------------------------------
 # Application(SingletonConfigurable) configuration

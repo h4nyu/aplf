@@ -1,9 +1,9 @@
-import torch.nn as nn
+from torch import nn
 from torch import Tensor
 from torch.nn.functional import relu, dropout
 
 class Swish(nn.Module):
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor: # type: ignore
         return x * x.sigmoid()
 
 class ResBlock(nn.Module):
@@ -30,7 +30,7 @@ class ResBlock(nn.Module):
             Swish(),
         )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:# type: ignore
         residual = x
         out = self.block(x)
         out += residual
