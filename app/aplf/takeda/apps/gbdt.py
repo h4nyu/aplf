@@ -11,6 +11,8 @@ from ..data import(
     extract_col_type,
     compare_feature,
     dump_hist_plot,
+    get_corr_mtrx,
+    get_ignore_columns,
 )
 from cytoolz.curried import reduce
 from sklearn.metrics import r2_score
@@ -26,29 +28,51 @@ import asyncio
 logger = getLogger("takeda.app")
 
 
-def run(
+async def run(
     base_dir:str,
     n_splits: int,
     fold_idx: int,
 ) -> None:
-    tr_df = csv_to_pkl(
-        '/store/takeda/train.csv',
-        f'{base_dir}/train.pkl',
-    )
-    ev_df = csv_to_pkl(
-        '/store/takeda/test.csv',
-        f'{base_dir}/test.pkl',
-    )
+    loop = asyncio.get_event_loop()
+    with ProcessPoolExecutor(max_workers=12) as pool:
+        tr_df, ev_df = await asyncio.gather(
+             loop.run_in_executor(
+                 pool,
+                 csv_to_pkl,
+                 '/store/takeda/train.csv',
+                 f'{base_dir}/train.pkl',
+             ),
+             loop.run_in_executor(
+                 pool,
+                 csv_to_pkl,
+                 '/store/takeda/test.csv',
+                 f'{base_dir}/test.pkl',
+             )
+        )
+        tr_corr, ev_corr = await asyncio.gather(
+             loop.run_in_executor(pool,
+                 get_corr_mtrx,
+                 tr_df.drop('Score', axis=1),
+                 f'{base_dir}/tr_corr.pkl'
+             ),
+             loop.run_in_executor(pool,
+                 get_corr_mtrx,
+                 ev_df,
+                 f'{base_dir}/ev_corr.pkl'
+             )
+        )
+        correlation_threshold = 0.98
+        indices = kfold(tr_df, n_splits=n_splits)
+        tr_indices, val_indices = indices[fold_idx]
+        ignore_columns = get_ignore_columns(tr_corr, correlation_threshold)
 
-    indices = kfold(tr_df, n_splits=n_splits)
-    tr_indices, val_indices = indices[fold_idx]
-
-    train(
-        f"{base_dir}/model-{n_splits}-{fold_idx}.pkl",
-        tr_df,
-        tr_indices,
-        val_indices
-    )
+        train(
+            f"{base_dir}/model-{n_splits}-{fold_idx}.pkl",
+            tr_df,
+            tr_indices,
+            val_indices,
+            ignore_columns,
+        )
 
 def pre_submit(base_dir: str) -> None:
     tr_df = csv_to_pkl(

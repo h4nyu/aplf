@@ -31,40 +31,24 @@ def add_noise(means, device):
 
 def train(
     path:str,
-    tr_dataset,
-    ev_dataset,
-    tr_indices,
-    val_indices,
+    tr_set:TakedaDataset,
+    val_set:TakedaDataset,
 ):
     if Path(path).is_file():
         model = load_model(path)
     else:
         model = Model(
-            size_in=3805,
+            size_in=len(tr_set.x_columns),
         )
 
     model = model.double().to(DEVICE)
-    val_set = Subset(tr_dataset, indices=val_indices)
-
-    tr_df = tr_dataset.df.iloc[tr_indices]
-    #  tr_df = interpolate(tr_df)
-    #  tr_df = flat_distorsion(tr_df)
-    tr_set = TakedaDataset(tr_df)
-
-    ev_loader = DataLoader(
-        dataset=ev_dataset,
-        batch_size=1024,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=2,
-    )
 
     tr_loader = DataLoader(
         dataset=tr_set,
         batch_size=256,
         shuffle=True,
         pin_memory=True,
-        num_workers=2,
+        num_workers=4,
     )
     val_loader = DataLoader(
         dataset=val_set,
@@ -111,13 +95,13 @@ def train_epoch(
     optimizer,
     epoch,
 ) -> t.Tuple[float, float]:
+    model.train()
     count = 0
     preds:t.List[t.Any] = []
     labels:t.List[t.Any] = []
     sources:t.List[t.Any] = []
     sum_m_loss = 0.
     sum_s_loss = 0.
-    model = model.train()
     for source, label in main_loader:
         source = source.to(DEVICE)
         label = label.to(DEVICE)
@@ -126,7 +110,7 @@ def train_epoch(
         labels.append(label)
 
         optimizer.zero_grad()
-        out =model(source).view(-1)
+        out = model(source).view(-1)
         loss = mse_loss(out, label)
         loss.backward()
         optimizer.step()
@@ -136,7 +120,7 @@ def train_epoch(
     _labels = cat(labels).view(-1)
     _sources = cat(sources)
     _preds = model(_sources).view(-1)
-    return (sum_m_loss/count, r2(_preds, labels).item())
+    return (sum_m_loss/count, r2(_preds, _labels).item())
 
 def regular_loss(pred, lower, heigher):
     lower_mask = (pred < lower).to(pred.device)
@@ -152,7 +136,7 @@ def eval_epoch(
     model: Model,
     loader,
 ) -> t.Tuple[float]:
-    model.eval()
+    #  model.eval()
     batch_len = len(loader)
     sum_loss = 0
     preds:t.List[t.Any] = []

@@ -6,7 +6,7 @@ import typing as t
 import pandas as pd
 import numpy as np
 from numpy.random import random_integers, randint
-from torch import Tensor, tensor, float32, save, load, float64
+from torch import Tensor, tensor, float32, save, float64
 from typing_extensions import Protocol
 from sklearn.model_selection import KFold
 from pathlib import Path
@@ -127,8 +127,10 @@ def kfold(
 
 
 class TakedaDataset(Dataset):
-    def __init__(self, df: t.Any) -> None:
-        self.x = df.drop('Score', axis=1).values
+    def __init__(self, df: t.Any, ignore_columns:t.Set[str]=set()) -> None:
+        x_columns = sorted(set(df.columns) - ignore_columns - {'Score'})
+        self.x_columns = x_columns
+        self.x = df[x_columns].values
         self.y = df['Score'].values
         self.df = df
 
@@ -164,7 +166,7 @@ def save_model(model: Model, path: str) -> None:
 
 
 def load_model(path: str) -> Model:
-    return load(path)
+    return torch.load(path)
 
 def save_submit(
     df,
@@ -211,15 +213,46 @@ def flat_distorsion(df, bins=50):
     lambda *args: pd.read_pickle(args[1]),
 )
 def get_corr_mtrx(df:t.Any, path:str) -> None:
-    corr = df.corr()
-    df.to_pickle(path)
+    corr = df.corr().abs()
+    corr.to_pickle(path)
     return corr
-
 
 @skip_if(
     lambda *args: Path(args[1]).is_file(),
 )
 def save_heatmap(df:t.Any, path:str) -> None:
-    sns.heatmap(df)
-    f, ax = plt.subplots(figsize=(11, 9))
+    mask = np.zeros_like(df, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = True
+    f, ax = plt.subplots(figsize=(10, 10))
+    sns.heatmap(
+        df,
+        mask=mask,
+    )
     f.savefig(path)
+
+
+def load(path:str) -> t.Any:
+    with open(path, 'rb') as f:
+        obj = pickle.load(f)
+    return obj
+
+@skip_if(
+    lambda *args: Path(args[1]).is_file(),
+    lambda *args: load(args[1]),
+)
+def dump(obj:t.Any, path:str) -> None:
+    with open(path, 'wb') as f:
+        pickle.dump(obj, f)
+
+def get_ignore_columns(df:t.Any, threshold:float) -> t.Set[str]:
+    if len(df.columns) == 0:
+        return set()
+
+    mask = np.ones_like(df, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = False
+    filtered = df.where(mask)
+    ignore_columns:t.Set[str] = set()
+    for c in filtered.columns:
+        a = filtered[c][(filtered[c] > threshold ) & (filtered[c] < 1 )]
+        ignore_columns = ignore_columns | set(a.index)
+    return ignore_columns

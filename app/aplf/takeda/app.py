@@ -12,6 +12,8 @@ from .data import(
     compare_feature,
     dump_hist_plot,
     get_corr_mtrx,
+    save_heatmap,
+    get_ignore_columns,
 )
 from cytoolz.curried import reduce
 from sklearn.metrics import r2_score
@@ -54,20 +56,59 @@ async def run(
     n_splits: int,
     fold_idx: int,
 ) -> None:
+    loop = asyncio.get_event_loop()
     with ProcessPoolExecutor(max_workers=12) as pool:
-        tr_df = csv_to_pkl(
-            '/store/takeda/train.csv',
-            f'{base_dir}/train.pkl',
+        tr_df, ev_df = await asyncio.gather(
+             loop.run_in_executor(
+                 pool,
+                 csv_to_pkl,
+                 '/store/takeda/train.csv',
+                 f'{base_dir}/train.pkl',
+             ),
+             loop.run_in_executor(
+                 pool,
+                 csv_to_pkl,
+                 '/store/takeda/test.csv',
+                 f'{base_dir}/test.pkl',
+             )
         )
-        ev_df = csv_to_pkl(
-            '/store/takeda/test.csv',
-            f'{base_dir}/test.pkl',
+        tr_corr, ev_corr = await asyncio.gather(
+             loop.run_in_executor(pool,
+                 get_corr_mtrx,
+                 tr_df.drop('Score', axis=1),
+                 f'{base_dir}/tr_corr.pkl'
+             ),
+             loop.run_in_executor(pool,
+                 get_corr_mtrx,
+                 ev_df,
+                 f'{base_dir}/ev_corr.pkl'
+             )
         )
-        tr_corr = get_corr_mtrx(
-            tr_df,
-            f'{base_dir}/tr_corr.pkl',
+        correlation_threshold = 0.98
+        indices = kfold(tr_df, n_splits=n_splits)
+        tr_indices, val_indices = indices[fold_idx]
+        ignore_columns = get_ignore_columns(tr_corr, correlation_threshold)
+
+        save_heatmap(
+            tr_corr[tr_corr > correlation_threshold],
+            f'{base_dir}/tr_corr.png'
         )
-        pool.submit(get_corr_mtrx, tr_df, f'{base_dir}/tr_corr.pkl')
+        tr_dataset = TakedaDataset(
+            tr_df.iloc[tr_indices],
+            ignore_columns=ignore_columns,
+        )
+        val_dataset = TakedaDataset(
+            tr_df.iloc[val_indices],
+            ignore_columns=ignore_columns,
+        )
+        train(
+            f"{base_dir}/model-{n_splits}-{fold_idx}.pkl",
+            tr_dataset,
+            val_dataset,
+        )
+
+
+
 
 
 def pre_submit(base_dir: str) -> None:
@@ -122,41 +163,4 @@ def submit(base_dir: str) -> None:
         ev_df,
         preds,
         f'{base_dir}/submit.csv'
-    )
-
-def run_gbdt(
-    base_dir:str,
-    n_splits: int,
-    fold_idx: int,
-) -> None:
-    tr_df = csv_to_pkl(
-        '/store/takeda/train.csv',
-        f'{base_dir}/train.pkl',
-    )
-    ev_df = csv_to_pkl(
-        '/store/takeda/test.csv',
-        f'{base_dir}/test.pkl',
-    )
-
-    feature_df = extracet_summary(
-        tr_df,
-        f'{base_dir}/tr_feature.json',
-    )
-
-    feature_df = extracet_summary(
-        ev_df,
-        f'{base_dir}/ev_feature.json',
-    )
-
-    indices = kfold(tr_df, n_splits=n_splits)
-    tr_dataset = TakedaDataset(tr_df)
-    ev_dataset = TakedaPredDataset(ev_df)
-    tr_indices, val_indices = indices[fold_idx]
-
-    train(
-        f"{base_dir}/model-{n_splits}-{fold_idx}.pkl",
-        tr_dataset,
-        ev_dataset,
-        tr_indices,
-        val_indices
     )

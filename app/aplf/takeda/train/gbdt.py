@@ -17,16 +17,17 @@ def train(
     train_df,
     tr_indices,
     val_indices,
+    ignore_columns,
 ) -> None:
+    x_columns = sorted(set(train_df.columns) - ignore_columns - {'Score'})
     tr_df = train_df.iloc[tr_indices]
     tr_df = interpolate(tr_df)
     val_df = train_df.iloc[val_indices]
     tr_set = Dataset(
-        tr_df.drop('Score', axis=1), 
-        tr_df['Score']
-    )
+        tr_df[x_columns],
+        tr_df['Score'])
     val_set = Dataset(
-        val_df.drop('Score', axis=1), 
+        val_df[x_columns],
         val_df['Score']
     )
     params = {
@@ -65,4 +66,3 @@ def predict(
     x_data = train_df.drop('Score', axis=1).values if 'Score' in train_df.columns else train_df.values
     preds = model.predict(x_data)
     return preds
-

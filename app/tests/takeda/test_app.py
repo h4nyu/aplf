@@ -3,12 +3,11 @@ from aplf.takeda.app import (
     submit, 
     pre_submit, 
     explore,
-    run_gbdt,
 )
 import pytest
 
 
-BASE_DIR="/store/gbdt"
+BASE_DIR="/store/nn"
 @pytest.mark.asyncio
 async def test_run() -> None:
     """
@@ -22,7 +21,3 @@ def test_submit() -> None:
 
 def test_pre_submit() -> None:
     pre_submit(base_dir=BASE_DIR)
-
-@pytest.mark.asyncio
-async def test_explore() -> None:
-    await explore(base_dir="/store/aug")
