@@ -73,18 +73,20 @@ async def run(
              )
         )
         tr_corr, ev_corr = await asyncio.gather(
-             loop.run_in_executor(pool,
+             loop.run_in_executor(
+                 pool,
                  get_corr_mtrx,
                  tr_df.drop('Score', axis=1),
                  f'{base_dir}/tr_corr.pkl'
              ),
-             loop.run_in_executor(pool,
+             loop.run_in_executor(
+                 pool,
                  get_corr_mtrx,
                  ev_df,
                  f'{base_dir}/ev_corr.pkl'
              )
         )
-        correlation_threshold = 0.98
+        correlation_threshold = 0.95
         indices = kfold(tr_df, n_splits=n_splits)
         tr_indices, val_indices = indices[fold_idx]
         ignore_columns = get_ignore_columns(tr_corr, correlation_threshold)
@@ -119,13 +121,25 @@ def pre_submit(base_dir: str) -> None:
     tr_dataset = TakedaDataset(tr_df)
     model_paths = glob(f'{base_dir}/model-*.pkl')
     logger.info(f"{model_paths}")
+
+    tr_corr = get_corr_mtrx(
+        tr_df.drop('Score', axis=1),
+        f'{base_dir}/tr_corr.pkl'
+    )
+    correlation_threshold = 0.95
+    ignore_columns = get_ignore_columns(tr_corr, correlation_threshold)
+    dataset = TakedaDataset(
+        tr_df,
+        ignore_columns=ignore_columns,
+    )
+
     models = [
         load_model(p)
         for p
         in model_paths
     ]
     preds = [
-        pred(model, tr_dataset)
+        pred(model, dataset)
         for model
         in models
     ]
