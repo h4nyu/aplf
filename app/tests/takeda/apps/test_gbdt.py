@@ -1,5 +1,7 @@
 from aplf.takeda.apps.gbdt import (
     run,
+    pre_submit,
+    submit,
 )
 import pytest
 
@@ -12,3 +14,8 @@ def test_run() -> None:
     run(base_dir=BASE_DIR, n_splits=6, fold_idx=1)
 
 
+def test_pre_submit() -> None:
+    pre_submit(base_dir=BASE_DIR)
+
+def test_submit() -> None:
+    submit(base_dir=BASE_DIR)

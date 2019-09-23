@@ -15,7 +15,7 @@ from ..data import(
 from cytoolz.curried import reduce
 from sklearn.metrics import r2_score
 import typing as t
-from ..train.gbdt import train
+from ..train.gbdt import train, predict
 from logging import getLogger
 import pandas as pd
 from multiprocessing import Pool
@@ -48,4 +48,45 @@ def run(
         tr_df,
         tr_indices,
         val_indices
+    )
+
+def pre_submit(base_dir: str) -> None:
+    tr_df = csv_to_pkl(
+        '/store/takeda/train.csv',
+        f'{base_dir}/train.pkl',
+    )
+    model_paths = glob(f'{base_dir}/model-*.pkl')
+    logger.info(f"{model_paths}")
+    preds = [
+        predict(p, tr_df)
+        for p
+        in model_paths
+    ]
+    preds = reduce(lambda x, y: x+y)(preds)/len(preds)
+
+    score = r2_score(tr_df['Score'], preds)
+    logger.info(f"{score}")
+    save_submit(
+        tr_df,
+        preds,
+        f'{base_dir}/pre_submit.csv'
+    )
+
+def submit(base_dir: str) -> None:
+    tr_df = csv_to_pkl(
+        '/store/takeda/test.csv',
+        f'{base_dir}/test.pkl',
+    )
+    model_paths = glob(f'{base_dir}/model-*.pkl')
+    logger.info(f"{model_paths}")
+    preds = [
+        predict(p, tr_df)
+        for p
+        in model_paths
+    ]
+    preds = reduce(lambda x, y: x+y)(preds)/len(preds)
+    save_submit(
+        tr_df,
+        preds,
+        f'{base_dir}/submit.csv'
     )
