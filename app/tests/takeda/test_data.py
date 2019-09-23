@@ -5,6 +5,7 @@ from aplf.takeda.data import (
     csv_to_pkl,
     extract_col_type,
     interpolate,
+    get_corr_mtrx,
 )
 from torch.utils.data import Dataset
 import typing as t
@@ -70,3 +71,12 @@ def test_interpolate() -> None:
     out_df = interpolate(df)
     assert len(out_df) == 7
     print(out_df)
+
+def test_get_corr_mtrx() -> None:
+    df = pd.DataFrame({
+        'Score': [0., 1., 2.5, 10],
+        'col1': [0., 1., 0., 1, ],
+        'col2': [0., 1., 1.5, 20],
+        'col3': [0., 1., 3, 0.5],
+    }, index=[0, 1, 2, 3])
+    corr = get_corr_mtrx(df, '/store/corr.pkl')

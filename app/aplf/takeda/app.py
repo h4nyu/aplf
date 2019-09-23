@@ -11,6 +11,7 @@ from .data import(
     extract_col_type,
     compare_feature,
     dump_hist_plot,
+    get_corr_mtrx,
 )
 from cytoolz.curried import reduce
 from sklearn.metrics import r2_score
@@ -48,42 +49,25 @@ async def explore(
          ]
          asyncio.gather(*futures)
 
-def run(
+async def run(
     base_dir:str,
     n_splits: int,
     fold_idx: int,
 ) -> None:
-    tr_df = csv_to_pkl(
-        '/store/takeda/train.csv',
-        f'{base_dir}/train.pkl',
-    )
-    ev_df = csv_to_pkl(
-        '/store/takeda/test.csv',
-        f'{base_dir}/test.pkl',
-    )
-
-    feature_df = extracet_summary(
-        tr_df,
-        f'{base_dir}/tr_feature.json',
-    )
-
-    feature_df = extracet_summary(
-        ev_df,
-        f'{base_dir}/ev_feature.json',
-    )
-
-    indices = kfold(tr_df, n_splits=n_splits)
-    tr_dataset = TakedaDataset(tr_df)
-    ev_dataset = TakedaPredDataset(ev_df)
-    tr_indices, val_indices = indices[fold_idx]
-
-    train(
-        f"{base_dir}/model-{n_splits}-{fold_idx}.pkl",
-        tr_dataset,
-        ev_dataset,
-        tr_indices,
-        val_indices
-    )
+    with ProcessPoolExecutor(max_workers=12) as pool:
+        tr_df = csv_to_pkl(
+            '/store/takeda/train.csv',
+            f'{base_dir}/train.pkl',
+        )
+        ev_df = csv_to_pkl(
+            '/store/takeda/test.csv',
+            f'{base_dir}/test.pkl',
+        )
+        tr_corr = get_corr_mtrx(
+            tr_df,
+            f'{base_dir}/tr_corr.pkl',
+        )
+        pool.submit(get_corr_mtrx, tr_df, f'{base_dir}/tr_corr.pkl')
 
 
 def pre_submit(base_dir: str) -> None:

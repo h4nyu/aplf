@@ -15,6 +15,8 @@ import lightgbm as lgbm
 from aplf.utils.decorators import skip_if
 from pathlib import Path
 import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.pyplot as plt
 from .models import Model
 
 
@@ -203,3 +205,21 @@ def flat_distorsion(df, bins=50):
             dfs.append(group.sample(max_size-len(group), replace=True))
     flat_df = pd.concat(dfs).append(df)
     return flat_df
+
+@skip_if(
+    lambda *args: Path(args[1]).is_file(),
+    lambda *args: pd.read_pickle(args[1]),
+)
+def get_corr_mtrx(df:t.Any, path:str) -> None:
+    corr = df.corr()
+    df.to_pickle(path)
+    return corr
+
+
+@skip_if(
+    lambda *args: Path(args[1]).is_file(),
+)
+def save_heatmap(df:t.Any, path:str) -> None:
+    sns.heatmap(df)
+    f, ax = plt.subplots(figsize=(11, 9))
+    f.savefig(path)

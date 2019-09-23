@@ -9,7 +9,7 @@ from ..data import interpolate
 
 def eval(preds, train_data):
     loss = r2(preds, train_data.get_label())
-    return 'r2', loss, 3
+    return 'r2', loss, loss
 
 
 def train(
@@ -40,15 +40,16 @@ def train(
         'metric': 'mse',
         'drop_rate': 0.15,
         "num_threads":cpu_count(),
+        "first_metric_only": True,
     }
     model = lgbm.train(
         train_set=tr_set,
         params=params,
         valid_sets=[val_set],
         valid_names=['Test'],
-        num_boost_round=200000,
+        num_boost_round=10000,
         feval=eval,
-        early_stopping_rounds=5,
+        early_stopping_rounds=1,
         verbose_eval=10
     )
 
