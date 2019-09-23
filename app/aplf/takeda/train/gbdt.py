@@ -33,10 +33,10 @@ def train(
         'boosting': 'dart',
         'objective': 'regression',
         'learning_rate': 0.05,
-        'min_data_in_leaf': 10,
+        'min_data_in_leaf': 5,
         'feature_fraction': 0.7,
         'num_leaves': 21,
-        "max_bin": 128,
+        "max_bin": 64,
         'metric': 'mse',
         'drop_rate': 0.15,
         "num_threads":cpu_count(),
@@ -48,8 +48,8 @@ def train(
         valid_names=['Test'],
         num_boost_round=200000,
         feval=eval,
-        early_stopping_rounds=1000,
-        verbose_eval=50
+        early_stopping_rounds=5,
+        verbose_eval=10
     )
 
     with open(path, 'wb') as f:
