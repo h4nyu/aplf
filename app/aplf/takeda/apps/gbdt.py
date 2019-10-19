@@ -61,7 +61,7 @@ async def run(
                  f'{base_dir}/ev_corr.pkl'
              )
         )
-        correlation_threshold = 0.98
+        correlation_threshold = 0.96
         indices = kfold(tr_df, n_splits=n_splits)
         tr_indices, val_indices = indices[fold_idx]
         ignore_columns = get_ignore_columns(tr_corr, correlation_threshold)
