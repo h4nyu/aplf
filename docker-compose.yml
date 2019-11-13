@@ -12,20 +12,6 @@ services:
       - ./app:/srv
       - ./store:/store
 
-  notebook:
-    build:
-      context: ./app
-      args:
-        - http_proxy
-        - https_proxy
-    runtime: nvidia
-    command: pipenv run notebook
-    volumes:
-      - ./app:/srv
-      - ./store:/store
-    ports:
-      - "${NOTEBOOK_PORT}:8888"
-
   web:
     build:
       context: ./web

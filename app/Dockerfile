@@ -18,4 +18,4 @@ RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-la
 ENV PATH /opt/conda/bin:$PATH
 WORKDIR /srv
 COPY ./ /srv
-RUN pip install -r requirements.txt
+RUN pip install -e .[dev]

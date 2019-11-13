@@ -8,6 +8,7 @@ requires = [
     "sklearn",
     "seaborn",
     "lightgbm",
+    "mlboard-client==0.0.5rc3",
 ]
 dev_requires = [
     "requests",
