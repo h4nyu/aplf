@@ -136,7 +136,7 @@ def eval_epoch(
     model: Model,
     loader,
 ) -> t.Tuple[float]:
-    #  model.eval()
+    model.eval()
     batch_len = len(loader)
     sum_loss = 0
     preds:t.List[t.Any] = []
@@ -179,6 +179,6 @@ def pred(
     _labels = cat(labels).to(DEVICE)
     _sources = cat(sources).to(DEVICE)
     _preds = model(_sources).view(-1)
-    loss = r2(preds, _labels)
+    loss = r2(_preds, _labels)
     logger.info(f"loss:{loss.item()}")
     return _preds.detach().cpu().numpy()

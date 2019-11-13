@@ -45,15 +45,21 @@ class Model(nn.Module):
         size_in: int,
     ) -> None:
         super().__init__()
-        r = 100
-        self.input = nn.BatchNorm1d(size_in)
+        r = 10
+        self.input = nn.Sequential(
+            nn.Linear(
+                size_in,
+                size_in // (r**1),
+            )
+        )
+
         self.fc0 = ResBlock(
-            size_in // (r**0),
             size_in // (r**1),
+            size_in // (r**2),
         )
         self.out = nn.Sequential(
             nn.Linear(
-                size_in // (r**1),
+                size_in // (r**2),
                 1
             ),
         )
