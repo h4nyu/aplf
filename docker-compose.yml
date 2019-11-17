@@ -2,7 +2,7 @@ version: "2.4"
 
 services:
   app:
-    build:
+    build: &default-build
       context: ./app
       args:
         - http_proxy
@@ -12,11 +12,13 @@ services:
       - ./app:/srv
       - ./store:/store
 
-  web:
+  filebrowser:
     build:
-      context: ./web
+      <<: *default-build
+      context: ./filebrowser
+    command: --noauth
     volumes:
-      - ./web/nginx.conf:/etc/nginx/nginx.conf
-      - ./store:/public
+      - ./store:/srv
+      - ./filebrowser/filebrowser.json:/.filebrowser.json
     ports:
       - "${WEB_PORT}:80"

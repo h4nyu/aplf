@@ -1,0 +1,11 @@
+{
+  "port": 80,
+  "address": "",
+  "database": "/etc/database.db",
+  "baseURL": "/filebrowser",
+  "allowCommands": true,
+  "allowEdit": true,
+  "allowNew": true,
+  "commands": [],
+  "root": "/srv"
+}

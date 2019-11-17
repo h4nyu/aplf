@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 requires = [
-    "cytoolz",
+    "toolz",
     "torchvision",
     "torch",
     "pandas",
-    "sklearn",
+    "scikit-learn",
     "seaborn",
     "lightgbm",
-    "mlboard-client==0.0.5rc3",
+    "mlboard-client==0.0.6",
 ]
 dev_requires = [
     "requests",
