@@ -8,7 +8,8 @@ requires = [
     "scikit-learn",
     "seaborn",
     "lightgbm",
-    "mlboard-client==0.0.6",
+    "mlboard-client==0.0.8",
+    "scikit-image",
 ]
 dev_requires = [
     "requests",
