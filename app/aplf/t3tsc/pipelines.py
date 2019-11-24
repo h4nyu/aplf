@@ -13,10 +13,11 @@ def main(
 ) -> None:
     writer = Writer(
         mlboard_url,
-        't3tsc',
+        workspace_name=params['workspace_name'],
         params=params,
         logger=logger,
     )
+
     size = (256, 256)
     currnet_dir = Path("/store/tmp")
     currnet_dir.mkdir(exist_ok=True)
@@ -47,8 +48,10 @@ def main(
             train_indices,
             test_indices,
             n_epochs=params['n_epochs'],
-            lr=params['lr'],
+            max_lr=params['min_lr'],
+            min_lr=params['max_lr'],
             momentum=params['momentum'],
             weight_decay=params['weight_decay'],
+            scheduler_step=params['scheduler_step'],
             writer=writer,
         )

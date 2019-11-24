@@ -47,14 +47,17 @@ def train_epoch(
         running_loss += loss.item()
 
     return {'train_loss': running_loss / len(loader) } 
+
 def train_cv(
     table:Table,
     train_indices:t.Sequence[int],
     val_indices:t.Sequence[int],
     n_epochs: int,
-    lr:float,
+    max_lr:float,
+    min_lr:float,
     momentum:float,
     weight_decay: float,
+    scheduler_step: int,
     writer:Writer,
 ) -> None:
 
@@ -66,12 +69,18 @@ def train_cv(
     model = Res34Unet().to(device)
     optimizer = torch.optim.SGD(
         model.parameters(),
-        lr=lr,
-        #  momentum=momentum,
-        #  weight_decay=weight_decay
+        lr=max_lr,
+        momentum=momentum,
+        weight_decay=weight_decay
+    )
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer,
+        scheduler_step,
+        min_lr
     )
 
     for e in range(n_epochs):
+        lr_scheduler.step(e)
         train_log = train_epoch(
             train_loader,
             model,
@@ -82,4 +91,4 @@ def train_cv(
             model,
         )
 
-        writer.add_scalars({**train_log, **val_log})
+        writer.add_scalars({**train_log, **val_log, "lr": lr_scheduler.get_lr()[0]})
