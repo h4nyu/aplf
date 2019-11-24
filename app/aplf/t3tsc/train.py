@@ -1,26 +1,61 @@
 from .data import read_table, Table, Dataset
+from .models import Res34Unet
+from .losses import lovasz_hinge
 from torch.utils.data import Subset, DataLoader
-from mlboard_client.writers import Writer
-from aplf.config import mlboard_url
+import torch.nn as nn
 import torch
 import typing as t
+from mlboard_client.writers import Writer
+
+device = torch.device('cuda')
+
+
+def validate_epoch(
+    loader:DataLoader,
+    model:Res34Unet,
+):
+    model.eval()
+    x_loss = nn.CrossEntropyLoss()
+    running_loss = 0.0
+    for x_images, y_images in loader:
+        x_images, y_images = x_images.to(device), y_images.to(device).long()
+        with torch.set_grad_enabled(False):
+            pred_images = model(x_images)
+            loss = x_loss(pred_images, y_images)
+        running_loss += loss.item()
+    return {'val_loss': running_loss / len(loader) }
+
 
 Log = t.Dict[str, float]
 def train_epoch(
-    train_loader:DataLoader,
-    val_loader:DataLoader,
+    loader:DataLoader,
+    model:Res34Unet,
+    optimizer:t.Any,
 ) -> Log:
-    device = torch.device('cuda')
-    for hh_inputs, hv_inputs, masks in train_loader:
-        hh_inputs, hv_inputs, masks = hh_inputs.to(device), hv_inputs.to(device), masks.to(device)
-        print(hh_inputs.shape)
-    return {'train_loss': 1, 'val_loss': 2}
+    model.train()
+    x_loss = nn.CrossEntropyLoss()
+    running_loss = 0.0
+    for x_images, y_images in loader:
+        x_images, y_images = x_images.to(device), y_images.to(device).long()
 
+        optimizer.zero_grad()
+        with torch.set_grad_enabled(True):
+            pred_images = model(x_images)
+            loss = x_loss(pred_images, y_images)
+            loss.backward()
+            optimizer.step()
+        running_loss += loss.item()
+
+    return {'train_loss': running_loss / len(loader) } 
 def train_cv(
     table:Table,
     train_indices:t.Sequence[int],
     val_indices:t.Sequence[int],
     n_epochs: int,
+    lr:float,
+    momentum:float,
+    weight_decay: float,
+    writer:Writer,
 ) -> None:
 
     dataset = Dataset(table)
@@ -28,14 +63,23 @@ def train_cv(
     val_set = Subset(dataset, val_indices)
     train_loader = DataLoader(train_set, pin_memory=True)
     val_loader = DataLoader(val_set, pin_memory=True)
-    writer = Writer(
-        mlboard_url,
-        't3tsc'
+    model = Res34Unet().to(device)
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=lr,
+        #  momentum=momentum,
+        #  weight_decay=weight_decay
     )
 
     for e in range(n_epochs):
-        log = train_epoch(
+        train_log = train_epoch(
             train_loader,
-            val_loader,
+            model,
+            optimizer,
         )
-        #  writer.add_scalars(log)
+        val_log = validate_epoch(
+            val_loader,
+            model,
+        )
+
+        writer.add_scalars({**train_log, **val_log})

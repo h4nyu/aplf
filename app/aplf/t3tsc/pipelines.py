@@ -1,9 +1,23 @@
 from pathlib import Path
 from .data import read_table, Table, kfold, resize_all
 from .train import train_cv
+from logging import getLogger
+from aplf.config import mlboard_url
+from mlboard_client.writers import Writer
 
-def main() -> None:
-    size = (300, 300)
+
+logger = getLogger('t3tsc')
+
+def main(
+    **params,
+) -> None:
+    writer = Writer(
+        mlboard_url,
+        't3tsc',
+        params=params,
+        logger=logger,
+    )
+    size = (256, 256)
     currnet_dir = Path("/store/tmp")
     currnet_dir.mkdir(exist_ok=True)
     resize_all(
@@ -19,19 +33,22 @@ def main() -> None:
         pattern='*.png'
     )
     table = read_table(
-        x_dir=Path('/store/t3tsc/downsampled_train'),
+        x_dir=Path('/store/tmp/downsampled_train'),
         y_dir=Path('/store/tmp/downsampled_annotations'),
     )
 
     index_pairs = kfold(
         table,
-        n_splits=4
+        n_splits=params['n_splits'],
     )
     for train_indices, test_indices in index_pairs:
         train_cv(
             table,
             train_indices,
             test_indices,
-            n_epochs=100,
+            n_epochs=params['n_epochs'],
+            lr=params['lr'],
+            momentum=params['momentum'],
+            weight_decay=params['weight_decay'],
+            writer=writer,
         )
-    #

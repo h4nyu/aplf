@@ -3,6 +3,8 @@ from pathlib import Path
 from glob import glob
 import re
 from skimage import io
+import numpy as np
+
 from skimage.transform import rescale, resize as _resize
 from sklearn.model_selection import KFold
 from torch.utils.data import Dataset as _Dataset
@@ -59,13 +61,14 @@ class Dataset(_Dataset):
             self.images[path] = image
             return image
 
-    def __getitem__(self, idx:int) -> t.Tuple[t.Any, t.Any, t.Any]:
+    def __getitem__(self, idx:int) -> t.Tuple[t.Any, t.Any]:
         row = self.rows[idx]
         hh, hv, an = row
+        hh_img, hv_img, an_img = self.__get_image(hh), self.__get_image(hv), self.__get_image(an)
+        img = (np.array([hh_img, hv_img]) / 255).astype(np.float32)
         return (
-            self.__get_image(hh),
-            self.__get_image(hv),
-            self.__get_image(an),
+            img,
+            an_img
         )
 
 
@@ -98,9 +101,3 @@ def resize_all(
     ]
     with Pool(cpu_count()) as p:
         return p.starmap(resize, args)
-
-
-
-
-
-

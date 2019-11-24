@@ -1,6 +1,7 @@
 from aplf.t3tsc.data import read_table, Dataset, resize
 from pathlib import Path
 from aplf.utils import Timer
+import numpy as np
 
 
 def test_read_table() -> None:
@@ -34,3 +35,12 @@ def test_dataset() -> None:
             dset[i]
             print(i)
     print(timer.interval)
+
+def test_dataset_get_item() -> None:
+    table = read_table(
+        Path('/store/t3tsc/downsampled_train'),
+        Path('/store/t3tsc/downsampled_annotations'),
+    )
+    dset = Dataset(table)
+    x, y = dset[0]
+    assert len(np.unique(y)) == 13
