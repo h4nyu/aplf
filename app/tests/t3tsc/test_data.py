@@ -1,6 +1,9 @@
-from aplf.t3tsc.data import read_table, Dataset, resize
+import typing as t
+from aplf.t3tsc.data import read_table, Dataset, resize, get_iou
+import pytest
 from pathlib import Path
 from aplf.utils import Timer
+from torch import randn, empty, tensor
 import numpy as np
 
 
@@ -44,3 +47,22 @@ def test_dataset_get_item() -> None:
     dset = Dataset(table)
     x, y = dset[0]
     assert len(np.unique(y)) == 13
+
+
+
+@pytest.mark.parametrize("pred, label, expected", [
+    (
+        [[1, 1, 1],
+         [1, 2, 1],
+         [1, 1, 1]],
+        [[1, 2, 1],
+         [1, 2, 1],
+         [1, 2, 1]],
+        0.75
+    )
+])
+def test_get_iou(pred:t.Any, label:t.Any, expected) -> None:
+    pred = tensor(pred)
+    label = tensor(label)
+    score = get_iou(pred, label, classes=[1])
+    assert score == expected

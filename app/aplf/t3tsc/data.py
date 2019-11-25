@@ -101,3 +101,23 @@ def resize_all(
     ]
     with Pool(cpu_count()) as p:
         return p.starmap(resize, args)
+
+
+def get_iou(pred:t.Any, label:t.Any, classes=t.Sequence[int]) -> float:
+    ious = []
+    for i in classes:
+        intersection = ((label == i) & (pred == i)).sum().item()
+        union = ((label == i) | (pred == i)).sum().item()
+        if union == 0:
+            ious.append(0)
+        else:
+            ious.append(intersection / union)
+    return np.array(ious).mean()
+
+def get_batch_iou(preds:t.Any, labels:t.Any, classes=t.Sequence[int]) -> float:
+    ious = [
+        get_iou(p, l, classes)
+        for p, l
+        in zip(preds, labels)
+    ]
+    return np.array(ious).mean()
