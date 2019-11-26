@@ -14,8 +14,7 @@ def main(
     writer = Writer(
         mlboard_url,
         workspace_name=params['workspace_name'],
-        params=params,
-        logger=logger,
+        params=params, logger=logger,
     )
 
     size = (256, 256)

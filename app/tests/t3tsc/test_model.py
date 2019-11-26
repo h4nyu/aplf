@@ -9,7 +9,7 @@ def test_res34unet() -> None:
     w = 256
     input_hv = randn(batch_size, 2, h, w)
     out = model(input_hv)
-    assert out.shape == (batch_size, 13, h, w)
+    assert out.shape == (batch_size, 2, h, w)
 
 
 

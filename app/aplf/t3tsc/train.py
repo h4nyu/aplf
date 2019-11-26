@@ -9,7 +9,8 @@ from functools import partial
 from mlboard_client.writers import Writer
 
 device = torch.device('cuda')
-get_batch_iou = partial(_get_batch_iou, classes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+get_batch_iou = partial(_get_batch_iou, classes=[0, 1])
+
 
 
 def validate_epoch(
@@ -72,8 +73,8 @@ def train_cv(
     dataset = Dataset(table)
     train_set = Subset(dataset, train_indices)
     val_set = Subset(dataset, val_indices)
-    train_loader = DataLoader(train_set, pin_memory=True)
-    val_loader = DataLoader(val_set, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=16)
+    val_loader = DataLoader(val_set, batch_size=1)
     model = Res34Unet().to(device)
     optimizer = torch.optim.SGD(
         model.parameters(),
@@ -81,9 +82,7 @@ def train_cv(
         momentum=momentum,
         weight_decay=weight_decay
     )
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        scheduler_step,
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR( optimizer, scheduler_step,
         min_lr
     )
 

@@ -1,9 +1,10 @@
 import typing as t
-from aplf.t3tsc.data import read_table, Dataset, resize, get_iou
+from aplf.t3tsc.data import read_table, Dataset, resize, get_iou, to_binary, train_aug
 import pytest
 from pathlib import Path
 from aplf.utils import Timer
 from torch import randn, empty, tensor
+import Augmentor
 import numpy as np
 
 
@@ -41,12 +42,13 @@ def test_dataset() -> None:
 
 def test_dataset_get_item() -> None:
     table = read_table(
-        Path('/store/t3tsc/downsampled_train'),
-        Path('/store/t3tsc/downsampled_annotations'),
+        Path('/store/tmp/downsampled_train'),
+        Path('/store/tmp/downsampled_annotations'),
     )
     dset = Dataset(table)
     x, y = dset[0]
-    assert len(np.unique(y)) == 13
+    print(y)
+    assert len(np.unique(y)) == 12
 
 
 
@@ -66,3 +68,32 @@ def test_get_iou(pred:t.Any, label:t.Any, expected) -> None:
     label = tensor(label)
     score = get_iou(pred, label, classes=[1])
     assert score == expected
+
+def test_horizontal_flip() -> None:
+    img = np.array([[[1,  0],
+                    [1,  0],
+                    [1,  0]]])
+    out_img = horizontal_flip(img)
+    print(out_img.shape)
+
+    expected = np.array([[[0,  1],
+                         [0,  1],
+                         [0,  1]]])
+    print(out_img)
+    assert np.abs(out_img - expected).sum() == 0
+
+
+
+def test_train_aug() -> None:
+    mask = np.array([[.0,  .1],
+                     [.1,  .0]])
+
+    img0 = np.array([[.0,  .1],
+                     [.2,  .3]])
+    img1 = np.array([[.0,  .1],
+                     [.2,  .3]])
+
+    hh, hv, mask = train_aug([img0, img1, mask], probability=1)
+    print(hh)
+    print(hv)
+    print(mask)

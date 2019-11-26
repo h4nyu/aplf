@@ -1,4 +1,5 @@
 import typing as t
+import Augmentor
 from pathlib import Path
 from glob import glob
 import re
@@ -43,12 +44,15 @@ def read_table(
         in ids
     }
     return table
+def to_binary(mask:t.Any) -> t.Any:
+    return ((mask > 0) & (mask < 11)).astype(np.uint8)
 
 class Dataset(_Dataset):
-    def __init__(self, table:Table) -> None:
+    def __init__(self, table:Table, mode="train") -> None:
         self.table = table
         self.rows = list(table.values())
         self.images:t.Dict[Path, t.Any] = {}
+        self.mode = mode
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -64,12 +68,15 @@ class Dataset(_Dataset):
     def __getitem__(self, idx:int) -> t.Tuple[t.Any, t.Any]:
         row = self.rows[idx]
         hh, hv, an = row
-        hh_img, hv_img, an_img = self.__get_image(hh), self.__get_image(hv), self.__get_image(an)
+        hh_img, hv_img, mask = self.__get_image(hh), self.__get_image(hv), self.__get_image(an)
+        if self.mode == 'train':
+            hh_img, hv_img, mask = train_aug([hh_img, hv_img, mask], probability=0.5)
+
         img = (np.array([hh_img, hv_img]) / 255).astype(np.float32)
+        mask = to_binary(mask)
+
         return (
-            img,
-            an_img
-        )
+            img, mask)
 
 
 IndexPair = t.Tuple[t.Sequence[int], t.Sequence[int]]
@@ -106,11 +113,11 @@ def resize_all(
 def get_iou(pred:t.Any, label:t.Any, classes=t.Sequence[int]) -> float:
     ious = []
     for i in classes:
-        intersection = ((label == i) & (pred == i)).sum().item()
         union = ((label == i) | (pred == i)).sum().item()
         if union == 0:
             ious.append(0)
         else:
+            intersection = ((label == i) & (pred == i)).sum().item()
             ious.append(intersection / union)
     return np.array(ious).mean()
 
@@ -121,3 +128,17 @@ def get_batch_iou(preds:t.Any, labels:t.Any, classes=t.Sequence[int]) -> float:
         in zip(preds, labels)
     ]
     return np.array(ious).mean()
+
+def horizontal_flip(image):
+    return np.flip(image, axis=1).copy()
+
+def rot90(image):
+    return np.flip(image, axis=1).copy()
+
+def train_aug(images, probability=0.5):
+    p = Augmentor.DataPipeline([images])
+    p.rotate90(probability=probability)
+    p.rotate270(probability=probability)
+    p.flip_left_right(probability=probability)
+    p.flip_top_bottom(probability=probability)
+    return p.sample(1)[0]
