@@ -11,6 +11,7 @@ requires = [
     "mlboard-client==0.0.9.rc1",
     "scikit-image",
     "opencv-python",
+    "Augmentor",
 ]
 dev_requires = [
     "requests",
