@@ -177,8 +177,7 @@ class Res34Unet(nn.Module):
         self.logit = nn.Sequential(
             nn.Conv2d(320, 64, kernel_size=3, padding=1),
             nn.ELU(True),
-            nn.Conv2d(64, 2, kernel_size=1, bias=False),
-            nn.Softmax2d()
+            nn.Conv2d(64, 1, kernel_size=1, bias=False),
         )
 
     def forward(self, x):

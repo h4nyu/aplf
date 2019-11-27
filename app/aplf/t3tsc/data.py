@@ -45,7 +45,7 @@ def read_table(
     }
     return table
 def to_binary(mask:t.Any) -> t.Any:
-    return ((mask > 0) & (mask < 11)).astype(np.uint8)
+    return ((mask >= 1) & (mask <= 10)).astype(np.float32)
 
 class Dataset(_Dataset):
     def __init__(self, table:Table, mode="train") -> None:
@@ -73,15 +73,16 @@ class Dataset(_Dataset):
             hh_img, hv_img, mask = train_aug([hh_img, hv_img, mask], probability=0.5)
 
         img = (np.array([hh_img, hv_img]) / 255).astype(np.float32)
-        mask = to_binary(mask)
+        mask = to_binary(mask).astype(np.float32)
 
         return (
-            img, mask)
+            img, mask
+        )
 
 
 IndexPair = t.Tuple[t.Sequence[int], t.Sequence[int]]
 def kfold(table:Table, n_splits:int) -> t.Sequence[IndexPair]:
-    kf = KFold(n_splits=n_splits)
+    kf = KFold(n_splits=n_splits, random_state=0)
     indices = range(len(table))
     return kf.split(indices)
 
@@ -121,6 +122,15 @@ def get_iou(pred:t.Any, label:t.Any, classes=t.Sequence[int]) -> float:
             ious.append(intersection / union)
     return np.array(ious).mean()
 
+
+def get_batch_iou_binary(preds:t.Any, labels:t.Any, thresold:float=0.5) -> float:
+    ious = [
+        get_iou(p > thresold, l, classes=[0, 1])
+        for p, l
+        in zip(preds, labels)
+    ]
+    return np.array(ious).mean()
+
 def get_batch_iou(preds:t.Any, labels:t.Any, classes=t.Sequence[int]) -> float:
     ious = [
         get_iou(p, l, classes)
@@ -132,13 +142,11 @@ def get_batch_iou(preds:t.Any, labels:t.Any, classes=t.Sequence[int]) -> float:
 def horizontal_flip(image):
     return np.flip(image, axis=1).copy()
 
-def rot90(image):
-    return np.flip(image, axis=1).copy()
-
 def train_aug(images, probability=0.5):
     p = Augmentor.DataPipeline([images])
     p.rotate90(probability=probability)
     p.rotate270(probability=probability)
     p.flip_left_right(probability=probability)
     p.flip_top_bottom(probability=probability)
+    p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
     return p.sample(1)[0]

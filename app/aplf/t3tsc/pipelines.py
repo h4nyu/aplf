@@ -41,7 +41,7 @@ def main(
         table,
         n_splits=params['n_splits'],
     )
-    for train_indices, test_indices in index_pairs:
+    for idx, (train_indices, test_indices) in enumerate(index_pairs):
         train_cv(
             table,
             train_indices,
@@ -53,4 +53,5 @@ def main(
             weight_decay=params['weight_decay'],
             scheduler_step=params['scheduler_step'],
             writer=writer,
+            model_path=currnet_dir.joinpath(f'model-{idx}.pth'),
         )
