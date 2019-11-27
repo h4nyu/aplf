@@ -148,5 +148,7 @@ def train_aug(images, probability=0.5):
     p.rotate270(probability=probability)
     p.flip_left_right(probability=probability)
     p.flip_top_bottom(probability=probability)
+    p.rotate(1, max_left_rotation=5, max_right_rotation=5)
+    p.zoom_random(probability=probability, percentage_area=0.7)
     p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
     return p.sample(1)[0]
